@@ -305,7 +305,13 @@ export {
 export function roleInTeam(team: Team | null | undefined, userId: string): 'admin' | 'member' | 'reviewer' | null {
   if (!team) return null;
   const member = team.members.find((m) => m.user_id === userId);
-  if (member) return member.role;
+  if (member) {
+    // Team-level "admin" must not surface as useCurrentRole() === 'admin'.
+    // That value means global system_admin only (locks API-key create + resource pages via ResourceGuard).
+    // Team-admin capabilities use isTeamAdmin() separately.
+    if (member.role === 'admin') return 'member';
+    return member.role;
+  }
   // If the team owner is not in the members list (the backend owner does not necessarily appear in the members array),
   // treat as 'member' by default -- the owner can manage resources within the team and should see the resources page.
   // 'admin' is not returned because 'admin' returned by useCurrentRole means "global admin" (who cannot see the resources page),

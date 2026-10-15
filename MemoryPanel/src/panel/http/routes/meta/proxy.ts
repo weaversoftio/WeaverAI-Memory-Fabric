@@ -10,7 +10,12 @@ import { respondControlError, respondEnvelope } from '../../envelope.js';
 import type { MetaCallContext } from '../../../kernel/types.js';
 import { KNOWLEDGE_SERVICE_USERNAME } from '../../../startup/ensure-knowledge-llm-binding.js';
 import { DEFAULT_SKILLS } from './default-skills.js';
-import { extractListItems, isCallerSystemAdmin, resolveCallerUserId } from '../knowledge/common.js';
+import {
+  extractListItems,
+  isCallerSystemAdmin,
+  isCallerTeamAdmin,
+  resolveCallerUserId,
+} from '../knowledge/common.js';
 import {
   getAgentTemplate as readTemplateFile,
   saveAgentTemplate as writeTemplateFile,
@@ -184,7 +189,11 @@ export function registerMetaProxyRoutes(api: Hono, deps: PanelDeps): void {
 
     // -- Default Agent template read/write: the Panel reads/writes the local file directly (not forwarded to the kernel) --
     if (action === 'agent/set-default-template') {
-      if (!(await isCallerSystemAdmin(deps, ctx))) {
+      const teamIdForAuth = typeof body.team_id === 'string' ? body.team_id : '';
+      const allowed =
+        (await isCallerSystemAdmin(deps, ctx)) ||
+        (await isCallerTeamAdmin(deps, ctx, teamIdForAuth));
+      if (!allowed) {
         return respondControlError(c, 403, 'permission_denied');
       }
       const teamId = typeof body.team_id === 'string' ? body.team_id : '';

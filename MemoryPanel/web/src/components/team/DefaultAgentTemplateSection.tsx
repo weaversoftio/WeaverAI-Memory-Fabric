@@ -6,7 +6,7 @@
  *   - Configured: shows the current template summary + the "Edit configuration" entry.
  *
  * Data source: agent/get-default-template (no permission check); the write action agent/set-default-template
- * can be called only by system_admin, so this component renders only when isAdmin=true.
+ * can be called by system_admin or team admin. Parent renders this when the caller has that authority.
  */
 
 import { useCallback, useEffect, useState } from 'react';

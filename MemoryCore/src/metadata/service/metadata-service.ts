@@ -1508,14 +1508,10 @@ export class MetadataService {
 
     // 3. Idempotent createAsset
     //
-    // Default visibility = "private" (changed 2026-07):
-    //   - A newly created skill is by default visible only to the owner and team admins (strictly private).
-    //   - To make it readable by everyone in the team -> the user explicitly switches it to "shared" on the control page (asset/update visibility=team).
-    //   - To make it readable by specific users/agents -> use acl/grant + visibility=restricted.
-    //
-    // Why not "team": Skill content often contains internal knowledge, scripts, credential notes, etc.,
-    // and "visible to the whole team by default" is not safe enough for privacy-sensitive scenarios (e.g. a skill used for personal debugging).
-    // A private -> actively shared mental model is more intuitive.
+    // Default visibility = "team" (team-first):
+    //   - A newly created skill is readable by every team member so Agents/skills stay shareable by default.
+    //   - Owners can still switch to "private" on the Skills page (asset/update visibility=private).
+    //   - For restricted sharing use acl/grant + visibility=restricted.
     let asset = await this.getAssetById(assetId);
     if (!asset) {
       try {
@@ -1526,7 +1522,7 @@ export class MetadataService {
           name: params.name,
           owner_user_id: agent.owner_user_id,
           source_type: "extracted",
-          visibility: "private",
+          visibility: "team",
           status: "active",
         });
       } catch (err) {

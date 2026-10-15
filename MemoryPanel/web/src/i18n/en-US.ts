@@ -499,7 +499,7 @@ export const enUS = {
   'skills.empty.fixed.hasAgent':
     'Agent "{{agent}}" has no fixed skills. Click "Import Skill" above to import directly, or select a skill in the "Team" view and use "Fork" to distribute it.',
   'skills.empty.team':
-    'No "shared" skills in the team yet. New skills are private by default — only the owner can see them. To make them visible to the whole team, the owner needs to toggle "Share" in the "My Assets" tab.',
+    'No shared skills in the team yet. New skills are shared with the team by default. Owners can still toggle "Private" on Agent assets if a skill should stay personal.',
   'skills.count': '{{count}} items',
   'skills.noAgent': 'No Agent Available',
   'skills.fork': 'Fork (writable)',
@@ -1069,7 +1069,10 @@ export const enUS = {
   'addMember.username.hint': 'Letters, numbers, underscores. Cannot be changed after creation.',
   'addMember.role': 'Role',
   'addMember.role.default': 'member (default)',
+  'addMember.role.member': 'member',
+  'addMember.role.admin': 'admin',
   'addMember.role.hint': 'New members default to the member role.',
+  'addMember.role.hintAdmin': 'Choose member or admin for this team. Existing members can be re-added to change role.',
   'addMember.existing.submit': 'Add',
   'addMember.new.submit': 'Create & Add',
   'addMember.cancel': 'Cancel',

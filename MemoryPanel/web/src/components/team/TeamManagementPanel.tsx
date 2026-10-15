@@ -83,14 +83,14 @@ export default function TeamManagementPanel({
   // Take only agents of the current team - agents strictly belong to a team and never display across teams
   const { agents: allAgents, loading: agentsLoading } = useAgents(activeTeamId);
   const { t } = useTranslation();
-  // Agent visibility:
-  //   - global admin / admin (owner) of the current team: can see all agents in the team
-  //   - regular members: can only see agents they own (created)
-  const canSeeAllAgents = !!activeTeam && (_isAdmin || isTeamAdmin(activeTeam, currentUser));
+  // Agent visibility: agents are created with visibility=team, so every team member
+  // can see the full team agent list. Edit/delete stay owner- or team-admin-gated via canManageAsset.
+  const canSeeAllAgents = !!activeTeam;
   const agents = useMemo(() => {
-    if (!activeTeam || canSeeAllAgents) return allAgents;
-    return allAgents.filter((a) => a.owner_user_id === currentUser);
-  }, [allAgents, activeTeam, canSeeAllAgents, currentUser]);
+    if (!activeTeam) return [];
+    return allAgents;
+  }, [allAgents, activeTeam]);
+  const canManageDefaultAgent = _isAdmin || (!!activeTeam && isTeamAdmin(activeTeam, currentUser));
   const { counts: mountedCounts, countsLoading } = useAgentMountedCounts(activeTeamId, agents);
   // Show display_name instead of user_id in notification text (reuses the global cache, idempotent with no extra requests)
   const resolveUserName = useDisplayNameResolver();
@@ -288,8 +288,8 @@ export default function TeamManagementPanel({
             />
           )}
 
-          {/* === Default Agent template (visible to global admin only) === */}
-          {showAgents && _isAdmin && (
+          {/* === Default Agent template (system_admin or team admin) === */}
+          {showAgents && canManageDefaultAgent && (
             <DefaultAgentTemplateSection
               teamId={activeTeam.team_id}
               teamName={activeTeam.name}

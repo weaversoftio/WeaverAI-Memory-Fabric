@@ -94,6 +94,33 @@ export async function isTeamMember(
   }
 }
 
+/** Team admin or team owner. Conservatively returns false on failure. */
+export async function isCallerTeamAdmin(
+  deps: PanelDeps,
+  ctx: MetaCallContext,
+  teamId: string,
+): Promise<boolean> {
+  if (!teamId) return false;
+  const userId = await resolveCallerUserId(deps, ctx);
+  if (!userId) return false;
+  try {
+    const teamEnv = await deps.metaKernel.invoke('team/get', { team_id: teamId }, ctx);
+    if (teamEnv.code === 0 && teamEnv.data) {
+      const ownerId = (teamEnv.data as { owner_user_id?: string }).owner_user_id;
+      if (ownerId === userId) return true;
+    }
+    const memberEnv = await deps.metaKernel.invoke(
+      'team-member/get',
+      { team_id: teamId, user_id: userId },
+      ctx,
+    );
+    if (memberEnv.code !== 0 || !memberEnv.data) return false;
+    return (memberEnv.data as { role?: string }).role === 'admin';
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Team gating: requires the caller to be a valid user and a team member.
  * On pass returns { userId }; on failure returns { error: Response } (the route returns it directly).

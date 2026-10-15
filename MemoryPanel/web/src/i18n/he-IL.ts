@@ -499,7 +499,7 @@ export const heIL = {
   'skills.empty.fixed.hasAgent':
     'ל-Agent "{{agent}}" אין Skills קבועים. לחץ על "ייבוא Skill" למעלה כדי לייבא ישירות, או בחר Skill בתצוגת "צוות" והשתמש ב-"Fork" כדי להפיץ אותו.',
   'skills.empty.team':
-    'אין עדיין Skills "משותפים" בצוות. Skills חדשים פרטיים כברירת מחדל, ורק הבעלים רואה אותם. כדי שכל הצוות יראה אותם, הבעלים צריך להפעיל "שיתוף" בלשונית "הנכסים שלי".',
+    'אין עדיין Skills משותפים בצוות. Skills חדשים משותפים עם הצוות כברירת מחדל. הבעלים עדיין יכול להחליף ל"פרטי" בנכסי ה-Agent אם Skill צריך להישאר אישי.',
   'skills.count': '{{count}} פריטים',
   'skills.noAgent': 'אין Agent זמין',
   'skills.fork': 'Fork (ניתן לעריכה)',
@@ -1069,7 +1069,10 @@ export const heIL = {
   'addMember.username.hint': 'אותיות, ספרות, קווים תחתונים. לא ניתן לשנות לאחר היצירה.',
   'addMember.role': 'תפקיד',
   'addMember.role.default': 'member (ברירת מחדל)',
+  'addMember.role.member': 'member',
+  'addMember.role.admin': 'admin',
   'addMember.role.hint': 'חברים חדשים מקבלים כברירת מחדל את התפקיד member.',
+  'addMember.role.hintAdmin': 'בחר member או admin לצוות זה. ניתן להוסיף מחדש חבר קיים כדי לשנות תפקיד.',
   'addMember.existing.submit': 'הוספה',
   'addMember.new.submit': 'יצירה והוספה',
   'addMember.cancel': 'ביטול',
