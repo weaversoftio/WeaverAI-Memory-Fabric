@@ -5,7 +5,7 @@
  * `routed_to_count` is the number of requests "routed to this model from other models", useful for observing downgrade/fallback routing.
  */
 import { useTranslation } from 'react-i18next';
-import { Button, Card, Table, Text } from 'tea-component';
+import { Button, Card, Table, Text } from '@/components/ui';
 import type { UsageModelRow } from '@/lib/api/analytics';
 import { fmtCompact, fmtCredit, fmtInt, fmtPct } from '../utils/formatters';
 
@@ -79,7 +79,7 @@ export function ModelTable({
               className="_an-cat-fill"
               style={{
                 width: `${((r.pct_credit ?? 0) / maxCreditPct) * 100}%`,
-                background: 'var(--tea-color-bg-brand-default)',
+                background: 'var(--wf-color-bg-brand-default)',
               }}
             />
           </span>

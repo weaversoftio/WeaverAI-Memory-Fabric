@@ -4,10 +4,10 @@
  * and presentational widgets / constants and utilities / shared Markdown are each consolidated separately.
  */
 import { useTranslation } from 'react-i18next';
-import { Button, Card, Form, Input, Justify, MetricsBoard, Modal, SearchBox, Segment, Select, StatusTip, Table, Text } from 'tea-component';
-import { BooksIcon, ChevronRightIcon, UsergroupIcon, ViewListIcon, ViewModuleIcon } from 'tea-icons-react';
+import { Button, Card, Form, Input, Justify, MetricsBoard, Modal, SearchBox, Segment, Select, StatusTip, Table, Text } from '@/components/ui';
+import { LibraryIcon, ChevronRightIcon, TeamIcon, ListViewIcon, GridViewIcon } from '@/components/ui/icons';
 import { knowledgeApi } from '@/lib/api/knowledge-api';
-import { tea } from '@/lib/tea-bridge';
+import { feedback } from '@/lib/feedback';
 import AllocateAssetDialog from '@/components/asset/AllocateAssetDialog';
 import { AssetPageHeader } from '@/components/asset/AssetPageHeader';
 import { formatShortTime, SCOPE_LABEL_KEYS, type StatusFilter, type ViewMode, type WikiScopeTab } from '../constants/wiki-constants';
@@ -150,8 +150,8 @@ export default function WikiSourcesPanel() {
                     value={viewMode}
                     onChange={(value) => setViewMode(value as ViewMode)}
                     options={[
-                      { value: 'card', text: <ViewModuleIcon /> },
-                      { value: 'list', text: <ViewListIcon /> },
+                      { value: 'card', text: <GridViewIcon /> },
+                      { value: 'list', text: <ListViewIcon /> },
                     ]}
                   />
                 </div>
@@ -174,7 +174,7 @@ export default function WikiSourcesPanel() {
               status="empty"
               emptyText={
                 <div className="_asset-wiki-empty">
-                  <BooksIcon size="large" />
+                  <LibraryIcon size={40} strokeWidth={1.5} />
                   <Text>{t('wiki.empty.title')}</Text>
                   <Text theme="label">{t('wiki.empty.desc')}</Text>
                 </div>
@@ -191,7 +191,7 @@ export default function WikiSourcesPanel() {
                   onClick={() => openDetail(source.wiki_id)}
                 >
                   <div className="_asset-wiki-card-head">
-                    <BooksIcon size={16} />
+                    <LibraryIcon size={16} />
                     <span className="_asset-wiki-card-name" title={source.name}>
                       {source.name}
                     </span>
@@ -204,7 +204,7 @@ export default function WikiSourcesPanel() {
                     </span>
                   </div>
                   <div className="_asset-wiki-card-owner">
-                    <UsergroupIcon size={12} />
+                    <TeamIcon size={12} />
                     {scopeTab === 'fixed' ? (
                       t('wiki.fixedAsset', { agent: agentFilter || t('wiki.noAgent') })
                     ) : source.owner_user_id ? (
@@ -244,7 +244,7 @@ export default function WikiSourcesPanel() {
                       className="_asset-wiki-row-name"
                       onClick={() => openDetail(source.wiki_id)}
                     >
-                      <BooksIcon size={14} />
+                      <LibraryIcon size={14} />
                       <span>{source.name}</span>
                       <ChevronRightIcon size={12} />
                     </button>
@@ -269,7 +269,7 @@ export default function WikiSourcesPanel() {
                   render: (source) =>
                     scopeTab === 'fixed' ? (
                       <span className="_asset-wiki-inline-icon">
-                        <UsergroupIcon size={12} />
+                        <TeamIcon size={12} />
                         {agentFilter || t('wiki.noAgent')}
                       </span>
                     ) : source.owner_user_id ? (
@@ -365,7 +365,7 @@ export default function WikiSourcesPanel() {
           onAllocate={async (agentId) => {
             if (!activeTeamId) throw new Error(t('wiki.error.selectTeam'));
             await knowledgeApi.wiki.allocate(activeTeamId, allocateTarget.wiki_id, agentId);
-            tea.notify.success(t('wiki.notify.allocated'));
+            feedback.notify.success(t('wiki.notify.allocated'));
             await fetchSources();
             if (scopeTab === 'fixed') await fetchFixedBindings();
           }}

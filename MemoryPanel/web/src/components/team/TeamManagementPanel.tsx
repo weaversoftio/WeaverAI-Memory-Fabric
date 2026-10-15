@@ -25,9 +25,9 @@
  */
 
 import { useState, useMemo } from 'react';
-import { Button } from 'tea-component';
+import { Button } from '@/components/ui';
 import { useTranslation } from 'react-i18next';
-import { UsergroupIcon, AddIcon } from 'tea-icons-react';
+import { TeamIcon, AddIcon } from '@/components/ui/icons';
 import {
   useTeams,
   useAgents,
@@ -40,7 +40,7 @@ import {
 import { teamsApi, agentsApi, skillApi } from '@/lib/teamApi';
 import { knowledgeApi } from '@/lib/api/knowledge-api';
 import { useDisplayNameResolver } from '@/services/user-profile-store';
-import { tea } from '@/lib/tea-bridge';
+import { feedback } from '@/lib/feedback';
 import { getErrorMessage } from '@/lib/error-message';
 import './team-management-panel.css';
 
@@ -112,7 +112,7 @@ export default function TeamManagementPanel({
       importedChatMemoryIds(activeTeamId, '__new_agent__', card.chatMemories).length >
       MAX_IMPORTED_CHAT_MEMORIES
     ) {
-      tea.notify.error('IMPORT_LIMIT_EXCEEDED');
+      feedback.notify.error('IMPORT_LIMIT_EXCEEDED');
       return;
     }
     const accents: AgentCard['accent'][] = ['blue', 'purple', 'orange', 'emerald', 'rose', 'slate'];
@@ -153,7 +153,7 @@ export default function TeamManagementPanel({
 
       invalidateBackendCache();
     } catch (err) {
-      tea.notify.error(errMsg(err));
+      feedback.notify.error(errMsg(err));
       setBusy(false);
       return;
     }
@@ -171,12 +171,12 @@ export default function TeamManagementPanel({
         false,
       )
     ) {
-      tea.notify.error(
+      feedback.notify.error(
         t('team.deleteAgent.noPermission', { name: agent.name, id: agent.agent_id, teamName: activeTeam.name, owner: agent.owner_user_id ? resolveUserName(agent.owner_user_id) : t('team.deleteAgent.ownerUnset') }),
       );
       return;
     }
-    const ok = await tea.confirm({
+    const ok = await feedback.confirm({
       message: t('team.deleteAgent.confirm', { name: agent.name }),
       description: t('team.deleteAgent.desc', { id: agent.agent_id }),
       okText: t('common.delete'),
@@ -190,11 +190,11 @@ export default function TeamManagementPanel({
       // - explicitly tell the user to handle it in the skill panel and retry, rather than giving only a technical error code
       const raw = err instanceof Error ? err.message : String(err);
       if (raw.includes('SKILL_DELETE_FAILED')) {
-        tea.notify.error(
+        feedback.notify.error(
           t('team.deleteAgent.skillFailed', { name: agent.name, raw }),
         );
       } else {
-        tea.notify.error(errMsg(err));
+        feedback.notify.error(errMsg(err));
       }
     }
   }
@@ -205,7 +205,7 @@ export default function TeamManagementPanel({
       await teamsApi.create(input);
       invalidateBackendCache();
     } catch (err) {
-      tea.notify.error(errMsg(err));
+      feedback.notify.error(errMsg(err));
       setBusy(false);
       return;
     }
@@ -373,7 +373,7 @@ function EmptyTeamState({ onCreateTeam }: { onCreateTeam?: () => void }) {
   const { t } = useTranslation();
   return (
     <div className="_memory-empty-team">
-      <UsergroupIcon size={32} className="_memory-empty-team-icon" />
+      <TeamIcon size={32} className="_memory-empty-team-icon" />
       <div className="_memory-empty-team-title">{t('team.emptyTeam.title')}</div>
       <div className="_memory-empty-team-desc">
         {onCreateTeam ? t('team.emptyTeam.desc') : t('team.emptyTeam.contactAdmin')}

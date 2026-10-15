@@ -7,7 +7,7 @@
 
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Tag } from 'tea-component';
+import { Tag } from '@/components/ui';
 import type { Team } from '@/services';
 
 export function TeamHeaderCard({ team, ops }: { team: Team; ops?: ReactNode }) {

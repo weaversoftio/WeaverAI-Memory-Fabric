@@ -9,7 +9,7 @@
  * out, an "unrecognized user" placeholder is shown), and the sub line always shows the raw user_id for identification and copying.
  */
 import { useTranslation } from 'react-i18next';
-import { Alert, Button, Card, Table, Text, Tooltip } from 'tea-component';
+import { Alert, Button, Card, Table, Text, Tooltip } from '@/components/ui';
 import type { MemberStat } from '../utils/member-stats';
 import { UNASSIGNED_USER } from '../utils/member-stats';
 import type { AssetCategory } from '../utils/asset-category';

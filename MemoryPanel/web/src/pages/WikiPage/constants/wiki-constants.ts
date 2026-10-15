@@ -13,7 +13,7 @@ export { formatShortTime } from '@/lib/asset-common';
 export const WIKI_ALLOWED_FILE_RE = /\.(md|txt|markdown)$/i;
 
 // Wiki status badges: draft = shell created but not processed (waiting for the user to click ingest); pending = queued; processing = in progress; ready = ready; failed = failed; missing = KS data lost.
-// Uses the semantic theme of Tea Tag (soft variant), responding to the theme, with no hard-coded palette colors.
+// Uses the semantic theme of UI kit Tag (soft variant), responding to the theme, with no hard-coded palette colors.
 export const WIKI_STATUS_THEME: Record<WikiDetail['status'], 'warning' | 'success' | 'error' | 'default'> = {
   draft: 'warning',
   pending: 'warning',
@@ -50,17 +50,17 @@ export interface SearchResult {
 }
 
 export const TYPE_COLORS: Record<string, string> = {
-  entity: 'var(--tea-color-bg-brand-default)',
-  concept: 'var(--tea-color-bg-warning-default)',
-  source: 'var(--tea-color-bg-amber-default)',
-  query: 'var(--tea-color-bg-success-default)',
-  synthesis: 'var(--tea-color-bg-error-default)',
-  overview: 'var(--tea-color-bg-yellow-default)',
-  comparison: 'var(--tea-color-bg-secondary-active)',
-  finding: 'var(--tea-color-bg-warning-default)',
-  thesis: 'var(--tea-color-bg-error-default)',
-  methodology: 'var(--tea-color-bg-success-default)',
-  other: 'var(--tea-color-bg-tertiary-default)',
-  raw: 'var(--tea-color-bg-secondary-default)',
+  entity: 'var(--wf-color-bg-brand-default)',
+  concept: 'var(--wf-color-bg-warning-default)',
+  source: 'var(--wf-color-bg-amber-default)',
+  query: 'var(--wf-color-bg-success-default)',
+  synthesis: 'var(--wf-color-bg-error-default)',
+  overview: 'var(--wf-color-bg-yellow-default)',
+  comparison: 'var(--wf-color-bg-secondary-active)',
+  finding: 'var(--wf-color-bg-warning-default)',
+  thesis: 'var(--wf-color-bg-error-default)',
+  methodology: 'var(--wf-color-bg-success-default)',
+  other: 'var(--wf-color-bg-tertiary-default)',
+  raw: 'var(--wf-color-bg-secondary-default)',
 };
-export const TYPE_COLOR_FALLBACK = 'var(--tea-color-text-tertiary)';
+export const TYPE_COLOR_FALLBACK = 'var(--wf-color-text-tertiary)';

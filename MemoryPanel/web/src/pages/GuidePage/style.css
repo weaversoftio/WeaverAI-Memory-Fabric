@@ -1,13 +1,13 @@
 /**
  * GuidePage usage guide page styles
- * Bright, clean style; colors use Tea Design Tokens and command blocks use a monospace font.
+ * Bright, clean style; colors use WeaverAI design system Tokens and command blocks use a monospace font.
  */
 
 .guide-page {
   max-width: 960px;
   margin: 0 auto;
   padding: 24px 24px 48px;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 /* ===== Page header ===== */
@@ -17,13 +17,13 @@
   justify-content: space-between;
   gap: 16px;
   padding-bottom: 16px;
-  border-bottom: 1px solid var(--tea-color-border-primary-default);
+  border-bottom: 1px solid var(--wf-color-border-primary-default);
 }
 
 .guide-back {
   border: none;
   background: transparent;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   font-size: 13px;
   cursor: pointer;
   padding: 0;
@@ -31,7 +31,7 @@
 }
 
 .guide-back:hover {
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 .guide-titlebar h1 {
@@ -44,14 +44,14 @@
 .guide-titlebar p {
   margin: 4px 0 0;
   font-size: 13px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   line-height: 20px;
 }
 
 .guide-brand {
   flex-shrink: 0;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 /* ===== Main tabs ===== */
@@ -68,9 +68,9 @@
   align-items: flex-start;
   gap: 2px;
   padding: 12px 16px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 8px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   cursor: pointer;
   text-align: start;
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -79,28 +79,28 @@
 .guide-main-tabs button b {
   font-size: 14px;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 .guide-main-tabs button small {
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 .guide-main-tabs button.active {
-  border-color: var(--tea-color-border-brand-default);
-  box-shadow: 0 0 0 1px var(--tea-color-border-brand-default);
+  border-color: var(--wf-color-border-brand-default);
+  box-shadow: 0 0 0 1px var(--wf-color-border-brand-default);
 }
 
 .guide-main-tabs button:hover {
-  border-color: var(--tea-color-border-brand-default);
+  border-color: var(--wf-color-border-brand-default);
 }
 
 /* ===== Content area ===== */
 .guide-surface {
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 10px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   padding: 20px;
 }
 
@@ -125,16 +125,16 @@
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 8px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   cursor: pointer;
   text-align: start;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .guide-stepper button:hover {
-  border-color: var(--tea-color-border-brand-default);
+  border-color: var(--wf-color-border-brand-default);
 }
 
 .guide-stepper-badge {
@@ -144,29 +144,29 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--tea-color-bg-secondary-hover);
-  color: var(--tea-color-text-tertiary);
+  background: var(--wf-color-bg-secondary-hover);
+  color: var(--wf-color-text-tertiary);
   font-size: 12px;
   font-weight: 600;
 }
 
 .guide-stepper > li.current button {
-  border-color: var(--tea-color-border-brand-default);
-  box-shadow: 0 0 0 1px var(--tea-color-border-brand-default);
+  border-color: var(--wf-color-border-brand-default);
+  box-shadow: 0 0 0 1px var(--wf-color-border-brand-default);
 }
 
 .guide-stepper > li.current .guide-stepper-badge {
-  background: var(--tea-color-bg-brand-default);
-  color: var(--tea-color-text-on-bg-brand-default);
+  background: var(--wf-color-bg-brand-default);
+  color: var(--wf-color-text-on-bg-brand-default);
 }
 
 .guide-stepper > li.done button {
-  border-color: var(--tea-color-border-primary-default);
+  border-color: var(--wf-color-border-primary-default);
 }
 
 .guide-stepper > li.done .guide-stepper-badge {
-  background: var(--tea-color-bg-brand-lighten-default);
-  color: var(--tea-color-text-brand-default);
+  background: var(--wf-color-bg-brand-lighten-default);
+  color: var(--wf-color-text-brand-default);
 }
 
 .guide-stepper-meta {
@@ -179,12 +179,12 @@
 .guide-stepper-meta b {
   font-size: 13px;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 .guide-stepper-meta small {
   font-size: 11px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -198,40 +198,40 @@
   justify-content: flex-end;
   margin-top: 20px;
   padding-top: 14px;
-  border-top: 1px solid var(--tea-color-border-primary-default);
+  border-top: 1px solid var(--wf-color-border-primary-default);
 }
 
 .guide-step-nav button {
   padding: 7px 16px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 6px;
-  background: var(--tea-color-bg-primary-default);
-  color: var(--tea-color-text-secondary);
+  background: var(--wf-color-bg-primary-default);
+  color: var(--wf-color-text-secondary);
   font-size: 13px;
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
 
 .guide-step-nav button:hover {
-  border-color: var(--tea-color-border-brand-default);
-  color: var(--tea-color-text-primary);
+  border-color: var(--wf-color-border-brand-default);
+  color: var(--wf-color-text-primary);
 }
 
 .guide-step-nav .guide-step-next {
-  border-color: var(--tea-color-border-brand-default);
-  background: var(--tea-color-bg-brand-default);
-  color: var(--tea-color-text-on-bg-brand-default);
+  border-color: var(--wf-color-border-brand-default);
+  background: var(--wf-color-bg-brand-default);
+  color: var(--wf-color-text-on-bg-brand-default);
   font-weight: 500;
 }
 
 .guide-step-nav .guide-step-next:hover {
   opacity: 0.9;
-  color: var(--tea-color-text-on-bg-brand-default);
+  color: var(--wf-color-text-on-bg-brand-default);
 }
 
 .guide-step-done {
   font-size: 13px;
-  color: var(--tea-color-text-success);
+  color: var(--wf-color-text-success);
   font-weight: 500;
 }
 
@@ -249,7 +249,7 @@
   gap: 16px;
   padding: 12px 16px;
   border-radius: 8px;
-  background: var(--tea-color-bg-secondary-hover);
+  background: var(--wf-color-bg-secondary-hover);
   margin-bottom: 16px;
 }
 
@@ -263,15 +263,15 @@
   display: block;
   margin-top: 2px;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 .guide-package-download a {
   flex-shrink: 0;
   padding: 6px 14px;
   border-radius: 6px;
-  background: var(--tea-color-bg-brand-default);
-  color: var(--tea-color-text-on-bg-brand-default);
+  background: var(--wf-color-bg-brand-default);
+  color: var(--wf-color-text-on-bg-brand-default);
   font-size: 13px;
   font-weight: 500;
   text-decoration: none;
@@ -287,7 +287,7 @@
   flex-direction: column;
   gap: 12px;
   padding: 16px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 8px;
   margin-bottom: 16px;
 }
@@ -308,8 +308,8 @@
 .guide-prepare-value {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--tea-color-text-primary);
-  background: var(--tea-color-bg-secondary-hover);
+  color: var(--wf-color-text-primary);
+  background: var(--wf-color-bg-secondary-hover);
   padding: 4px 8px;
   border-radius: 4px;
   word-break: break-all;
@@ -317,7 +317,7 @@
 
 .guide-prepare-hint {
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 .guide-mode-item {
@@ -333,16 +333,16 @@
 
 .guide-mode-item > small {
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 /* Analyse mode hint: scripts cannot configure /analyse, manual configuration is required (eye-catching but not harsh) */
 .guide-mode-notice {
-  color: var(--tea-color-text-warning) !important;
+  color: var(--wf-color-text-warning) !important;
   line-height: 18px;
   padding: 6px 8px;
   border-radius: 4px;
-  background: var(--tea-color-bg-warning);
+  background: var(--wf-color-bg-warning);
 }
 
 .guide-mode-options {
@@ -352,24 +352,24 @@
 
 .guide-mode-options button {
   padding: 5px 14px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 6px;
-  background: var(--tea-color-bg-primary-default);
-  color: var(--tea-color-text-secondary);
+  background: var(--wf-color-bg-primary-default);
+  color: var(--wf-color-text-secondary);
   font-size: 13px;
   cursor: pointer;
 }
 
 .guide-mode-options button.active {
-  border-color: var(--tea-color-border-brand-default);
-  color: var(--tea-color-text-primary);
+  border-color: var(--wf-color-border-brand-default);
+  color: var(--wf-color-text-primary);
   font-weight: 600;
 }
 
 .guide-key-link {
   border: none;
   background: transparent;
-  color: var(--tea-color-text-brand-default);
+  color: var(--wf-color-text-brand-default);
   font-size: 13px;
   cursor: pointer;
   padding: 0;
@@ -389,9 +389,9 @@
   align-items: flex-start;
   gap: 2px;
   padding: 12px 14px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 8px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   cursor: pointer;
   text-align: start;
 }
@@ -399,17 +399,17 @@
 .guide-method-picker button b {
   font-size: 13px;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 .guide-method-picker button small {
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 .guide-method-picker button.active {
-  border-color: var(--tea-color-border-brand-default);
-  box-shadow: 0 0 0 1px var(--tea-color-border-brand-default);
+  border-color: var(--wf-color-border-brand-default);
+  box-shadow: 0 0 0 1px var(--wf-color-border-brand-default);
 }
 
 /* ===== Command block ===== */
@@ -427,11 +427,11 @@
 }
 
 .guide-command.primary {
-  background: var(--tea-color-bg-secondary-hover);
+  background: var(--wf-color-bg-secondary-hover);
 }
 
 .guide-command.secondary {
-  background: var(--tea-color-bg-secondary-hover);
+  background: var(--wf-color-bg-secondary-hover);
 }
 
 .guide-setup-steps p {
@@ -449,15 +449,15 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: var(--tea-color-bg-brand-default);
-  color: var(--tea-color-text-on-bg-brand-default);
+  background: var(--wf-color-bg-brand-default);
+  color: var(--wf-color-text-on-bg-brand-default);
   font-size: 11px;
 }
 
 .guide-run-hint {
   margin: 8px 0 0;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   line-height: 18px;
 }
 
@@ -465,17 +465,17 @@
 .guide-copy {
   flex-shrink: 0;
   padding: 4px 10px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 6px;
-  background: var(--tea-color-bg-primary-default);
-  color: var(--tea-color-text-secondary);
+  background: var(--wf-color-bg-primary-default);
+  color: var(--wf-color-text-secondary);
   font-size: 12px;
   cursor: pointer;
 }
 
 .guide-copy:hover {
-  border-color: var(--tea-color-border-brand-default);
-  color: var(--tea-color-text-primary);
+  border-color: var(--wf-color-border-brand-default);
+  color: var(--wf-color-text-primary);
 }
 
 /* ===== Manual configuration ===== */
@@ -487,7 +487,7 @@
 .guide-manual-entry button {
   border: none;
   background: transparent;
-  color: var(--tea-color-text-brand-default);
+  color: var(--wf-color-text-brand-default);
   font-size: 13px;
   cursor: pointer;
   padding: 6px 10px;
@@ -496,7 +496,7 @@
 .guide-manual-panel {
   margin-top: 12px;
   padding: 16px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 8px;
 }
 
@@ -519,9 +519,9 @@
   align-items: flex-start;
   gap: 2px;
   padding: 10px 12px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 8px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   cursor: pointer;
   text-align: start;
 }
@@ -529,18 +529,18 @@
 .guide-ide-list button b {
   font-size: 13px;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 .guide-ide-list button small {
   font-size: 11px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   word-break: break-all;
 }
 
 .guide-ide-list button.active {
-  border-color: var(--tea-color-border-brand-default);
-  box-shadow: 0 0 0 1px var(--tea-color-border-brand-default);
+  border-color: var(--wf-color-border-brand-default);
+  box-shadow: 0 0 0 1px var(--wf-color-border-brand-default);
 }
 
 .guide-manual-fields {
@@ -563,21 +563,21 @@
 
 .guide-manual-fields label input {
   padding: 8px 10px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 6px;
   font-size: 13px;
   font-family: var(--font-mono);
-  background: var(--tea-color-bg-primary-default);
-  color: var(--tea-color-text-primary);
+  background: var(--wf-color-bg-primary-default);
+  color: var(--wf-color-text-primary);
 }
 
 .guide-manual-fields label small {
   font-size: 11px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 .guide-code-card {
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -588,8 +588,8 @@
   justify-content: space-between;
   gap: 12px;
   padding: 10px 14px;
-  border-bottom: 1px solid var(--tea-color-border-primary-default);
-  background: var(--tea-color-bg-secondary-hover);
+  border-bottom: 1px solid var(--wf-color-border-primary-default);
+  background: var(--wf-color-bg-secondary-hover);
 }
 
 .guide-code-card header h3 {
@@ -601,7 +601,7 @@
 .guide-code-card header p {
   margin: 2px 0 0;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 .guide-code-card pre {
@@ -612,14 +612,14 @@
   line-height: 18px;
   white-space: pre-wrap;
   word-break: break-all;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 .guide-manual-notes {
   margin: 12px 0 0;
   padding-inline-start: 18px;
   font-size: 12px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   line-height: 20px;
 }
 
@@ -628,9 +628,9 @@
 .guide-verify {
   margin-top: 18px;
   padding: 14px 16px;
-  border: 1px solid var(--tea-color-border-success-default);
+  border: 1px solid var(--wf-color-border-success-default);
   border-radius: 8px;
-  background: var(--tea-color-bg-success-lighten-default);
+  background: var(--wf-color-bg-success-lighten-default);
 }
 
 .guide-verify-title {
@@ -639,7 +639,7 @@
   gap: 8px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--tea-color-text-success-default);
+  color: var(--wf-color-text-success-default);
 }
 
 .guide-verify-badge {
@@ -649,7 +649,7 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: var(--tea-color-bg-success-default);
+  background: var(--wf-color-bg-success-default);
   color: #fff;
   font-size: 12px;
 }
@@ -658,7 +658,7 @@
   margin: 8px 0 0;
   font-size: 13px;
   line-height: 20px;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 .guide-history h3 {
@@ -670,7 +670,7 @@
 .guide-history > p {
   margin: 0 0 8px;
   font-size: 13px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   line-height: 20px;
 }
 
@@ -688,9 +688,9 @@
   align-items: flex-start;
   gap: 2px;
   padding: 12px 16px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 8px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   cursor: pointer;
   text-align: start;
 }
@@ -698,17 +698,17 @@
 .guide-practice-tabs button b {
   font-size: 14px;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 .guide-practice-tabs button small {
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 .guide-practice-tabs button.active {
-  border-color: var(--tea-color-border-brand-default);
-  box-shadow: 0 0 0 1px var(--tea-color-border-brand-default);
+  border-color: var(--wf-color-border-brand-default);
+  box-shadow: 0 0 0 1px var(--wf-color-border-brand-default);
 }
 
 .guide-practice-diagram {
@@ -717,7 +717,7 @@
   justify-content: center;
   gap: 12px;
   padding: 16px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 8px;
   margin-bottom: 16px;
   flex-wrap: wrap;
@@ -731,30 +731,30 @@
   gap: 2px;
   padding: 10px 14px;
   border-radius: 8px;
-  background: var(--tea-color-bg-secondary-hover);
+  background: var(--wf-color-bg-secondary-hover);
   text-align: center;
 }
 
 .guide-practice-diagram > div strong {
   font-size: 13px;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 .guide-practice-diagram > div span {
   font-size: 11px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 .guide-practice-diagram > div.focus {
-  background: var(--tea-color-bg-brand-lighten-default);
-  border: 1px solid var(--tea-color-border-brand-default);
+  background: var(--wf-color-bg-brand-lighten-default);
+  border: 1px solid var(--wf-color-border-brand-default);
 }
 
 .guide-practice-diagram > i {
   align-self: center;
   font-style: normal;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   font-size: 16px;
 }
 
@@ -771,33 +771,33 @@
   align-items: flex-start;
   gap: 2px;
   padding: 10px 12px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 8px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   cursor: pointer;
   text-align: start;
 }
 
 .guide-practice-step-tabs button span {
   font-size: 11px;
-  color: var(--tea-color-text-brand-default);
+  color: var(--wf-color-text-brand-default);
   font-weight: 600;
 }
 
 .guide-practice-step-tabs button b {
   font-size: 13px;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 .guide-practice-step-tabs button small {
   font-size: 11px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 .guide-practice-step-tabs button.active {
-  border-color: var(--tea-color-border-brand-default);
-  box-shadow: 0 0 0 1px var(--tea-color-border-brand-default);
+  border-color: var(--wf-color-border-brand-default);
+  box-shadow: 0 0 0 1px var(--wf-color-border-brand-default);
 }
 
 .guide-practice-detail {
@@ -805,14 +805,14 @@
   grid-template-columns: 1fr 2fr;
   gap: 20px;
   padding: 16px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 8px;
   margin-bottom: 16px;
 }
 
 .guide-practice-detail > div small {
   font-size: 11px;
-  color: var(--tea-color-text-brand-default);
+  color: var(--wf-color-text-brand-default);
   font-weight: 600;
 }
 
@@ -825,7 +825,7 @@
 .guide-practice-detail > div p {
   margin: 0;
   font-size: 13px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   line-height: 20px;
 }
 
@@ -834,7 +834,7 @@
   padding-inline-start: 18px;
   font-size: 13px;
   line-height: 24px;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 .guide-practice-links {
@@ -844,18 +844,18 @@
   gap: 8px;
   flex-wrap: wrap;
   padding-top: 12px;
-  border-top: 1px solid var(--tea-color-border-primary-default);
+  border-top: 1px solid var(--wf-color-border-primary-default);
 }
 
 .guide-practice-links span {
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 .guide-practice-links button {
   border: none;
   background: transparent;
-  color: var(--tea-color-text-brand-default);
+  color: var(--wf-color-text-brand-default);
   font-size: 13px;
   cursor: pointer;
   padding: 4px 8px;
@@ -874,17 +874,17 @@
 .guide-practice-rules p {
   margin: 0;
   padding: 12px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 8px;
   font-size: 12px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   line-height: 18px;
 }
 
 .guide-practice-rules p b {
   display: block;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   margin-bottom: 4px;
 }
 
@@ -896,9 +896,9 @@
   gap: 16px;
   margin-top: 24px;
   padding: 16px 20px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 10px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
 }
 
 .guide-replay h3 {
@@ -910,7 +910,7 @@
 .guide-replay p {
   margin: 4px 0 0;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   line-height: 18px;
 }
 
@@ -919,8 +919,8 @@
   padding: 8px 16px;
   border: none;
   border-radius: 6px;
-  background: var(--tea-color-bg-brand-default);
-  color: var(--tea-color-text-on-bg-brand-default);
+  background: var(--wf-color-bg-brand-default);
+  color: var(--wf-color-text-on-bg-brand-default);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -944,7 +944,7 @@
 .guide-mem-intro p {
   margin: 0;
   font-size: 13px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   line-height: 20px;
 }
 
@@ -952,9 +952,9 @@
   margin-top: 8px !important;
   padding: 8px 12px;
   border-radius: 6px;
-  background: var(--tea-color-bg-secondary-hover);
+  background: var(--wf-color-bg-secondary-hover);
   font-size: 12px !important;
-  color: var(--tea-color-text-tertiary) !important;
+  color: var(--wf-color-text-tertiary) !important;
 }
 
 .guide-mem-group {
@@ -967,18 +967,18 @@
   gap: 8px;
   padding-bottom: 8px;
   margin-bottom: 10px;
-  border-bottom: 1px solid var(--tea-color-border-primary-default);
+  border-bottom: 1px solid var(--wf-color-border-primary-default);
 }
 
 .guide-mem-group-head b {
   font-size: 14px;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 .guide-mem-group-head small {
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 .guide-mem-list {
@@ -991,9 +991,9 @@
 
 .guide-mem-card {
   padding: 14px 16px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 8px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
 }
 
 .guide-mem-card .guide-command {
@@ -1004,7 +1004,7 @@
   margin: 8px 0 0;
   font-size: 13px;
   line-height: 20px;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 .guide-mem-details {
@@ -1012,13 +1012,13 @@
   padding-inline-start: 18px;
   font-size: 12px;
   line-height: 20px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
 }
 
 .guide-mem-options {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px dashed var(--tea-color-border-primary-default);
+  border-top: 1px dashed var(--wf-color-border-primary-default);
 }
 
 .guide-mem-options-title {
@@ -1026,7 +1026,7 @@
   margin-bottom: 8px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
 }
 
 .guide-mem-option {
@@ -1048,11 +1048,11 @@
 .guide-mem-option-effect {
   font-size: 12px;
   line-height: 18px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
 }
 
 .guide-mem-option.recommended .guide-command {
-  outline: 1px solid var(--tea-color-border-brand-default);
+  outline: 1px solid var(--wf-color-border-brand-default);
 }
 
 .guide-mem-tag {
@@ -1060,8 +1060,8 @@
   margin-inline-end: 6px;
   padding: 1px 6px;
   border-radius: 4px;
-  background: var(--tea-color-bg-brand-lighten-default);
-  color: var(--tea-color-text-brand-default);
+  background: var(--wf-color-bg-brand-lighten-default);
+  color: var(--wf-color-text-brand-default);
   font-style: normal;
   font-size: 11px;
   font-weight: 600;
@@ -1069,7 +1069,7 @@
 
 .guide-mem-examples {
   margin-top: 8px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -1080,21 +1080,21 @@
   justify-content: space-between;
   gap: 12px;
   padding: 10px 14px;
-  border-bottom: 1px solid var(--tea-color-border-primary-default);
-  background: var(--tea-color-bg-secondary-hover);
+  border-bottom: 1px solid var(--wf-color-border-primary-default);
+  background: var(--wf-color-bg-secondary-hover);
 }
 
 .guide-mem-examples header b {
   font-size: 13px;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 .guide-mem-examples header small {
   display: block;
   margin-top: 2px;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 .guide-mem-examples pre {
@@ -1105,7 +1105,7 @@
   line-height: 20px;
   white-space: pre-wrap;
   word-break: break-all;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 /* ===== Narrow-screen adaptation ===== */

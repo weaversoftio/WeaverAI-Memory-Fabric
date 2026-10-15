@@ -12,7 +12,7 @@
  * this component handles ellipsis and tooltip itself and no longer depends on the outer layer.
  */
 import { useTranslation } from 'react-i18next';
-import { Text } from 'tea-component';
+import { Text } from '@/components/ui';
 
 export function UserName({
   userId,

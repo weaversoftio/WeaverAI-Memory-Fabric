@@ -10,8 +10,8 @@
 
 import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Checkbox } from 'tea-component';
-import { ChevronRightIcon } from 'tea-icons-react';
+import { Checkbox } from '@/components/ui';
+import { ChevronRightIcon } from '@/components/ui/icons';
 import type { MountableAsset } from './types';
 
 /** Whether an asset can be checked/mounted: only stateless (skill) or status ready is selectable; other statuses (pending/failed/...) are treated as unavailable. */

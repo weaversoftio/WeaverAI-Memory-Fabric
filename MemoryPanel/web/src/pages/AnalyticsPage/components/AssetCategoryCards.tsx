@@ -8,17 +8,17 @@
  * avoiding "clicked but have to scroll down to find the result").
  */
 import { useTranslation } from 'react-i18next';
-import { Card, StatusTip, Text, Tooltip } from 'tea-component';
+import { Card, StatusTip, Text, Tooltip } from '@/components/ui';
 import type { AssetCategory, CategoryStat } from '../utils/asset-category';
 import { fmtInt, fmtPct } from '../utils/formatters';
 
-/** Category -> i18n key suffix and theme color (reusing Tea semantic color tokens). */
+/** Category -> i18n key suffix and theme color (reusing semantic color tokens). */
 const CATEGORY_META: Record<AssetCategory, { i18nKey: string; color: string }> = {
-  memory: { i18nKey: 'memory', color: 'var(--tea-color-text-brand-default)' },
-  skill: { i18nKey: 'skill', color: 'var(--tea-color-text-success-default)' },
-  wiki: { i18nKey: 'wiki', color: 'var(--tea-color-text-warning-default)' },
-  codegraph: { i18nKey: 'codegraph', color: 'var(--tea-color-text-secondary)' },
-  other: { i18nKey: 'other', color: 'var(--tea-color-text-tertiary)' },
+  memory: { i18nKey: 'memory', color: 'var(--wf-color-text-brand-default)' },
+  skill: { i18nKey: 'skill', color: 'var(--wf-color-text-success-default)' },
+  wiki: { i18nKey: 'wiki', color: 'var(--wf-color-text-warning-default)' },
+  codegraph: { i18nKey: 'codegraph', color: 'var(--wf-color-text-secondary)' },
+  other: { i18nKey: 'other', color: 'var(--wf-color-text-tertiary)' },
 };
 
 export function AssetCategoryCards({

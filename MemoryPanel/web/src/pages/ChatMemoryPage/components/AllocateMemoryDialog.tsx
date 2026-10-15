@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Button, Form, Modal, Select, Text } from 'tea-component';
+import { Alert, Button, Form, Modal, Select, Text } from '@/components/ui';
 import { type AgentOption } from '../constants/types';
 import '../styles/allocate-memory-dialog.css';
 

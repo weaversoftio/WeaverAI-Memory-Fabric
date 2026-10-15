@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { knowledgeApi, type CodeGraphDetail } from '@/lib/api/knowledge-api';
 import { useTeams, useAgents } from '@/services';
 import { readAuth } from '@/components/LoginGate';
-import { tea } from '@/lib/tea-bridge';
+import { feedback } from '@/lib/feedback';
 import { isValidGitHttpUrl, formatRepoName, type ScopeTab, type StatusFilter, type SubView, type ViewMode } from '../constants/code-constants';
 
 export function useCodeSources() {
@@ -78,7 +78,7 @@ export function useCodeSources() {
       const items = await knowledgeApi.code.agentFixed(agentFilter);
       setFixedBoundIds(new Set(items.map((it) => it.knowledge_id)));
     } catch (e: unknown) {
-      tea.notify.error((e instanceof Error ? e.message : String(e)) || t('code.notify.loadFixedFailed'));
+      feedback.notify.error((e instanceof Error ? e.message : String(e)) || t('code.notify.loadFixedFailed'));
       setFixedBoundIds(new Set());
     }
   }, [agentFilter, t]);
@@ -173,7 +173,7 @@ export function useCodeSources() {
       setSources(Array.isArray(data) ? data : []);
     } catch (e: unknown) {
       if (seq !== fetchSeqRef.current) return;
-      tea.notify.error(e);
+      feedback.notify.error(e);
       setSources([]);
     } finally {
       if (seq === fetchSeqRef.current) setLoading(false);
@@ -215,7 +215,7 @@ export function useCodeSources() {
               // (callback S2S is the main path, this is only a fallback, but failures must be visible)
               const msg = e instanceof Error ? e.message : String(e);
               if (!/already|exist|409|registered|ok/i.test(msg)) {
-                tea.notify.error(t('code.notify.metaFailed', { msg }));
+                feedback.notify.error(t('code.notify.metaFailed', { msg }));
               }
             }
             toRemove.push(detail.code_graph_id);
@@ -252,7 +252,7 @@ export function useCodeSources() {
 
   async function handleUnbindCode(codeGraphId: string) {
     if (!agentFilter) return;
-    const ok = await tea.confirm({
+    const ok = await feedback.confirm({
       message: t('code.confirm.unbind'),
       description: t('code.confirm.unbind.desc'),
       okText: t('code.confirm.unbind.ok'),
@@ -260,12 +260,12 @@ export function useCodeSources() {
     if (!ok) return;
     try {
       await knowledgeApi.code.unbind(codeGraphId, agentFilter);
-      tea.notify.success(t('code.notify.unbound'));
+      feedback.notify.success(t('code.notify.unbound'));
       if (selectedCodeAsset?.cgId === codeGraphId) setSelectedCodeAsset(null);
       await fetchFixedBindings();
       await fetchSources();
     } catch (e: unknown) {
-      tea.notify.error((e instanceof Error ? e.message : String(e)) || t('code.notify.unbindFailed'));
+      feedback.notify.error((e instanceof Error ? e.message : String(e)) || t('code.notify.unbindFailed'));
     }
   }
 
@@ -274,7 +274,7 @@ export function useCodeSources() {
     if (!repo || !formBranch.trim() || !activeTeamId) return;
     // Defensive check: the button is already disabled by validUrl; block once more here to prevent bypassing
     if (!isValidGitHttpUrl(repo)) {
-      tea.notify.error(t('code.register.invalidUrl'));
+      feedback.notify.error(t('code.register.invalidUrl'));
       return;
     }
     setSubmitting(true);
@@ -288,10 +288,10 @@ export function useCodeSources() {
         ...prev.filter((x) => x.code_graph_id !== detail.code_graph_id),
         detail,
       ]);
-      tea.notify.info(t('code.notify.registered'));
+      feedback.notify.info(t('code.notify.registered'));
       fetchSources();
     } catch (e: unknown) {
-      tea.notify.error(e);
+      feedback.notify.error(e);
     } finally {
       setSubmitting(false);
     }
@@ -302,14 +302,14 @@ export function useCodeSources() {
       await knowledgeApi.code.sync(cgId);
       fetchSources();
     } catch (e: unknown) {
-      tea.notify.error(e);
+      feedback.notify.error(e);
     }
   };
 
   const handleDelete = async (cgId: string) => {
     const source = sources.find((s) => s.code_graph_id === cgId);
     if (!source) return;
-    const ok = await tea.confirm({
+    const ok = await feedback.confirm({
       message: t('code.confirm.delete', {
         name: formatRepoName(source.repo_name, source.repo_url),
         branch: source.branch,
@@ -326,10 +326,10 @@ export function useCodeSources() {
       setInFlight((prev) => prev.filter((x) => x.code_graph_id !== cgId));
       if (selectedCodeAsset?.cgId === cgId) setSelectedCodeAsset(null);
       if (selectedCgId === cgId) setSubView('list');
-      tea.notify.success(t('code.notify.deleted'));
+      feedback.notify.success(t('code.notify.deleted'));
       fetchSources();
     } catch (e: unknown) {
-      tea.notify.error(e);
+      feedback.notify.error(e);
     }
   };
 
@@ -351,7 +351,7 @@ export function useCodeSources() {
       setSearchResult(res?.text || JSON.stringify(res, null, 2));
     } catch (e: unknown) {
       setSearchResult('');
-      tea.notify.error(e);
+      feedback.notify.error(e);
     } finally {
       setSearching(false);
     }
@@ -366,7 +366,7 @@ export function useCodeSources() {
       setExploreResult(res?.text || JSON.stringify(res, null, 2));
     } catch (e: unknown) {
       setExploreResult('');
-      tea.notify.error(e);
+      feedback.notify.error(e);
     } finally {
       setExploring(false);
     }

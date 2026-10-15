@@ -4,12 +4,12 @@
  */
 
 import { useState } from 'react';
-import { Alert, Button, Copy, Form, Input, Modal, Segment, Select, Switch, Tag } from 'tea-component';
+import { Alert, Button, Copy, Form, Input, Modal, Segment, Select, Switch, Tag } from '@/components/ui';
 import { useTranslation } from 'react-i18next';
-import { AddIcon, CloseIcon } from 'tea-icons-react';
+import { AddIcon, CloseIcon } from '@/components/ui/icons';
 import { isTeamAdmin, invalidateBackendCache, type Team } from '@/services';
 import { membersApi, usersApi } from '@/lib/teamApi';
-import { tea } from '@/lib/tea-bridge';
+import { feedback } from '@/lib/feedback';
 import { canRemoveMember } from './types';
 
 // =================== Members section ===================
@@ -31,7 +31,7 @@ export function MemberSection({
   const canAddMember = _globalAdmin || isTeamAdmin(team, currentUser);
 
   async function handleRemove(userId: string) {
-    const ok = await tea.confirm({
+    const ok = await feedback.confirm({
       message: t('member.remove.confirm', { userId }),
       description: t('member.remove.desc'),
       okText: t('member.remove.ok'),
@@ -42,7 +42,7 @@ export function MemberSection({
       await membersApi.remove(team.team_id, userId);
       invalidateBackendCache();
     } catch (err) {
-      tea.notify.error(err);
+      feedback.notify.error(err);
     } finally {
       setRemoving(null);
     }
@@ -123,7 +123,7 @@ function MemberCard({
           {isMe && <span className="_memory-member-me-tag">{t('member.me')}</span>}
         </div>
         {hasUsername && (
-          <div className="_memory-member-role" style={{ fontSize: '10px', color: 'var(--tea-color-text-tertiary)' }}>
+          <div className="_memory-member-role" style={{ fontSize: '10px', color: 'var(--wf-color-text-tertiary)' }}>
             {user_id}
           </div>
         )}
@@ -208,7 +208,7 @@ export function AddMemberDialog({
       invalidateBackendCache();
       onClose();
     } catch (err) {
-      tea.notify.error(err);
+      feedback.notify.error(err);
     } finally {
       setSubmitting(false);
     }
@@ -256,7 +256,7 @@ export function AddMemberDialog({
         keyValue,
       });
     } catch (err) {
-      tea.notify.error(err);
+      feedback.notify.error(err);
     } finally {
       setSubmitting(false);
     }
@@ -339,7 +339,7 @@ export function AddMemberDialog({
                 placeholder={t('addMember.username.placeholder')}
               />
               {newUsername.trim() && !/^[A-Za-z0-9_]+$/.test(newUsername.trim()) ? (
-                <div className="_memory-field-hint" style={{ color: 'var(--tea-color-text-error-default)' }}>
+                <div className="_memory-field-hint" style={{ color: 'var(--wf-color-text-error-default)' }}>
                   {t('addMember.username.invalid')}
                 </div>
               ) : (
@@ -453,7 +453,7 @@ export function CreatedUserKeyModal({
             {t('createdUserKey.noKey')}
             <code
               className="mt-1 block rounded px-2 py-1 text-[12px] font-mono select-all"
-              style={{ background: 'var(--tea-color-bg-primary-default)' }}
+              style={{ background: 'var(--wf-color-bg-primary-default)' }}
             >
               {info.userId}
             </code>

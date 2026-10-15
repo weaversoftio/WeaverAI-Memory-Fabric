@@ -5,7 +5,7 @@
  * Every kernel list API uniformly returns { total, offset, limit, items }, so only offset semantics are needed here.
  */
 import { useTranslation } from 'react-i18next';
-import { Button, Text } from 'tea-component';
+import { Button, Text } from '@/components/ui';
 import { fmtInt } from '../utils/formatters';
 
 export function DetailPager({

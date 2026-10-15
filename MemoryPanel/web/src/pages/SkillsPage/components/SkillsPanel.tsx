@@ -26,9 +26,9 @@
  *
  */
 import { useTranslation } from 'react-i18next';
-import { Button, Select, Segment, Tag, Tooltip } from 'tea-component';
-import { DeleteIcon } from 'tea-icons-react';
-import { tea } from '@/lib/tea-bridge';
+import { Button, Select, Segment, Tag, Tooltip } from '@/components/ui';
+import { DeleteIcon } from '@/components/ui/icons';
+import { feedback } from '@/lib/feedback';
 import { AssetPageHeader } from '@/components/asset/AssetPageHeader';
 import { AssetSplitLayout } from '@/components/asset/AssetSplitLayout';
 import {
@@ -227,7 +227,7 @@ export default function SkillsPanel({
                         className="_memory-skill-item-delete"
                         onClick={async (e: any) => {
                           e?.stopPropagation();
-                          const ok = await tea.confirm({
+                          const ok = await feedback.confirm({
                             message: t('skills.delete.confirm', { name: s.name }),
                             description: t('skills.delete.confirm.desc'),
                             okText: t('skills.delete.okText'),

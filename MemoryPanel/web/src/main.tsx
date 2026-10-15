@@ -2,12 +2,11 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './i18n';
-// The external tea-component@2.8.0 has no console-pack.css (that is exclusive to some vendor console theme packs),
-// so default-pack.css is used instead (including the Tea Design Token system + default light theme variable definitions).
-import 'tea-component/dist/themes/default-pack.css';
-import 'tea-component/dist/tea-themeable.css';
+import '@fontsource-variable/inter';
+import './styles/theme.css';
+import './components/ui/ui.css';
 import './index.css';
-import './tea-override.css';
+import './styles/shell.css';
 
 // After Enterprise SSO SSO authentication the authorization code is attached to the site address (?code=...&state=...) on redirect back.
 // The session is already established by the backend Cookie, so the frontend does not need this parameter; after login completes, clean the address bar, so the code does not linger / get copied and shared.

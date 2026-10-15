@@ -11,10 +11,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from 'tea-component';
-import { AddIcon, EditIcon } from 'tea-icons-react';
+import { Button } from '@/components/ui';
+import { AddIcon, EditIcon } from '@/components/ui/icons';
 import { agentsApi, type AgentTemplateConfig } from '@/lib/teamApi';
-import { tea } from '@/lib/tea-bridge';
+import { feedback } from '@/lib/feedback';
 import { getErrorMessage } from '@/lib/error-message';
 import DefaultAgentTemplateDialog from './DefaultAgentTemplateDialog';
 
@@ -38,7 +38,7 @@ export default function DefaultAgentTemplateSection({
       // When not configured the backend returns {}; whether it is configured is judged by whether name exists
       setTemplate(data && data.name ? data : null);
     } catch (err) {
-      tea.notify.error(getErrorMessage(err));
+      feedback.notify.error(getErrorMessage(err));
       setTemplate(null);
     } finally {
       setLoading(false);
@@ -52,7 +52,7 @@ export default function DefaultAgentTemplateSection({
   function handleSaved(saved: AgentTemplateConfig) {
     setTemplate(saved);
     setShowDialog(false);
-    tea.notify.success(t('defaultAgent.notify.saved'));
+    feedback.notify.success(t('defaultAgent.notify.saved'));
   }
 
   const hasTemplate = !!template;

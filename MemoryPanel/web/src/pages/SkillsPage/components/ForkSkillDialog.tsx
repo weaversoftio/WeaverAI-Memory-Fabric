@@ -15,7 +15,7 @@
  */
 
 import { useState } from 'react';
-import { Alert, Button, Form, Input, Modal, Select } from 'tea-component';
+import { Alert, Button, Form, Input, Modal, Select } from '@/components/ui';
 import { useTranslation } from 'react-i18next';
 import '@/components/asset/allocate-dialog.css';
 

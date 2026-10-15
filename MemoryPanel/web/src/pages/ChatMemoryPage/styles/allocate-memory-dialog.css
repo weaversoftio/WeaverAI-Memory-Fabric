@@ -11,14 +11,14 @@
   width: 100%;
 }
 
-._alloc-memory-alert .tea-alert {
+._alloc-memory-alert .wf-alert {
   width: 100%;
   box-sizing: border-box;
 }
 
-/* Tea Alert uses flex (icon __decoration + content __info);
+/* UI kit Alert uses flex (icon __decoration + content __info);
    the content column needs min-width:0 + flex:1 so it does not collapse into per-character vertical text */
-._alloc-memory-alert .tea-alert__info {
+._alloc-memory-alert .wf-alert__info {
   flex: 1;
   min-width: 0;
   width: auto;

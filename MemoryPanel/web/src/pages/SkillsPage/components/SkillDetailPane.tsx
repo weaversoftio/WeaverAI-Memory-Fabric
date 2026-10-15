@@ -14,9 +14,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Button, Card, Copy, Input, Modal, Table, Text } from 'tea-component';
+import { Button, Card, Copy, Input, Modal, Table, Text } from '@/components/ui';
 import { MarkdownView } from '@/components/MarkdownView';
-import { tea } from '@/lib/tea-bridge';
+import { feedback } from '@/lib/feedback';
 import {
   getSkill,
   readSkillFile,
@@ -245,7 +245,7 @@ export default function SkillDetailPane(props: {
   async function saveBody() {
     if (!currentView || !writeCtx) return;
     if (!bodyDraft.trim()) {
-      tea.notify.error({ description: t('skills.detail.emptyContent') });
+      feedback.notify.error({ description: t('skills.detail.emptyContent') });
       return;
     }
     setSavingBody(true);
@@ -256,11 +256,11 @@ export default function SkillDetailPane(props: {
         expected_version: currentView.version,
         content: bodyDraft,
       });
-      tea.notify.success(t('skills.detail.saveSuccess'));
+      feedback.notify.success(t('skills.detail.saveSuccess'));
       setEditingBody(false);
       reload();
     } catch (err) {
-      tea.notify.error(err);
+      feedback.notify.error(err);
     } finally {
       setSavingBody(false);
     }
@@ -283,12 +283,12 @@ export default function SkillDetailPane(props: {
         expected_version: currentView.version,
         files: [{ path: filePreview.path, content: fileDraft, encoding: 'utf-8' }],
       });
-      tea.notify.success(t('skills.detail.fileSaved'));
+      feedback.notify.success(t('skills.detail.fileSaved'));
       setFilePreview({ ...filePreview, content: fileDraft });
       setFileEditing(false);
       reload();
     } catch (err) {
-      tea.notify.error(err);
+      feedback.notify.error(err);
     } finally {
       setFileSaving(false);
     }
@@ -296,7 +296,7 @@ export default function SkillDetailPane(props: {
 
   async function deleteFile(path: string) {
     if (!currentView || !writeCtx) return;
-    const ok = await tea.confirm({
+    const ok = await feedback.confirm({
       message: t('skills.detail.deleteFileConfirm', { path }),
       description: t('skills.detail.deleteFileDesc'),
       okText: t('skills.detail.deleteFileOk'),
@@ -310,11 +310,11 @@ export default function SkillDetailPane(props: {
         expected_version: currentView.version,
         paths: [path],
       });
-      tea.notify.success(t('skills.detail.fileDeleted'));
+      feedback.notify.success(t('skills.detail.fileDeleted'));
       setFilePreview(null);
       reload();
     } catch (err) {
-      tea.notify.error(err);
+      feedback.notify.error(err);
     }
   }
 
@@ -322,7 +322,7 @@ export default function SkillDetailPane(props: {
   async function createFile() {
     if (!currentView || !writeCtx) return;
     if (!newFilePath.trim()) {
-      tea.notify.error({ description: t('skills.detail.filePathRequired') });
+      feedback.notify.error({ description: t('skills.detail.filePathRequired') });
       return;
     }
     setNewFileSaving(true);
@@ -333,13 +333,13 @@ export default function SkillDetailPane(props: {
         expected_version: currentView.version,
         files: [{ path: newFilePath.trim(), content: newFileContent, encoding: 'utf-8' }],
       });
-      tea.notify.success(t('skills.detail.fileSaved'));
+      feedback.notify.success(t('skills.detail.fileSaved'));
       setShowNewFile(false);
       setNewFilePath('');
       setNewFileContent('');
       reload();
     } catch (err) {
-      tea.notify.error(err);
+      feedback.notify.error(err);
     } finally {
       setNewFileSaving(false);
     }
@@ -356,7 +356,7 @@ export default function SkillDetailPane(props: {
       });
       setVersions(res.items);
     } catch (err) {
-      tea.notify.error(err);
+      feedback.notify.error(err);
       setVersions([]);
     } finally {
       setVersionsLoading(false);
@@ -376,7 +376,7 @@ export default function SkillDetailPane(props: {
       });
       setVersionView(v);
     } catch (err) {
-      tea.notify.error(err);
+      feedback.notify.error(err);
     } finally {
       setVersionViewLoading(false);
     }

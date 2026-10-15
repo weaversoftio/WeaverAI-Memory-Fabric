@@ -3,8 +3,8 @@
  * Data and callbacks come from the object returned by useCodeSources; Markdown uses the shared AssetMarkdown (compact density).
  */
 import { useTranslation } from 'react-i18next';
-import { Alert, Button, Card, MetricsBoard, SearchBox, StatusTip, Text } from 'tea-component';
-import { ArrowLeftIcon, CodeIcon, RefreshIcon } from 'tea-icons-react';
+import { Alert, Button, Card, MetricsBoard, SearchBox, StatusTip, Text } from '@/components/ui';
+import { ArrowLeftIcon, CodeIcon, RefreshIcon } from '@/components/ui/icons';
 import { AssetMarkdown } from '@/components/asset/AssetMarkdown';
 import { formatRepoName } from '../constants/code-constants';
 import { statusLabel } from './code-ui';

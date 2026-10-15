@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { knowledgeApi, wikiProgressPercent, wikiStageLabel, type GraphData, type WikiDetail, type WikiPage } from '@/lib/api/knowledge-api';
 import { useTeams, useAgents } from '@/services';
 import { readAuth } from '@/components/LoginGate';
-import { tea, confirmThenRun } from '@/lib/tea-bridge';
+import { feedback, confirmThenRun } from '@/lib/feedback';
 import { findExistingRawFilenames, formatOverwriteFilenames } from '../utils/wiki-upload-utils';
 import { type DetailTab, type SearchResult, type StatusFilter, type SubView, type ViewMode, type WikiScopeTab } from '../constants/wiki-constants';
 
@@ -71,7 +71,7 @@ export function useWikiSources() {
       const items = await knowledgeApi.wiki.agentFixed(agentFilter);
       setFixedBoundIds(new Set(items.map((it) => it.knowledge_id)));
     } catch (e: unknown) {
-      tea.notify.error((e instanceof Error ? e.message : String(e)) || t('wiki.notify.loadFixedFailed'));
+      feedback.notify.error((e instanceof Error ? e.message : String(e)) || t('wiki.notify.loadFixedFailed'));
       setFixedBoundIds(new Set());
     }
   }, [agentFilter]);
@@ -195,7 +195,7 @@ export function useWikiSources() {
       setSources(Array.isArray(d) ? d : []);
     } catch (e: unknown) {
       if (seq !== fetchSeqRef.current) return;
-      tea.notify.error(e);
+      feedback.notify.error(e);
       setSources([]);
     } finally {
       if (seq === fetchSeqRef.current) setLoading(false);
@@ -250,7 +250,7 @@ export function useWikiSources() {
     } finally {
       setGraphLoading(false);
     }
-    if (hadError) tea.notify.error(t('wiki.notify.loadDetailFailed'));
+    if (hadError) feedback.notify.error(t('wiki.notify.loadDetailFailed'));
   }, []);
 
   const runningWikiKey = useMemo(
@@ -306,12 +306,12 @@ export function useWikiSources() {
       },
       async () => {
         await knowledgeApi.wiki.unbind(wikiId, agentFilter);
-        tea.notify.success(t('wiki.notify.unbound'));
+        feedback.notify.success(t('wiki.notify.unbound'));
         if (selectedWikiId === wikiId) setSelectedWikiId('');
         await fetchFixedBindings();
         await fetchSources();
       },
-      (e) => tea.notify.error((e as Error)?.message || t('wiki.notify.unbindFailed')),
+      (e) => feedback.notify.error((e as Error)?.message || t('wiki.notify.unbindFailed')),
     );
   }
 
@@ -321,12 +321,12 @@ export function useWikiSources() {
     setSubmitting(true);
     try {
       await knowledgeApi.wiki.create(activeTeamId, newName.trim());
-      tea.notify.success(t('wiki.notify.created', { name: newName.trim() }));
+      feedback.notify.success(t('wiki.notify.created', { name: newName.trim() }));
       setShowCreate(false);
       setNewName('');
       fetchSources();
     } catch (e: unknown) {
-      tea.notify.error(e);
+      feedback.notify.error(e);
     } finally {
       setSubmitting(false);
     }
@@ -374,7 +374,7 @@ export function useWikiSources() {
     // Defensive: only one Wiki extraction is allowed at a time, avoiding backend queue chaos from concurrent ingests.
     // The button is already disabled by ingestBusy; this adds another guard against bypassing.
     if (ingestBusy) {
-      tea.notify.warning(t('wiki.ingest.warning'));
+      feedback.notify.warning(t('wiki.ingest.warning'));
       return;
     }
     const wiki = sources.find((s) => s.wiki_id === wikiId);
@@ -435,13 +435,13 @@ export function useWikiSources() {
             detail: t('wiki.ingest.done', { count: result.ingested }),
             currentFile: '',
           }));
-          tea.notify.success(t('wiki.notify.ingestComplete', { count: result.ingested }));
+          feedback.notify.success(t('wiki.notify.ingestComplete', { count: result.ingested }));
           fetchSources();
           fetchDetail(wikiId);
         },
         onError: (err) => {
           setIngestState((prev) => ({ ...prev, active: false, detail: t('wiki.ingest.error', { error: err }) }));
-          tea.notify.error(err || t('wiki.notify.ingestFailed'));
+          feedback.notify.error(err || t('wiki.notify.ingestFailed'));
         },
       },
       activeTeamId ?? '',
@@ -499,7 +499,7 @@ export function useWikiSources() {
       setReadContent(r?.content || '');
     } catch (e: unknown) {
       setReadContent('');
-      tea.notify.error((e instanceof Error ? e.message : String(e)) || t('wiki.notify.readPageFailed'));
+      feedback.notify.error((e instanceof Error ? e.message : String(e)) || t('wiki.notify.readPageFailed'));
     } finally {
       setReadLoading(false);
     }
@@ -516,14 +516,14 @@ export function useWikiSources() {
       },
       async () => {
         await knowledgeApi.wiki.pageDelete(selectedWikiId, [ref]);
-        tea.notify.success(t('wiki.notify.pageDeleted'));
+        feedback.notify.success(t('wiki.notify.pageDeleted'));
         if (selectedPage && ((selectedPage as { id?: string }).id || selectedPage.path) === ref) {
           setSelectedPage(null);
           setReadContent('');
         }
         await fetchDetail(selectedWikiId);
       },
-      (e) => tea.notify.error((e as Error)?.message || t('wiki.notify.pageDeleteFailed')),
+      (e) => feedback.notify.error((e as Error)?.message || t('wiki.notify.pageDeleteFailed')),
     );
   };
 
@@ -537,14 +537,14 @@ export function useWikiSources() {
       },
       async () => {
         await knowledgeApi.wiki.rawDelete(selectedWikiId, [filename]);
-        tea.notify.success(t('wiki.notify.rawDeleted'));
+        feedback.notify.success(t('wiki.notify.rawDeleted'));
         if (selectedPage?.path === `raw/${filename}`) {
           setSelectedPage(null);
           setReadContent('');
         }
         await fetchDetail(selectedWikiId);
       },
-      (e) => tea.notify.error((e as Error)?.message || t('wiki.notify.rawDeleteFailed')),
+      (e) => feedback.notify.error((e as Error)?.message || t('wiki.notify.rawDeleteFailed')),
     );
   };
 
@@ -555,7 +555,7 @@ export function useWikiSources() {
       const r = await knowledgeApi.wiki.search(selectedWikiId, searchQuery, 20);
       setSearchResults((r as { results?: SearchResult[] }).results || []);
     } catch (e: unknown) {
-      tea.notify.error(e);
+      feedback.notify.error(e);
     } finally {
       setSearching(false);
     }
@@ -574,14 +574,14 @@ export function useWikiSources() {
       );
       if (existing.length === 0) return true;
 
-      return tea.confirm({
+      return feedback.confirm({
         message: t('wiki.detail.overwrite.title', { count: existing.length }),
         description: t('wiki.detail.overwrite.desc', { files: formatOverwriteFilenames(existing) }),
         okText: t('wiki.detail.overwrite.ok'),
         cancelText: t('common.cancel'),
       });
     } catch (e: unknown) {
-      tea.notify.error(e instanceof Error ? e : t('wiki.notify.uploadCancelled'));
+      feedback.notify.error(e instanceof Error ? e : t('wiki.notify.uploadCancelled'));
       return false;
     }
   };
@@ -591,7 +591,7 @@ export function useWikiSources() {
    * so users know they still need to click "Start extraction".
    */
   const offerIngestAfterUpload = async (wikiId: string, uploadedCount: number) => {
-    const shouldIngest = await tea.confirm({
+    const shouldIngest = await feedback.confirm({
       message: t('wiki.detail.uploaded', { count: uploadedCount }),
       description: t('wiki.detail.uploaded.desc'),
       okText: t('wiki.detail.uploaded.ok'),
@@ -600,7 +600,7 @@ export function useWikiSources() {
     if (shouldIngest) {
       void handleIngest(wikiId);
     } else {
-      tea.notify.info(t('wiki.detail.uploaded.later'));
+      feedback.notify.info(t('wiki.detail.uploaded.later'));
     }
   };
 
@@ -628,7 +628,7 @@ export function useWikiSources() {
     uploadInFlightRef.current = false;
     setSubmitting(false);
     if (failures.length === 0) {
-      tea.notify.success(t('wiki.detail.upload.success', { count: valid.length }));
+      feedback.notify.success(t('wiki.detail.upload.success', { count: valid.length }));
       setMdDocs([{ filename: '', content: '' }]);
       setShowAddDoc(false);
       fetchDetail(selectedWikiId);
@@ -642,7 +642,7 @@ export function useWikiSources() {
         .map((f) => `${f.filename}: ${f.error}`)
         .join('\n');
       const more = failures.length > 3 ? t('wiki.detail.upload.more', { count: failures.length - 3 }) : '';
-      tea.notify.error(t('wiki.detail.upload.partialFail', { ok: okCount, fail: failures.length, detail: `${shown}${more}` }));
+      feedback.notify.error(t('wiki.detail.upload.partialFail', { ok: okCount, fail: failures.length, detail: `${shown}${more}` }));
       fetchDetail(selectedWikiId);
       setRawRefreshKey((k) => k + 1);
       if (okCount > 0) await offerIngestAfterUpload(selectedWikiId, okCount);
@@ -679,7 +679,7 @@ export function useWikiSources() {
     const failed = results.filter((r) => r.status === 'rejected').length;
     const succeeded = results.length - failed;
     if (failed === 0) {
-      tea.notify.success(t('wiki.detail.upload.successFiles', { count: succeeded }));
+      feedback.notify.success(t('wiki.detail.upload.successFiles', { count: succeeded }));
       setPendingFiles([]);
       setUploadProgress({});
       setShowAddDoc(false);
@@ -692,7 +692,7 @@ export function useWikiSources() {
         if (r.status === 'rejected')
           setUploadProgress((prev) => ({ ...prev, [pendingFiles[i].name]: 'error' }));
       });
-      tea.notify.error(t('wiki.detail.upload.fail', { ok: succeeded, fail: failed }));
+      feedback.notify.error(t('wiki.detail.upload.fail', { ok: succeeded, fail: failed }));
       fetchDetail(selectedWikiId);
       setRawRefreshKey((k) => k + 1);
       if (succeeded > 0) await offerIngestAfterUpload(selectedWikiId, succeeded);

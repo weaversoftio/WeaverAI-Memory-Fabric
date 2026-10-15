@@ -14,13 +14,13 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
-import { Button, Input, Modal } from 'tea-component';
+import { Button, Input, Modal } from '@/components/ui';
 import { useTranslation } from 'react-i18next';
-import { ToolsIcon, CodeIcon, BooksIcon, ChatIcon } from 'tea-icons-react';
+import { ToolsIcon, CodeIcon, LibraryIcon, ChatIcon } from '@/components/ui/icons';
 import { type Agent as StoreAgent, invalidateBackendCache, writeAgentUiMeta } from '@/services';
 import { agentsApi, skillApi, chatMemoryApi } from '@/lib/teamApi';
 import { knowledgeApi } from '@/lib/api/knowledge-api';
-import { tea } from '@/lib/tea-bridge';
+import { feedback } from '@/lib/feedback';
 import { useTeamAssets, syncChatMemoryBindings } from './useAgentAssets';
 import { LightField, CollapseGroup, AssetCheckList } from './shared';
 
@@ -175,7 +175,7 @@ export default function AgentEditDialog({
     const nextRolePrompt = rolePrompt.trim();
     const nextRulesPrompt = rulesPrompt.trim();
     if (!nextName) {
-      tea.notify.error(t('agentEdit.notify.nameRequired'));
+      feedback.notify.error(t('agentEdit.notify.nameRequired'));
       return;
     }
     setSavingPrompt(true);
@@ -197,10 +197,10 @@ export default function AgentEditDialog({
         await saveAssetBindings();
       }
       invalidateBackendCache();
-      tea.notify.success(t('agentEdit.notify.saved'));
+      feedback.notify.success(t('agentEdit.notify.saved'));
       onClose();
     } catch (error) {
-      tea.notify.error(
+      feedback.notify.error(
         t('agentEdit.notify.saveFailed', {
           msg: error instanceof Error ? error.message : String(error),
         }),
@@ -273,7 +273,7 @@ export default function AgentEditDialog({
         const msg = err instanceof Error ? err.message : String(err);
         // In read-only mode the backend may refuse access to another user's agent assets (NOT_YOUR_AGENT); this is expected behavior.
         if (!/NOT_YOUR_AGENT/.test(msg)) {
-          tea.notify.error(t('agentEdit.notify.loadAssetsFailed', { msg }));
+          feedback.notify.error(t('agentEdit.notify.loadAssetsFailed', { msg }));
         }
       });
 
@@ -357,7 +357,7 @@ export default function AgentEditDialog({
                 </div>
                 <div className="_memory-collapse-group-stack">
                   <CollapseGroup
-                    icon={<BooksIcon size={16} />}
+                    icon={<LibraryIcon size={16} />}
                     title={t('settings.module.wiki')}
                     selectedCount={llmWikis.length}
                     totalCount={wikiAssets.length}

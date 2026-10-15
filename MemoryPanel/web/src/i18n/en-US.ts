@@ -69,6 +69,14 @@ export const enUS = {
 
   // ===== LoginGate =====
   'login.welcome': 'WeaverAI Memory Fabric',
+  'login.brand.headline': 'One shared memory for every AI agent on your team.',
+  'login.brand.memory.title': 'Layered agent memory',
+  'login.brand.memory.desc': 'Conversations distilled into facts, scenes and personas (L0–L3).',
+  'login.brand.knowledge.title': 'Team knowledge assets',
+  'login.brand.knowledge.desc': 'Wikis, code graphs and verified skills your agents can reuse.',
+  'login.brand.governance.title': 'Governed access',
+  'login.brand.governance.desc': 'Teams, roles and API keys control who sees what.',
+  'login.brand.foot': '© Weaversoft · WeaverAI',
   'login.subtitle': 'Please select a memory instance and enter your user_key to log in.',
   'login.tagline': 'Reusable agent memory and context recipes',
   'login.field.instance': 'Memory Instance',
@@ -1148,14 +1156,40 @@ export const enUS = {
   'apiKey.create.submit': 'Create',
   'apiKey.create.cancel': 'Cancel',
 
-  // ===== tea-bridge =====
-  'teaBridge.confirm.ok': 'Confirm',
-  'teaBridge.confirm.cancel': 'Cancel',
-  'teaBridge.confirmDelete.message': 'Delete "{{name}}"?',
-  'teaBridge.confirmDelete.desc': 'This action is irreversible.',
-  'teaBridge.confirmDelete.ok': 'Delete',
-  'teaBridge.notify.errorTitle': 'Operation Failed',
-  'teaBridge.notify.warningTitle': 'Notice',
+  // ===== feedback (confirm dialogs / notifications) =====
+  'feedback.confirm.ok': 'Confirm',
+  'feedback.confirm.cancel': 'Cancel',
+  'feedback.confirmDelete.message': 'Delete "{{name}}"?',
+  'feedback.confirmDelete.desc': 'This action is irreversible.',
+  'feedback.confirmDelete.ok': 'Delete',
+  'feedback.notify.errorTitle': 'Operation Failed',
+  'feedback.notify.warningTitle': 'Notice',
+
+  // ===== App shell =====
+  'layout.sider.collapse': 'Collapse sidebar',
+  'layout.sider.expand': 'Expand sidebar',
+
+  // ===== UI kit built-in copy =====
+  'ui.loading': 'Loading…',
+  'ui.empty': 'No data',
+  'ui.noMatch': 'No matching results',
+  'ui.loadFailed': 'Failed to load',
+  'ui.retry': 'Retry',
+  'ui.close': 'Close',
+  'ui.clear': 'Clear',
+  'ui.search': 'Search',
+  'ui.expand': 'Expand',
+  'ui.collapse': 'Collapse',
+  'ui.copy.copy': 'Copy',
+  'ui.copy.copied': 'Copied',
+  'ui.password.show': 'Show password',
+  'ui.password.hide': 'Hide password',
+  'ui.select.placeholder': 'Select…',
+  'ui.pagination.label': 'Pagination',
+  'ui.pagination.total': '{{count}} total',
+  'ui.pagination.perPage': '{{count}} / page',
+  'ui.pagination.prev': 'Previous page',
+  'ui.pagination.next': 'Next page',
 
   // ===== KnowledgeGraph =====
   'graph.loading': 'Loading graph...',
@@ -1351,10 +1385,10 @@ export const enUS = {
   'onboarding.start': 'Get started',
   'onboarding.finish': 'Finish',
   // Welcome (startContent, role-specific)
-  'onboarding.guide.start.admin.title': 'Welcome to WAMF Panel',
+  'onboarding.guide.start.admin.title': 'Welcome to WeaverAI Memory Fabric',
   'onboarding.guide.start.admin.desc':
     'You are an administrator: you manage teams and members. Let\'s walk through the core features — click "Next" to begin.',
-  'onboarding.guide.start.member.title': 'Welcome to WAMF Panel',
+  'onboarding.guide.start.member.title': 'Welcome to WeaverAI Memory Fabric',
   'onboarding.guide.start.member.desc':
     'You are a team member: you can manage Agents and assets within the team. Let\'s walk through the core features — click "Next" to begin.',
   // Login identity (shared by Admin / Member)

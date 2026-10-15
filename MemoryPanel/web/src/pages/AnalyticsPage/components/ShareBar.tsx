@@ -4,7 +4,7 @@
  * Generic + accessor functions: the caller explicitly provides how to read label / value, so a wrong field name is a
  * compile-time error (previously a magic string `valueKey: string` was used, and a wrong field name would silently show 0).
  */
-import { StatusTip } from 'tea-component';
+import { StatusTip } from '@/components/ui';
 import { fmtInt, fmtPct } from '../utils/formatters';
 
 export interface ShareBarRow {

@@ -1,12 +1,12 @@
 /**
  * KpiRow -- 5 core metric cards (penetration / avg calls per session / bypass rate / unique Sessions / total calls).
  *
- * Reuses Tea's MetricsBoard (same convention as WikiSourcesPanel and wiki-detail-view):
+ * Reuses UI kit's MetricsBoard (same convention as WikiSourcesPanel and wiki-detail-view):
  * title / value / unit / infos supplementary row are all carried by the component's semantic props, with no custom font size or layout.
  * Period-over-period change is carried via DeltaBadge in infos.
  */
 import { useTranslation } from 'react-i18next';
-import { MetricsBoard } from 'tea-component';
+import { MetricsBoard } from '@/components/ui';
 import type { SessionInitSummary } from '@/lib/api/analytics';
 import { DeltaBadge } from './DeltaBadge';
 import { fmtInt, fmtNum, fmtPctValue } from '../utils/formatters';

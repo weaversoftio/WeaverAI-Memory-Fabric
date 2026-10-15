@@ -1,17 +1,17 @@
 /**
  * TeamSwitcher — Team switcher embedded in the global top bar
  *
- * Inline pill-style version after moving from the sidebar to the top bar: uses Tea `Dropdown` to host the popup panel
+ * Inline pill-style version after moving from the sidebar to the top bar: uses UI kit `Dropdown` to host the popup panel
  * (with built-in positioning, click-outside close, scroll close, etc.), and assembles the panel with `List`/`Input`/`Button`.
  *
  * Team edit entry: on the right of the current active team row (visible to owner / admin) there are "Edit" and "Delete"
- * icon buttons, reusing EditTeamDialog + tea.confirm for secondary confirmation. This consolidates here the "Edit Team / Delete current Team" entries
+ * icon buttons, reusing EditTeamDialog + feedback.confirm for secondary confirmation. This consolidates here the "Edit Team / Delete current Team" entries
  * previously on the TeamManagementPanel header.
  */
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Dropdown, Input, Button } from 'tea-component';
-import { ChevronDownIcon, AddIcon, EditIcon, DeleteIcon } from 'tea-icons-react';
+import { Dropdown, Input, Button } from '@/components/ui';
+import { ChevronDownIcon, AddIcon, EditIcon, DeleteIcon } from '@/components/ui/icons';
 import {
   useTeams,
   writeActiveTeamId,
@@ -23,7 +23,7 @@ import { type TeamRole } from '@/services/useCurrentRole';
 import { teamsApi } from '@/lib/teamApi';
 import { getPanelSession } from '@/lib/panelSession';
 import { teamColor } from '@/utils/color';
-import { tea } from '@/lib/tea-bridge';
+import { feedback } from '@/lib/feedback';
 import { getErrorMessage } from '@/lib/error-message';
 import EditTeamDialog from '@/components/team/EditTeamDialog';
 import './team-switcher.css';
@@ -76,7 +76,7 @@ export function TeamSwitcher({ userRole }: { userRole: TeamRole | null }) {
       writeActiveTeamId(created.team_id);
       resetCreateForm();
     } catch (err) {
-      tea.notify.error(getErrorMessage(err));
+      feedback.notify.error(getErrorMessage(err));
     } finally {
       setCreating(false);
     }
@@ -90,7 +90,7 @@ export function TeamSwitcher({ userRole }: { userRole: TeamRole | null }) {
       invalidateBackendCache();
       setEditingTeamId(null);
     } catch (err) {
-      tea.notify.error(getErrorMessage(err));
+      feedback.notify.error(getErrorMessage(err));
     }
   }
 
@@ -103,7 +103,7 @@ export function TeamSwitcher({ userRole }: { userRole: TeamRole | null }) {
     } catch {
       /* Silent: only used to show the cascade scope; failing to get it does not affect deletion */
     }
-    const ok = await tea.confirm({
+    const ok = await feedback.confirm({
       message: t('teamSwitcher.delete.confirm', { name: teamName }),
       description: t('teamSwitcher.delete.desc', {
         members: memberCount,
@@ -119,7 +119,7 @@ export function TeamSwitcher({ userRole }: { userRole: TeamRole | null }) {
       if (teamId === activeTeamId) writeActiveTeamId(null);
       invalidateBackendCache();
     } catch (err) {
-      tea.notify.error(getErrorMessage(err));
+      feedback.notify.error(getErrorMessage(err));
     }
   }
 
@@ -174,7 +174,7 @@ export function TeamSwitcher({ userRole }: { userRole: TeamRole | null }) {
                     : t('teamSwitcher.empty.member')}
                 </div>
               ) : (
-                // Use native ul/li instead of Tea List: Tea List.Item selected automatically renders a checkmark
+                // Use native ul/li instead of UI kit List: UI kit List.Item selected automatically renders a checkmark
                 // and changes padding, and split="divide" injects padding/border-top, which repeatedly conflict with the custom
                 // card-style row styling (rounded corners + border + spacing) (showing up as the selected row being clipped on the left and
                 // the row divider covered by the previous row). Here we control all styling ourselves, so behavior is more predictable.

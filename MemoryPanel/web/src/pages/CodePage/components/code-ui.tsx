@@ -23,7 +23,7 @@ export function CodeOwnerLabel({ userId, currentUserId }: { userId: string; curr
   );
 }
 
-// Status -> Tea Tag semantic theme mapping (soft variant), aligned with Memory's statusTheme.
+// Status -> UI kit Tag semantic theme mapping (soft variant), aligned with Memory's statusTheme.
 export function statusLabel(t: (key: string, options?: Record<string, unknown>) => string, s: string) {
   const map: Record<string, [string, StatusTheme]> = {
     ready: [t('code.status.ready'), 'success'],

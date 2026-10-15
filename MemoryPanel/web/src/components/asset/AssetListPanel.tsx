@@ -87,14 +87,25 @@ export function AssetListPanel<T>({
                   .filter(Boolean)
                   .join(' ')}
               >
-                <button
-                  type="button"
+                {/* div[role=button] rather than <button>: items may contain their own action buttons (e.g. delete),
+                    and a button inside a button is invalid HTML. */}
+                <div
+                  role="button"
+                  tabIndex={disabled ? -1 : 0}
+                  aria-disabled={disabled || undefined}
+                  aria-pressed={isSelected}
                   className="_alp-item-btn"
                   onClick={() => !disabled && onSelect(item)}
-                  disabled={disabled}
+                  onKeyDown={(e) => {
+                    if (disabled || e.target !== e.currentTarget) return;
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSelect(item);
+                    }
+                  }}
                 >
                   {renderItem(item, isSelected)}
-                </button>
+                </div>
               </li>
             );
           })}

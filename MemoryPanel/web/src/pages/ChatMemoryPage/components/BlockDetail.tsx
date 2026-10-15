@@ -1,25 +1,16 @@
 import { useLayoutEffect, useRef, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import moment, { type Moment } from 'moment';
-import { Button, DatePicker, Dropdown, Input, List, Modal, Pagination } from 'tea-component';
+import { Button, DatePicker, Dropdown, Input, List, Modal, Pagination } from '@/components/ui';
 import { type MemoryLayer, type MemoryBlock, type AtomicItem } from '../constants/types';
 import { useLayers } from '../constants/constants';
 import { getLayerCount, stripAtMention, extractRole, formatDisplayTime } from '../utils/utils';
 import { stripScenarioMeta, copyToClipboard } from '../utils/memory-utils';
 import { useUserDisplayName } from '@/services/user-profile-store';
-import { tea } from '@/lib/tea-bridge';
+import { feedback } from '@/lib/feedback';
 import { MarkdownView } from '@/components/MarkdownView';
 import type { ChatMemorySearchHit } from '@/lib/teamApi';
-import {
-  AppIcon,
-  UsergroupIcon,
-  ChevronDownIcon,
-  InfoCircleIcon,
-  TimeIcon,
-  SearchIcon,
-  MoreIcon,
-  RefreshIcon,
-} from 'tea-icons-react';
+import { AppIcon, TeamIcon, ChevronDownIcon, InfoCircleIcon, TimeIcon, SearchIcon, MoreIcon, RefreshIcon } from '@/components/ui/icons';
 
 const { RangePicker } = DatePicker;
 
@@ -150,7 +141,7 @@ function AtomicHead({
   );
 
   if (expandable) {
-    // Use div[role=button] instead of <button>: the head contains a tea Button (a real button),
+    // Use div[role=button] instead of <button>: the head contains a UI kit Button (a real button),
     // and nesting a button inside a button is invalid HTML. Clicks are disabled while loading.
     // When not expanded (no body and not loading), --with-body is not added, so there is no bottom divider; it is added when expanded or loading.
     return (
@@ -222,9 +213,9 @@ function AtomicList({
         async function handleCopy() {
           const ok = await copyToClipboard(it.body);
           if (ok) {
-            tea.notify.success(t('memory.notify.copied'));
+            feedback.notify.success(t('memory.notify.copied'));
           } else {
-            tea.notify.error(t('memory.notify.copyFailed'));
+            feedback.notify.error(t('memory.notify.copyFailed'));
           }
         }
         return (
@@ -325,9 +316,9 @@ function L2AtomicList({
           // The L2 body carries a META header; strip it when copying so only the plain body is given, consistent with what the edit box shows.
           const ok = await copyToClipboard(stripScenarioMeta(it.body));
           if (ok) {
-            tea.notify.success(t('memory.notify.copied'));
+            feedback.notify.success(t('memory.notify.copied'));
           } else {
-            tea.notify.error(t('memory.notify.copyFailed'));
+            feedback.notify.error(t('memory.notify.copyFailed'));
           }
         }
         return (
@@ -500,7 +491,7 @@ export function BlockDetail({
       );
       setEditing(null);
     } catch (e) {
-      tea.notify.error(e instanceof Error ? e.message : t('memory.notify.editFailed'));
+      feedback.notify.error(e instanceof Error ? e.message : t('memory.notify.editFailed'));
     } finally {
       setSaving(false);
     }
@@ -536,7 +527,7 @@ export function BlockDetail({
       const hits = await onSearchLayer(layer as 'L0' | 'L1', q);
       setSearchResults(hits);
     } catch (e) {
-      tea.notify.error(e instanceof Error ? e.message : t('memory.notify.searchFailed'));
+      feedback.notify.error(e instanceof Error ? e.message : t('memory.notify.searchFailed'));
     } finally {
       setSearching(false);
     }
@@ -624,7 +615,7 @@ export function BlockDetail({
               </span>
             ) : (
               <span className="_memory-badge" title={t('memory.detail.teamPool')}>
-                <UsergroupIcon size={10} /> {t('memory.detail.teamPool')}
+                <TeamIcon size={10} /> {t('memory.detail.teamPool')}
               </span>
             )}
             {block.uploaded_by_user_id && (
@@ -688,10 +679,8 @@ export function BlockDetail({
                 <div className="_memory-detail-timefilter">
                   <RangePicker
                     showTime={{ format: 'HH:mm' }}
-                    format="YYYY-MM-DD HH:mm"
                     separator="~"
-                    clearable={false}
-                    disabledDate={(d) => d.isBefore(moment().endOf('day'))}
+                    selectableDate={(d) => d.isBefore(moment().endOf('day'))}
                     value={rangeValue}
                     onChange={(v) => {
                       if (v && v[0] && v[1]) {

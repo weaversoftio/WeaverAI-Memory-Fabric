@@ -13,7 +13,7 @@
  * breakdown is shown at the top, avoiding displaying "13,179 normal records + 10 real anomalies" as "13,189 anomalies".
  */
 import { useTranslation } from 'react-i18next';
-import { Button, Card, Justify, Select, Table, Text } from 'tea-component';
+import { Button, Card, Justify, Select, Table, Text } from '@/components/ui';
 import {
   USAGE_RAW_REASONS,
   type UsageRawReason,

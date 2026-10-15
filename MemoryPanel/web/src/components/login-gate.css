@@ -1,12 +1,10 @@
 /**
- * LoginGate login page styles -- single-column centered, bright minimalist style.
+ * LoginGate login page styles -- split screen.
  *
- * Visual tone: near-white soft gradient background + dot-matrix ripple animation (Canvas) + centered frosted-glass card.
- * Goal is "simple and bright": downplay decoration, strengthen content hierarchy (logo -> title -> form -> primary button).
+ * Brand side: navy field with a cyan dot-matrix wave (Canvas), the WeaverAI mark and the three core capabilities.
+ * Form side: light page with a white sign-in card. Below 960px the brand panel hides and the card centers.
  *
- * Note: the login page is a standalone full-screen scene, not wrapped in ConsoleLayout, so bright base colors are hardcoded here
- * instead of the console's Tea background tokens; text and strokes still use Tea tokens where possible for consistency.
- * In dark mode everything switches to dark background with light text (see the .dark branch at the end of the file).
+ * The login page is a standalone full-screen scene, not wrapped in ConsoleLayout; colors come from the WeaverAI tokens.
  */
 
 ._wamf-login {
@@ -15,17 +13,29 @@
   z-index: 100;
   display: flex;
   overflow-y: auto;
-  /* Soft gradient from slightly cool white at top to slightly warm white at bottom, creating a "light from above" brightness */
-  background:
-    radial-gradient(120% 80% at 50% -10%, #ffffff 0%, #f7f9fc 45%, #eef2f7 100%);
+  background: radial-gradient(120% 80% at 70% -10%, #ffffff 0%, #f5f7fb 50%, #edf1f8 100%);
 }
 
-/* ===== Animated background layer ===== */
+/* ===== Brand panel ===== */
+._wamf-login-brand {
+  position: relative;
+  display: flex;
+  flex: 0 0 46%;
+  max-width: 640px;
+  overflow: hidden;
+  background:
+    radial-gradient(90% 60% at 0% 0%, rgba(56, 189, 248, 0.22) 0%, transparent 60%),
+    radial-gradient(80% 60% at 100% 100%, rgba(242, 120, 92, 0.2) 0%, transparent 60%),
+    linear-gradient(160deg, #0d1733 0%, var(--wf-brand-navy-950) 100%);
+  color: #c7d2e8;
+}
+
 ._wamf-login-bg {
   position: absolute;
   inset: 0;
-  pointer-events: none;
   overflow: hidden;
+  pointer-events: none;
+  opacity: 0.55;
 }
 
 ._wamf-login-bg-canvas {
@@ -34,21 +44,112 @@
   height: 100%;
 }
 
-/* Add a soft glow in the center so the card area is brighter and the surroundings converge naturally (avoid the dot matrix stealing attention) */
-/* Add a soft glow in the center so the card area is brighter and the surroundings converge naturally.
-      Note: the pseudo-element is drawn above the canvas; too high an opacity directly covers the dot-matrix animation
-      (previously the center used 0.92 white and the dots were almost invisible). Form readability is guaranteed by the card's own
-      frosted-glass background color; here we only add a very weak highlight. */
-._wamf-login-bg::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    56% 44% at 50% 44%,
-    rgba(255, 255, 255, 0.5) 0%,
-    rgba(255, 255, 255, 0.24) 45%,
-    rgba(255, 255, 255, 0) 76%
-  );
+._wamf-login-brand-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 48px 56px;
+}
+
+._wamf-login-brand-mark {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+._wamf-login-brand-mark img {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px -10px rgba(56, 189, 248, 0.55);
+}
+._wamf-login-brand-mark div {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+._wamf-login-brand-top {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+._wamf-login-brand-bottom {
+  background: linear-gradient(90deg, #38bdf8, #7aa7ff 60%, #f6b27a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+._wamf-login-brand-headline {
+  max-width: 440px;
+  margin: auto 0 28px;
+  padding-top: 48px;
+  color: #fff;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+._wamf-login-brand-points {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 440px;
+  margin: 0 0 auto;
+  padding: 0;
+  list-style: none;
+}
+._wamf-login-brand-points li {
+  display: flex;
+  gap: 14px;
+}
+._wamf-login-brand-points strong {
+  display: block;
+  margin-bottom: 2px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+._wamf-login-brand-points span {
+  color: #93a3c4;
+  font-size: 13px;
+  line-height: 20px;
+}
+._wamf-login-brand-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--wf-brand-gradient);
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.15);
+}
+
+._wamf-login-brand-foot {
+  margin: 32px 0 0;
+  color: #6b7a99;
+  font-size: 12px;
+}
+
+@media (max-width: 960px) {
+  ._wamf-login-brand {
+    display: none;
+  }
+}
+
+/* The brand panel already shows the mark on wide screens. */
+@media (min-width: 961px) {
+  ._wamf-login-logo {
+    display: none;
+  }
+  ._wamf-login-title {
+    margin-top: 0;
+  }
 }
 
 /* ===== Content area ===== */
@@ -71,10 +172,8 @@
   align-items: center;
   padding: 40px 36px 36px;
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(12px) saturate(1.1);
-  -webkit-backdrop-filter: blur(12px) saturate(1.1);
+  border: 1px solid var(--wf-color-border-primary-default);
+  background: #fff;
   box-shadow:
     0 1px 2px rgba(16, 24, 40, 0.04),
     0 12px 32px -8px rgba(16, 24, 40, 0.1),
@@ -137,12 +236,12 @@
   color: #94a3b8;
 }
 
-._wamf-login-alert .tea-alert {
+._wamf-login-alert .wf-alert {
   margin: 0;
 }
 
 /* Primary button: taller, rounded, solid dark fill, matching the "large primary action button" of the reference design */
-._wamf-login-submit.tea-btn {
+._wamf-login-submit.wf-btn {
   width: 100%;
   height: 42px;
   margin-top: 2px;
@@ -166,7 +265,7 @@
   text-align: center;
 }
 
-._wamf-login-pending ._wamf-login-submit.tea-btn {
+._wamf-login-pending ._wamf-login-submit.wf-btn {
   width: 100%;
 }
 
@@ -215,7 +314,7 @@
   border-top-color: #334155;
 }
 
-._wamf-login-switch ._wamf-login-switch-link.tea-btn {
+._wamf-login-switch ._wamf-login-switch-link.wf-btn {
   height: auto;
   padding: 0;
   font-size: 13px;
@@ -231,14 +330,14 @@
   text-align: center;
 }
 
-/* Tea form controls on this page uniformly fill the width (a Select's button appearance defaults to content width) */
-._wamf-login-form .tea-form-control,
-._wamf-login-form .tea-dropdown,
-._wamf-login-form .tea-select {
+/* UI kit form controls on this page uniformly fill the width (a Select's button appearance defaults to content width) */
+._wamf-login-form .wf-form-control,
+._wamf-login-form .wf-dropdown,
+._wamf-login-form .wf-select {
   width: 100%;
 }
 
-._wamf-login-form .tea-input {
+._wamf-login-form .wf-input {
   width: 100%;
 }
 

@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Button, Form, Input, Modal, Segment, Select, Text, Upload } from 'tea-component';
-import { FilePasteIcon, UploadIcon } from 'tea-icons-react';
+import { Alert, Button, Form, Input, Modal, Segment, Select, Text, Upload } from '@/components/ui';
+import { PasteIcon, UploadIcon } from '@/components/ui/icons';
 import { type AgentOption } from '../constants/types';
 
 /** Aligned with the docs/api/chat-memory.md section 4.10 import endpoint */
@@ -110,7 +110,7 @@ export function ImportBlockDialog({
 
       <div style={{ marginTop: 12 }}>
         <Segment value={importMode} onChange={(v) => setImportMode(v as 'paste' | 'file')}
-          options={[{ value: 'paste', text: (<><FilePasteIcon size={12} /> {t('importBlock.mode.paste')}</>) }, { value: 'file', text: (<><UploadIcon size={12} /> {t('importBlock.mode.file')}</>) }]} />
+          options={[{ value: 'paste', text: (<><PasteIcon size={12} /> {t('importBlock.mode.paste')}</>) }, { value: 'file', text: (<><UploadIcon size={12} /> {t('importBlock.mode.file')}</>) }]} />
       </div>
 
       <Form layout="vertical" style={{ width: '100%', marginTop: 12 }}>

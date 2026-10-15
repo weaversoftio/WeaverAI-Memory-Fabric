@@ -3,24 +3,10 @@
  * All data and callbacks come from the object returned by useWikiSources; the component only renders.
  */
 import { useTranslation } from 'react-i18next';
-import { Alert, Button, Card, Input, MetricsBoard, Modal, Progress, SearchBox, StatusTip, TabPanel, Tabs, Tag, Text } from 'tea-component';
-import {
-  ArrowLeftIcon,
-  AttachIcon,
-  BooksIcon,
-  ChartBarIcon,
-  CheckCircleIcon,
-  CheckIcon,
-  CloseCircleIcon,
-  CloseIcon,
-  FileIcon,
-  LayersIcon as ArchitectureIcon,
-  LoadingIcon,
-  SearchIcon,
-  StarIcon,
-} from 'tea-icons-react';
+import { Alert, Button, Card, Input, MetricsBoard, Modal, Progress, SearchBox, StatusTip, TabPanel, Tabs, Tag, Text } from '@/components/ui';
+import { ArrowLeftIcon, AttachIcon, LibraryIcon, ChartBarIcon, CheckCircleIcon, CheckIcon, CloseCircleIcon, CloseIcon, FileIcon, LayersIcon as ArchitectureIcon, LoadingIcon, SearchIcon, StarIcon } from '@/components/ui/icons';
 import { knowledgeApi } from '@/lib/api/knowledge-api';
-import { tea } from '@/lib/tea-bridge';
+import { feedback } from '@/lib/feedback';
 import { WIKI_ALLOWED_FILE_RE, TYPE_COLORS, TYPE_COLOR_FALLBACK, type DetailTab } from '../constants/wiki-constants';
 import { WikiStatusBadge } from './wiki-ui';
 import { GraphTabContent, PagesTabContent } from './wiki-detail-components';
@@ -105,7 +91,7 @@ export function WikiDetailView({ store }: { store: WikiSourcesStore }) {
           </div>
           <div className="_wiki-detail-header-row">
             <div className="_wiki-detail-header-info">
-              <BooksIcon size={20} />
+              <LibraryIcon size={20} />
               <span className="_wiki-detail-title">{wikiName}</span>
               {source && <WikiStatusBadge status={source.status} />}
             </div>
@@ -379,7 +365,7 @@ export function WikiDetailView({ store }: { store: WikiSourcesStore }) {
                 .then((result: any) => setReadContent(result?.items?.[0]?.content || ''))
                 .catch((error: any) => {
                   setReadContent('');
-                  tea.notify.error(error?.message || t('wiki.notify.readRawFailed'));
+                  feedback.notify.error(error?.message || t('wiki.notify.readRawFailed'));
                 })
                 .finally(() => setReadLoading(false));
             }}
@@ -474,7 +460,7 @@ export function WikiDetailView({ store }: { store: WikiSourcesStore }) {
                       const allowed = all.filter((f) => WIKI_ALLOWED_FILE_RE.test(f.name));
                       const rejected = all.length - allowed.length;
                       if (rejected > 0) {
-                        tea.notify.warning(
+                        feedback.notify.warning(
                           t('wiki.detail.ignored', { count: rejected }),
                         );
                       }
@@ -607,7 +593,7 @@ export function WikiDetailView({ store }: { store: WikiSourcesStore }) {
                 const allowed = all.filter((f) => WIKI_ALLOWED_FILE_RE.test(f.name));
                 const rejected = all.length - allowed.length;
                 if (rejected > 0) {
-                  tea.notify.warning(
+                  feedback.notify.warning(
                     t('wiki.detail.ignored', { count: rejected }),
                   );
                 }

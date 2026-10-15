@@ -1,8 +1,8 @@
 /**
- * GlobalHeader - global top bar (spans the sidebar + content area, outermost full-width bar)
+ * GlobalHeader - top bar of the content column (the brand sits at the top of the sidebar)
  *
- *   Left: brand logo "WeaverAI Memory Fabric" + divider + team switcher (TeamSwitcher)
- *   Right: sync status indicator + language switcher + user avatar menu
+ *   Left: team switcher (TeamSwitcher)
+ *   Right: usage guide + language switcher + settings + user avatar menu
  */
 import { useState } from 'react';
 import {
@@ -17,8 +17,8 @@ import {
   Modal,
   Tag,
   Text,
-} from 'tea-component';
-import { SettingIcon } from 'tea-icons-react';
+} from '@/components/ui';
+import { SettingsIcon } from '@/components/ui/icons';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { SettingsDialog } from '@/components/SettingsDialog';
@@ -49,12 +49,8 @@ export function GlobalHeader({
 
   return (
     <header className="_memory-global-header">
-      {/* Left: brand + team switcher */}
+      {/* Left: team switcher (the brand lives at the top of the sidebar) */}
       <div className="_memory-global-header-left">
-        <div className="_memory-global-header-brand">
-          <img src="/logo.png" alt="WeaverAI Memory Fabric" className="_memory-global-header-logo" />
-          <span className="_memory-global-header-brand-text">{t('header.brand')}</span>
-        </div>
         <TeamSwitcher userRole={userRole} />
       </div>
 
@@ -82,7 +78,7 @@ export function GlobalHeader({
           title={t('header.settings')}
           onClick={() => setSettingsOpen(true)}
         >
-          <SettingIcon size={16} />
+          <SettingsIcon size={16} />
         </button>
 
         <Dropdown
@@ -144,7 +140,7 @@ function roleDisplay(role: TeamRole | null): { label: string; theme: 'primary' |
 }
 
 /**
- * "My profile" modal: tea Avatar + Justify + Text/Tag descriptive display.
+ * "My profile" modal: UI kit Avatar + Justify + Text/Tag descriptive display.
  *
  * Key design points:
  *   - Header Avatar + username + role Tag on one line (Justify aligns left and right)

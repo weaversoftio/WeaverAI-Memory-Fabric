@@ -4,10 +4,10 @@
  * Markdown rendering uniformly goes through the shared AssetMarkdown.
  */
 import { useTranslation } from 'react-i18next';
-import { Alert, Button, Card, Form, Input, Justify, MetricsBoard, Modal, SearchBox, Segment, Select, StatusTip, Table, Text } from 'tea-component';
-import { ChevronRightIcon, CodeIcon, DeleteIcon, RefreshIcon, UsergroupIcon, ViewListIcon, ViewModuleIcon } from 'tea-icons-react';
+import { Alert, Button, Card, Form, Input, Justify, MetricsBoard, Modal, SearchBox, Segment, Select, StatusTip, Table, Text } from '@/components/ui';
+import { ChevronRightIcon, CodeIcon, DeleteIcon, RefreshIcon, TeamIcon, ListViewIcon, GridViewIcon } from '@/components/ui/icons';
 import { knowledgeApi } from '@/lib/api/knowledge-api';
-import { tea } from '@/lib/tea-bridge';
+import { feedback } from '@/lib/feedback';
 import AllocateAssetDialog from '@/components/asset/AllocateAssetDialog';
 import { AssetPageHeader } from '@/components/asset/AssetPageHeader';
 import { formatRepoName, formatShortTime, isValidGitHttpUrl, type ScopeTab, type StatusFilter, type ViewMode } from '../constants/code-constants';
@@ -157,8 +157,8 @@ export default function CodeSourcesPanel() {
                     value={viewMode}
                     onChange={(value) => setViewMode(value as ViewMode)}
                     options={[
-                      { value: 'card', text: <ViewModuleIcon /> },
-                      { value: 'list', text: <ViewListIcon /> },
+                      { value: 'card', text: <GridViewIcon /> },
+                      { value: 'list', text: <ListViewIcon /> },
                     ]}
                   />
                 </div>
@@ -181,7 +181,7 @@ export default function CodeSourcesPanel() {
               status="empty"
               emptyText={
                 <div className="_asset-code-empty">
-                  <CodeIcon size="large" />
+                  <CodeIcon size={40} strokeWidth={1.5} />
                   <Text>{t('code.empty.title')}</Text>
                   <Text theme="label">{t('code.empty.desc')}</Text>
                 </div>
@@ -236,7 +236,7 @@ export default function CodeSourcesPanel() {
                       <span>{formatShortTime(source.last_sync_at)}</span>
                     </div>
                     <div className="_codelist-card-owner">
-                      <UsergroupIcon size={12} />
+                      <TeamIcon size={12} />
                       {scopeTab === 'fixed' ? (
                         t('code.fixedAsset', { agent: agentFilter || t('code.noAgent') })
                       ) : source.owner_user_id ? (
@@ -255,7 +255,7 @@ export default function CodeSourcesPanel() {
                       {scopeTab === 'fixed' ? (
                         <Button type="weak" onClick={() => handleUnbindCode(source.code_graph_id)}>
                           <span className="_codelist-inline-icon">
-                            <UsergroupIcon size={14} />
+                            <TeamIcon size={14} />
                             {t('code.action.unbind')}
                           </span>
                         </Button>
@@ -356,7 +356,7 @@ export default function CodeSourcesPanel() {
                   render: (source) =>
                     scopeTab === 'fixed' ? (
                       <span className="_codelist-inline-icon">
-                        <UsergroupIcon size={12} />
+                        <TeamIcon size={12} />
                         {agentFilter || t('code.noAgent')}
                       </span>
                     ) : source.owner_user_id ? (
@@ -504,7 +504,7 @@ export default function CodeSourcesPanel() {
           onAllocate={async (agentId) => {
             if (!activeTeamId) throw new Error(t('code.notify.selectTeam'));
             await knowledgeApi.code.allocate(activeTeamId, allocateTarget.cgId, agentId);
-            tea.notify.success(t('code.notify.allocated'));
+            feedback.notify.success(t('code.notify.allocated'));
             await fetchSources();
             if (scopeTab === 'fixed') await fetchFixedBindings();
           }}

@@ -15,7 +15,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Tag, Input, Button, Form, Modal } from 'tea-component';
+import { Alert, Tag, Input, Button, Form, Modal } from '@/components/ui';
 import '../styles/task-create-dialog.css';
 
 export type TaskSourceType = 'manual' | 'tapd';

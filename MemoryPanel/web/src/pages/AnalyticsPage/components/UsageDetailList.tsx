@@ -5,7 +5,7 @@
  * routed from another model. The member column is hidden when drilling down by member, and the model column when drilling down by model (always the same value).
  */
 import { useTranslation } from 'react-i18next';
-import { Alert, Table, Text } from 'tea-component';
+import { Alert, Table, Text } from '@/components/ui';
 import type { UsageLogRow } from '@/lib/api/analytics';
 import { DetailPager } from './DetailPager';
 import { UserName } from './UserName';

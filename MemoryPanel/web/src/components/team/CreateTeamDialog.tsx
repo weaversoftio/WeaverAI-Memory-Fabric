@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Form, Input, Modal } from 'tea-component';
+import { Button, Form, Input, Modal } from '@/components/ui';
 
 export default function CreateTeamDialog({
   onClose,

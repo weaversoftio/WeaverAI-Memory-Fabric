@@ -49,13 +49,13 @@
 width: 2px;
   height: 100%;
   border-radius: 2px;
-  background: var(--tea-color-border-primary-default);
+  background: var(--wf-color-border-primary-default);
   transition: background-color 0.15s ease-in-out;
 }
 
 ._asset-split-resizer:hover ._asset-split-resizer-bar,
 ._asset-split--dragging ._asset-split-resizer-bar {
-  background: var(--tea-color-border-brand-default);
+  background: var(--wf-color-border-brand-default);
 }
 
 ._asset-split--dragging {

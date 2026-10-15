@@ -10,12 +10,12 @@
  */
 
 import { useState } from 'react';
-import { Button, Input, Modal, Tag } from 'tea-component';
+import { Button, Input, Modal, Tag } from '@/components/ui';
 import { useTranslation } from 'react-i18next';
-import { BooksIcon, CodeIcon, ToolsIcon } from 'tea-icons-react';
+import { LibraryIcon, CodeIcon, ToolsIcon } from '@/components/ui/icons';
 import { agentsApi, type AgentTemplateConfig } from '@/lib/teamApi';
 import { writeAgentUiMeta } from '@/services';
-import { tea } from '@/lib/tea-bridge';
+import { feedback } from '@/lib/feedback';
 import { getErrorMessage } from '@/lib/error-message';
 import { LightField, CollapseGroup, AssetCheckList, selectableAssetKeys } from './shared';
 import { useTeamAssets } from './useAgentAssets';
@@ -92,7 +92,7 @@ export default function DefaultAgentTemplateDialog({
       await agentsApi.setDefaultTemplate(team.team_id, template);
       onSaved(template);
     } catch (err) {
-      tea.notify.error(getErrorMessage(err));
+      feedback.notify.error(getErrorMessage(err));
       setBusy(false);
     }
   }
@@ -209,7 +209,7 @@ export default function DefaultAgentTemplateDialog({
                 )}
               </div>
               <CollapseGroup
-                icon={<BooksIcon size={16} />}
+                icon={<LibraryIcon size={16} />}
                 title={t('settings.module.wiki')}
                 selectedCount={llmWikis.length}
                 totalCount={assets.wikis.length}

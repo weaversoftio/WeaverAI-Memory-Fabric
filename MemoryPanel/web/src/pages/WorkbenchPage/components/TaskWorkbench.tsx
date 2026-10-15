@@ -12,7 +12,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Card, Text } from 'tea-component';
+import { Card, Text } from '@/components/ui';
 import {
   useTasks,
   useTeams,
@@ -23,7 +23,7 @@ import {
   canDeleteTask,
   canEditTask,
 } from '@/services';
-import { tea } from '@/lib/tea-bridge';
+import { feedback } from '@/lib/feedback';
 import { TeamHeaderCard } from '@/components/team/TeamHeaderCard';
 import TaskCreateDialog, { type TaskDraft } from './TaskCreateDialog';
 import BoardView from './BoardView';
@@ -88,7 +88,7 @@ export default function TaskWorkbench(props: {
     // Whoever clicks "Create Task" is the creator_user_id.
     const team = teams.find((t) => t.team_id === draft.team_id);
     if (!team) {
-      tea.notify.error(`team "${draft.team_id}" ${t('task.emptyTeam.title')}`);
+      feedback.notify.error(`team "${draft.team_id}" ${t('task.emptyTeam.title')}`);
       return;
     }
     try {
@@ -104,7 +104,7 @@ export default function TaskWorkbench(props: {
       setSelectedId(task.task_id);
       setShowCreate(false);
     } catch (err) {
-      tea.notify.error(errMsg(err));
+      feedback.notify.error(errMsg(err));
     }
   }
 
@@ -130,12 +130,12 @@ export default function TaskWorkbench(props: {
             // Permission: deleting a task is limited to the creator / team admin / global admin
             const team = teams.find((t) => t.team_id === task.team_id) ?? null;
             if (!canDeleteTask(task, team, currentUser)) {
-              tea.notify.warning(
+              feedback.notify.warning(
                 t('task.delete.noPermission', { title: task.title, creator: task.creator_user_id })
               );
               return;
             }
-            const ok = await tea.confirm({
+            const ok = await feedback.confirm({
               message: t('task.delete.confirm', { title: task.title }),
               description: t('task.delete.description', { id: task.task_id }),
               okText: t('task.delete.okText'),
@@ -146,7 +146,7 @@ export default function TaskWorkbench(props: {
                 await deleteTask(task.task_id);
                 if (selectedId === task.task_id) setSelectedId(null);
               } catch (err) {
-                tea.notify.error(errMsg(err));
+                feedback.notify.error(errMsg(err));
               }
             }
           }}
@@ -154,25 +154,25 @@ export default function TaskWorkbench(props: {
             // Permission: editing a task (including switching status) is allowed for any member / admin in the team
             const team = teams.find((t) => t.team_id === task.team_id) ?? null;
             if (!canEditTask(task, team, currentUser)) {
-              tea.notify.warning(t('task.noPermissionEdit'));
+              feedback.notify.warning(t('task.noPermissionEdit'));
               return;
             }
             try {
               await updateTaskStatus(task.task_id, status, currentUser);
             } catch (err) {
-              tea.notify.error(errMsg(err));
+              feedback.notify.error(errMsg(err));
             }
           }}
           onUpdateTask={async (task, patch) => {
             const team = teams.find((t) => t.team_id === task.team_id) ?? null;
             if (!canEditTask(task, team, currentUser)) {
-              tea.notify.warning(t('task.noPermissionEdit'));
+              feedback.notify.warning(t('task.noPermissionEdit'));
               return;
             }
             try {
               await updateTask(task.task_id, patch, currentUser);
             } catch (err) {
-              tea.notify.error(errMsg(err));
+              feedback.notify.error(errMsg(err));
             }
           }}
           agents={agents}

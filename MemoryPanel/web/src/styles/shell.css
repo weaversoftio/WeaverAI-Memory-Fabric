@@ -1,0 +1,444 @@
+/*
+ * App shell: navy sidebar + content column, scroll containers, page transitions,
+ * onboarding tour bubble/mask, boot screen and a few shared page helpers.
+ */
+
+/* ===== Lock the page to the viewport; only the content area scrolls ===== */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+.wf-shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--wf-color-bg-page-default);
+}
+
+/* ===== Sidebar ===== */
+.wf-sider {
+  position: relative;
+  display: flex;
+  flex: 0 0 var(--wf-sider-width);
+  flex-direction: column;
+  width: var(--wf-sider-width);
+  overflow: hidden;
+  background:
+    radial-gradient(120% 60% at 0% 0%, rgba(56, 189, 248, 0.12) 0%, transparent 60%),
+    radial-gradient(100% 50% at 100% 100%, rgba(242, 120, 92, 0.1) 0%, transparent 60%),
+    var(--wf-brand-navy-900);
+  color: #c7d2e8;
+  transition:
+    flex-basis 0.2s ease,
+    width 0.2s ease;
+}
+.wf-shell.is-sider-collapsed .wf-sider {
+  flex-basis: var(--wf-sider-width-collapsed);
+  width: var(--wf-sider-width-collapsed);
+}
+
+.wf-sider__brand {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
+  height: var(--wf-header-height);
+  padding: 0 16px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+.wf-sider__logo {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+.wf-sider__wordmark {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+.wf-sider__wordmark-top {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.wf-sider__wordmark-bottom {
+  background: linear-gradient(90deg, #38bdf8, #7aa7ff 60%, #f6b27a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.wf-nav {
+  flex: 1;
+  min-height: 0;
+  padding: 12px 10px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
+}
+.wf-nav__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wf-nav__group {
+  margin-top: 18px;
+}
+.wf-nav__group-title {
+  padding: 0 10px 6px;
+  overflow: hidden;
+  color: #6b7a99;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.wf-nav__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #b7c3dc;
+  font: 500 13.5px/1 var(--wf-font-sans);
+  text-align: start;
+  cursor: pointer;
+}
+.wf-nav__item:hover {
+  background: rgba(148, 163, 184, 0.1);
+  color: #fff;
+}
+.wf-nav__item.is-active {
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.95), rgba(59, 130, 246, 0.75));
+  color: #fff;
+  box-shadow:
+    0 6px 16px -6px rgba(37, 99, 235, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+[dir='rtl'] .wf-nav__item.is-active {
+  background: linear-gradient(270deg, rgba(37, 99, 235, 0.95), rgba(59, 130, 246, 0.75));
+}
+.wf-nav__item:focus-visible {
+  outline: 2px solid var(--wf-brand-cyan);
+  outline-offset: 1px;
+}
+.wf-nav__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+}
+.wf-nav__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wf-sider__footer {
+  flex-shrink: 0;
+  padding: 10px;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+}
+.wf-sider__toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #8796b5;
+  font: 500 12.5px/1 var(--wf-font-sans);
+  cursor: pointer;
+}
+.wf-sider__toggle:hover {
+  background: rgba(148, 163, 184, 0.1);
+  color: #fff;
+}
+
+/* Collapsed rail: icons only */
+.wf-shell.is-sider-collapsed .wf-sider__brand {
+  justify-content: center;
+  padding: 0;
+}
+.wf-shell.is-sider-collapsed .wf-sider__wordmark,
+.wf-shell.is-sider-collapsed .wf-nav__label,
+.wf-shell.is-sider-collapsed .wf-nav__group-title {
+  display: none;
+}
+.wf-shell.is-sider-collapsed .wf-nav__group {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+}
+.wf-shell.is-sider-collapsed .wf-nav__item,
+.wf-shell.is-sider-collapsed .wf-sider__toggle {
+  justify-content: center;
+  padding: 0;
+}
+
+/* ===== Content column ===== */
+.wf-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.wf-content,
+._memory-content-body {
+  flex: 1;
+  min-height: 0;
+  padding: 20px 24px;
+  overflow-y: auto;
+  background: var(--wf-color-bg-page-default);
+  /* Reserve scrollbar space so content width does not jump between short and tall pages. */
+  scrollbar-gutter: stable;
+}
+
+._memory-page-frame {
+  width: 100%;
+  min-width: 0;
+  min-height: 100%;
+  /* Route-switch continuity: quick fade-in + slight upward shift, transform/opacity only */
+  animation: _page-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes _page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* View switch (card/list) quick fade-in, making layout state changes perceivable */
+._view-swap {
+  animation: _view-swap-in 0.15s ease-out;
+}
+
+@keyframes _view-swap-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Metadata row of the resource detail header (Branch / commit / time / page count, etc.), shared by both pages */
+._detail-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-inline-start: 28px; /* Aligned with icon (20px) + gap (8px), so the meta info starts below the title */
+  color: var(--wf-color-text-tertiary);
+  font-size: 12px;
+}
+
+._detail-meta-sep {
+  color: var(--wf-color-text-disabled);
+}
+
+/* Standard wrapper for the console list body */
+.console-list-body {
+  display: block;
+}
+
+/* Link color */
+a {
+  color: var(--wf-color-text-link-default);
+}
+
+/* ===== Boot screen (session check) ===== */
+.wf-boot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  min-height: 100vh;
+  background: radial-gradient(80% 60% at 50% 30%, #13204a 0%, var(--wf-brand-navy-950) 70%);
+}
+.wf-boot__logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  box-shadow: 0 20px 50px -12px rgba(56, 189, 248, 0.45);
+  animation: wf-boot-pulse 1.8s ease-in-out infinite;
+}
+.wf-boot__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #93a3c4;
+  font-size: 13px;
+}
+@keyframes wf-boot-pulse {
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 24px 60px -10px rgba(56, 189, 248, 0.6);
+  }
+}
+
+/* ===== Onboarding tour ===== */
+.wf-guide {
+  position: relative;
+  z-index: 10000;
+  width: min(360px, calc(100vw - 32px));
+  padding: 18px 18px 14px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--wf-color-bg-primary-default);
+  box-shadow:
+    0 24px 60px -16px rgba(7, 12, 28, 0.6),
+    0 0 0 1px rgba(15, 23, 42, 0.06);
+  transition:
+    transform 0.3s ease-in-out,
+    opacity 0.18s ease-in-out;
+}
+.wf-guide__accent {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--wf-brand-gradient);
+}
+.wf-guide__title {
+  margin-bottom: 6px;
+  color: var(--wf-color-text-primary);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+.wf-guide__description {
+  color: var(--wf-color-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+  white-space: pre-line;
+}
+.wf-guide__footer {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  margin-top: 16px;
+}
+.wf-guide__dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+.wf-guide__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--wf-color-border-secondary-default);
+  transition:
+    width 0.2s,
+    background 0.2s;
+}
+.wf-guide__dot.is-done {
+  background: #a9c3f8;
+}
+.wf-guide__dot.is-active {
+  width: 18px;
+  background: var(--wf-color-bg-brand-default);
+}
+.wf-guide__btn-group {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Cross-page switch window: fade out the bubble and highlight ring while the old anchor unmounts.
+   The dark mask blocks stay, so the page never flashes white between steps (see OnboardingGuide.tsx). */
+body._guide-fading .wf-guide,
+body._guide-fading ._guide-mask-ring {
+  opacity: 0 !important;
+}
+
+/* Transitions are disabled until first-frame positioning is done: avoids sliding in from (0,0) */
+body._guide-no-anim .wf-guide,
+body._guide-no-anim ._guide-mask-block,
+body._guide-no-anim ._guide-mask-ring {
+  transition: none !important;
+}
+
+._guide-mask-block,
+._guide-mask-ring {
+  transition:
+    top 0.3s ease-in-out,
+    left 0.3s ease-in-out,
+    width 0.3s ease-in-out,
+    height 0.3s ease-in-out,
+    opacity 0.18s ease-in-out;
+}
+
+._guide-mask-block {
+  position: fixed;
+  z-index: 9998;
+  background: rgba(7, 12, 28, 0.72);
+  pointer-events: none;
+}
+
+._guide-mask-ring {
+  position: fixed;
+  z-index: 9999;
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 2px var(--wf-brand-cyan),
+    0 0 24px rgba(56, 189, 248, 0.45);
+  pointer-events: none;
+}
+
+/* Respect the system "reduce motion" preference: disable animations/transitions globally */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

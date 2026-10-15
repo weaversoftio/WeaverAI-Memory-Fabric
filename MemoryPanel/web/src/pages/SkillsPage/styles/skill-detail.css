@@ -1,5 +1,5 @@
 /**
- * SkillDetailPane style patch -- colors/fonts all go through Tea Design Tokens.
+ * SkillDetailPane style patch -- colors/fonts all go through WeaverAI design system Tokens.
  * No tailwind semantic colors, and no inline style on native tags.
  */
 
@@ -12,9 +12,9 @@
   flex-direction: column;
 }
 
-/* Tea Card internals fill the space; changed to a two-part "fixed head + scrolling body" layout,
+/* UI kit Card internals fill the space; changed to a two-part "fixed head + scrolling body" layout,
    with overflow pushed down to _memory-skill-detail-scroll, so the head stays put and does not scroll */
-._memory-skill-detail-card > .tea-card__body {
+._memory-skill-detail-card > .wf-card__body {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -38,10 +38,10 @@
   overflow: hidden;
 }
 
-/* Tea Card.Body wraps children in another .tea-card__content layer,
+/* UI kit Card.Body wraps children in another .wf-card__content layer,
    which must likewise fill the space and become a flex column, otherwise the inner fixed head + scroll area flex layout breaks
    and scroll gets no bounded height, making "the body unable to scroll". */
-._memory-skill-detail-body > .tea-card__content {
+._memory-skill-detail-body > .wf-card__content {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -84,7 +84,7 @@
   flex: 0 0 auto;
   padding-top: 12px;
   margin-top: 4px;
-  border-top: 1px solid var(--tea-color-border-primary-default);
+  border-top: 1px solid var(--wf-color-border-primary-default);
 }
 
 /* In the narrow-screen stacked layout (AssetSplitLayout removes the height limit), the card returns to document-flow height */
@@ -93,9 +93,9 @@
     height: auto;
   }
 
-  ._memory-skill-detail-card > .tea-card__body,
+  ._memory-skill-detail-card > .wf-card__body,
   ._memory-skill-detail-body,
-  ._memory-skill-detail-body > .tea-card__content {
+  ._memory-skill-detail-body > .wf-card__content {
     overflow: visible;
   }
 
@@ -114,7 +114,7 @@
 ._memory-skill-detail-head {
   flex: 0 0 auto;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--tea-color-border-primary-default);
+  border-bottom: 1px solid var(--wf-color-border-primary-default);
 }
 
 /* Header main row: info area on the left + action area on the right */
@@ -144,7 +144,7 @@
   font-family: var(--font-mono);
   font-size: 14px;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   word-break: break-all;
 }
 
@@ -165,7 +165,7 @@
   font-family: var(--font-mono);
   font-size: 11px;
   line-height: 16px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -179,7 +179,7 @@
   margin-top: 16px;
 }
 
-._memory-skill-detail-section-title.tea-text {
+._memory-skill-detail-section-title.wf-text {
   display: block;
   margin-bottom: 4px;
   font-weight: 600;
@@ -193,7 +193,7 @@
   gap: 8px;
 }
 
-._memory-skill-detail-section-head ._memory-skill-detail-section-title.tea-text {
+._memory-skill-detail-section-head ._memory-skill-detail-section-title.wf-text {
   margin-bottom: 0;
 }
 
@@ -237,32 +237,32 @@
 ._memory-skill-version-files {
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px solid var(--tea-color-border-primary-default);
+  border-top: 1px solid var(--wf-color-border-primary-default);
 }
 
 /* ===== Version history (version number cell inside the Table) ===== */
 ._memory-skill-version-label {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
 ._memory-skill-version-current {
-  color: var(--tea-color-text-link-default);
+  color: var(--wf-color-text-link-default);
 }
 
 ._memory-skill-detail-json,
 ._memory-skill-file-content {
   margin: 0;
   padding: 12px;
-  background-color: var(--tea-color-bg-secondary-default);
-  border: 1px solid var(--tea-color-border-primary-default);
+  background-color: var(--wf-color-bg-secondary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   overflow-x: auto;
   white-space: pre-wrap;
   word-break: break-word;
@@ -272,8 +272,8 @@
 
 ._memory-skill-files-box {
   padding: 8px 12px;
-  border: 1px solid var(--tea-color-border-primary-default);
-  background-color: var(--tea-color-bg-secondary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
+  background-color: var(--wf-color-bg-secondary-default);
 }
 
 /* Attached-resources box in the bottom fixed area: limited max height, scrolls internally when there are many files, without squeezing the body in the middle */
@@ -305,7 +305,7 @@
   cursor: pointer;
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--tea-color-text-link-default);
+  color: var(--wf-color-text-link-default);
 }
 
 ._memory-skill-file-btn:hover {
@@ -315,5 +315,5 @@
 ._memory-skill-dir {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
 }

@@ -16,15 +16,10 @@ import {
   Text,
   Tag,
   Modal,
-} from 'tea-component';
-import {
-  BooksIcon,
-  CodeIcon,
-  ToolsIcon,
-  ChatIcon,
-} from 'tea-icons-react';
+} from '@/components/ui';
+import { LibraryIcon, CodeIcon, ToolsIcon, ChatIcon } from '@/components/ui/icons';
 import { userConfigApi, type AssetCapabilityKey } from '@/lib/teamApi';
-import { tea } from '@/lib/tea-bridge';
+import { feedback } from '@/lib/feedback';
 
 // ===== Resource modules =====
 
@@ -42,7 +37,7 @@ const RESOURCE_MODULES: ResourceModule[] = [
     paramKey: 'llm_wiki.enabled',
     labelKey: 'settings.module.wiki',
     descKey: 'settings.module.wiki.desc',
-    icon: <BooksIcon size={16} />,
+    icon: <LibraryIcon size={16} />,
   },
   {
     id: 'code',
@@ -113,12 +108,12 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
     setError('');
     try {
       await userConfigApi.setAssetCapability(mod.paramKey, next);
-      tea.notify.success(t(next ? 'settings.notify.enabled' : 'settings.notify.disabled', { label: t(mod.labelKey) }));
+      feedback.notify.success(t(next ? 'settings.notify.enabled' : 'settings.notify.disabled', { label: t(mod.labelKey) }));
     } catch (e) {
       setEnabled((prev) => ({ ...prev, [mod.id]: previous }));
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
-      tea.notify.error(t('settings.notify.saveFailed', { msg }));
+      feedback.notify.error(t('settings.notify.saveFailed', { msg }));
     } finally {
       setSavingKey(null);
     }
@@ -148,16 +143,16 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '10px 12px',
-                    border: '1px solid var(--tea-color-border-primary-default)',
+                    border: '1px solid var(--wf-color-border-primary-default)',
                     borderRadius: 6,
                     background: enabled[mod.id]
-                      ? 'var(--tea-color-bg-brand-lighten-default)'
-                      : 'var(--tea-color-bg-primary-default)',
+                      ? 'var(--wf-color-bg-brand-lighten-default)'
+                      : 'var(--wf-color-bg-primary-default)',
                     transition: 'background-color 0.15s',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                    <span style={{ color: 'var(--tea-color-text-secondary)', flexShrink: 0 }}>
+                    <span style={{ color: 'var(--wf-color-text-secondary)', flexShrink: 0 }}>
                       {mod.icon}
                     </span>
                     <div style={{ minWidth: 0 }}>

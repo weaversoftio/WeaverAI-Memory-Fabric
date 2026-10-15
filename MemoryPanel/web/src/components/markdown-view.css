@@ -1,14 +1,14 @@
 /**
- * MarkdownView styles - colors/fonts all use the Tea Design Token.
+ * MarkdownView styles - colors/fonts all use the WeaverAI design system Token.
  * A Markdown display box shared by pages (Skill / Memory details, etc.).
  */
 
 ._md-view {
   padding: 12px;
-  border: 1px solid var(--tea-color-border-primary-default);
-  background-color: var(--tea-color-bg-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
+  background-color: var(--wf-color-bg-primary-default);
   font-size: 13px;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 /* bare: used embedded inside a card; removes the shell and lets the outer card carry the border/background */

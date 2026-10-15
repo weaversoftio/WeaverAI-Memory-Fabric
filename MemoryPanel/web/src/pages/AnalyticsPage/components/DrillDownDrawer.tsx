@@ -12,7 +12,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Drawer, TabPanel, Tabs, Text } from 'tea-component';
+import { Alert, Drawer, TabPanel, Tabs, Text } from '@/components/ui';
 import type { AnalyticsRangeDays } from '@/lib/api/analytics';
 import { categoryToBridgeSource } from './AssetCategoryCards';
 import { TraceDetailList } from './TraceDetailList';

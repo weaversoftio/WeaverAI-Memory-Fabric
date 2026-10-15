@@ -6,7 +6,7 @@
  */
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Table, Text } from 'tea-component';
+import { Alert, Table, Text } from '@/components/ui';
 import type { ToolCallRow } from '@/lib/api/analytics';
 import { DetailPager } from './DetailPager';
 import { UserName } from './UserName';

@@ -4,17 +4,9 @@
  */
 
 import { useState } from 'react';
-import { Button, Input, Modal, Tag } from 'tea-component';
+import { Button, Input, Modal, Tag } from '@/components/ui';
 import { useTranslation } from 'react-i18next';
-import {
-  AddIcon,
-  StarFilledIcon,
-  CloseIcon,
-  BooksIcon,
-  CodeIcon,
-  ToolsIcon,
-  ChatIcon,
-} from 'tea-icons-react';
+import { AddIcon, StarFilledIcon, CloseIcon, LibraryIcon, CodeIcon, ToolsIcon, ChatIcon } from '@/components/ui/icons';
 import {
   readAgentTemplates,
   createAgentTemplate,
@@ -331,7 +323,7 @@ export default function CreateAgentDialog({
               )}
             </div>
             <CollapseGroup
-              icon={<BooksIcon size={16} />}
+              icon={<LibraryIcon size={16} />}
               title={t('settings.module.wiki')}
               selectedCount={llmWikis.length}
               totalCount={assets.wikis.length}

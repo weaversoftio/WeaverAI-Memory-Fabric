@@ -5,14 +5,8 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Justify, SearchBox, Segment, Select, Table } from 'tea-component';
-import {
-  AddIcon,
-  ChevronRightIcon,
-  DeleteIcon,
-  ViewListIcon,
-  ViewModuleIcon,
-} from 'tea-icons-react';
+import { Button, Justify, SearchBox, Segment, Select, Table } from '@/components/ui';
+import { AddIcon, ChevronRightIcon, DeleteIcon, ListViewIcon, GridViewIcon } from '@/components/ui/icons';
 import { canManageAsset, type Team, type Agent as StoreAgent } from '@/services';
 import { useDisplayNameResolver, useUserDisplayName } from '@/services/user-profile-store';
 import { emptyMountedCounts, type AgentMountedCounts } from './types';
@@ -204,8 +198,8 @@ export default function AgentGrid({
                 value={viewMode}
                 onChange={(value) => handleSetViewMode(value as ViewMode)}
                 options={[
-                  { value: 'card', text: <ViewModuleIcon /> },
-                  { value: 'list', text: <ViewListIcon /> },
+                  { value: 'card', text: <GridViewIcon /> },
+                  { value: 'list', text: <ListViewIcon /> },
                 ]}
               />
             </div>

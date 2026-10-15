@@ -16,7 +16,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Button, Input, Select } from 'tea-component';
+import { Alert, Button, Input, Select } from '@/components/ui';
 import { getErrorMessage } from '@/lib/error-message';
 import {
   authMethodsApi,
@@ -513,17 +513,42 @@ export default function LoginGate({
 
   return (
     <div className="_wamf-login">
-      {/* Bright dot-matrix ripple animated background (pure Canvas, zero external dependencies) */}
-      <div className="_wamf-login-bg" aria-hidden="true">
-        <ParticleWaveBackground
-          className="_wamf-login-bg-canvas"
-          gap={22}
-          dotRadius={1.6}
-          speed={1}
-        />
-      </div>
+      {/* Brand panel: navy field with a cyan dot-matrix wave, product mark and core capabilities */}
+      <aside className="_wamf-login-brand">
+        <div className="_wamf-login-bg" aria-hidden="true">
+          <ParticleWaveBackground
+            className="_wamf-login-bg-canvas"
+            gap={22}
+            dotRadius={1.5}
+            color="56, 189, 248"
+            speed={1}
+          />
+        </div>
+        <div className="_wamf-login-brand-inner">
+          <div className="_wamf-login-brand-mark">
+            <img src="/logo.png" alt="" />
+            <div>
+              <span className="_wamf-login-brand-top">WeaverAI</span>
+              <span className="_wamf-login-brand-bottom">Memory Fabric</span>
+            </div>
+          </div>
+          <h2 className="_wamf-login-brand-headline">{t('login.brand.headline')}</h2>
+          <ul className="_wamf-login-brand-points">
+            {(['memory', 'knowledge', 'governance'] as const).map((k) => (
+              <li key={k}>
+                <span className="_wamf-login-brand-dot" aria-hidden="true" />
+                <div>
+                  <strong>{t(`login.brand.${k}.title`)}</strong>
+                  <span>{t(`login.brand.${k}.desc`)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className="_wamf-login-brand-foot">{t('login.brand.foot')}</p>
+        </div>
+      </aside>
 
-      {/* Centered content area */}
+      {/* Sign-in column */}
       <main className="_wamf-login-main">
         <div className="_wamf-login-card">
           <img src="/logo.png" alt="WeaverAI Memory Fabric" className="_wamf-login-logo" />

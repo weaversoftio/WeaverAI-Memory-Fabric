@@ -1,0 +1,96 @@
+/*
+ * WeaverAI design tokens.
+ *
+ * Every color, shadow and type style in the panel resolves to one of these variables.
+ * Palette is drawn from the WeaverAI Memory Fabric mark: deep navy, signal blue, cyan, coral.
+ * Page-level CSS and Tailwind's semantic colors (see index.css) both read from here,
+ * so re-theming the product only means editing this file.
+ */
+:root {
+  /* ---- Brand ---- */
+  --wf-brand-navy-950: #070c1c;
+  --wf-brand-navy-900: #0b1328;
+  --wf-brand-navy-800: #121d3b;
+  --wf-brand-navy-700: #1b2a52;
+  --wf-brand-blue: #2563eb;
+  --wf-brand-blue-hover: #1d4fd7;
+  --wf-brand-blue-active: #1a45bd;
+  --wf-brand-cyan: #38bdf8;
+  --wf-brand-coral: #f2785c;
+  --wf-brand-peach: #f6b27a;
+  --wf-brand-gradient: linear-gradient(135deg, #38bdf8 0%, #2563eb 55%, #6d4bd8 100%);
+
+  /* ---- Text ---- */
+  --wf-color-text-primary: #0f172a;
+  --wf-color-text-secondary: #475569;
+  --wf-color-text-tertiary: #64748b;
+  --wf-color-text-disabled: #a3afc2;
+  --wf-color-text-brand-default: #2563eb;
+  --wf-color-text-link-default: #2563eb;
+  --wf-color-text-on-bg-brand-default: #ffffff;
+  --wf-color-text-on-bg-error-default: #ffffff;
+  --wf-color-text-on-bg-success-default: #ffffff;
+  --wf-color-text-on-bg-warning-default: #ffffff;
+  --wf-color-text-success-default: #15803d;
+  --wf-color-text-warning-default: #b45309;
+  --wf-color-text-error-default: #dc2626;
+  --wf-color-text-success: var(--wf-color-text-success-default);
+  --wf-color-text-warning: var(--wf-color-text-warning-default);
+
+  /* ---- Surfaces ---- */
+  --wf-color-bg-page-default: #f4f6fb;
+  --wf-color-bg-primary-default: #ffffff;
+  --wf-color-bg-primary-hover: #f8fafd;
+  --wf-color-bg-container-default: #ffffff;
+  --wf-color-bg-secondary-default: #f1f4f9;
+  --wf-color-bg-secondary-hover: #e8edf5;
+  --wf-color-bg-secondary-active: #dde4ef;
+  --wf-color-bg-tertiary-default: #eaeef5;
+  --wf-color-bg-brand-default: #2563eb;
+  --wf-color-bg-brand-hover: #1d4fd7;
+  --wf-color-bg-brand-lighten-default: #eaf1fe;
+  --wf-color-bg-success-default: #16a34a;
+  --wf-color-bg-success-lighten-default: #e9f8ef;
+  --wf-color-bg-warning-default: #f59e0b;
+  --wf-color-bg-warning-lighten-default: #fef6e7;
+  --wf-color-bg-error-default: #dc2626;
+  --wf-color-bg-error-lighten-default: #fdeeee;
+  --wf-color-bg-amber-default: #f59e0b;
+  --wf-color-bg-yellow-default: #facc15;
+  --wf-color-bg-primary: var(--wf-color-bg-primary-default);
+  --wf-color-bg-secondary: var(--wf-color-bg-secondary-default);
+  --wf-color-bg-warning: var(--wf-color-bg-warning-lighten-default);
+  --wf-color-primary: var(--wf-color-bg-brand-default);
+
+  /* ---- Borders ---- */
+  --wf-color-border-primary-default: #e2e8f0;
+  --wf-color-border-secondary-default: #cbd5e1;
+  --wf-color-border-brand-default: #2563eb;
+  --wf-color-border-success-default: #86d9a6;
+  --wf-color-border-warning-default: #f8cf7c;
+  --wf-color-border-error-default: #f3a5a5;
+  --wf-color-border: var(--wf-color-border-primary-default);
+
+  /* ---- Elevation ---- */
+  --wf-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --wf-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --wf-shadow-md: 0 6px 16px -4px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.06);
+  --wf-shadow-lg: 0 18px 40px -12px rgba(15, 23, 42, 0.28);
+
+  /* ---- Shape ---- */
+  --wf-radius-sm: 6px;
+  --wf-radius-md: 8px;
+  --wf-radius-lg: 12px;
+
+  /* ---- Type ---- */
+  --wf-font-sans: 'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans Hebrew', sans-serif;
+  --wf-typography-body-sm: 400 12px/20px var(--wf-font-sans);
+  --wf-typography-body: 400 14px/22px var(--wf-font-sans);
+  --wf-typography-heading-6: 600 14px/22px var(--wf-font-sans);
+
+  /* ---- Shell ---- */
+  --wf-header-height: 56px;
+  --wf-sider-width: 232px;
+  --wf-sider-width-collapsed: 64px;
+}

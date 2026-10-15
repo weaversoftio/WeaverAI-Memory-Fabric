@@ -19,7 +19,7 @@
  */
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Button, Card, Select, Status, TabPanel, Tabs, Text } from 'tea-component';
+import { Alert, Button, Card, Select, Status, TabPanel, Tabs, Text } from '@/components/ui';
 import { ResourcePage } from '@/pages/ResourcePage';
 import { useCurrentRole } from '@/services/useCurrentRole';
 import { usePanelAnalyticsEnabled } from '@/services/usePanelCapabilities';

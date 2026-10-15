@@ -7,13 +7,13 @@
   cursor: pointer;
   padding: 4px 6px;
   border-radius: 4px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   font-size: 12px;
   transition: background 0.15s;
 }
 
 ._memory-lang-switcher-btn:hover {
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
 }
 
 ._memory-lang-switcher-label {

@@ -15,7 +15,7 @@
  *    (commonly 8x or more), and a `<circle>` would be squashed into a flat ellipse. Stroke width is unaffected by geometric transforms,
  *    and a zero-length subpath with a round cap renders as a true circle per the SVG spec, the only stable way to draw a point under stretching.
  */
-import { StatusTip, Text } from 'tea-component';
+import { StatusTip, Text } from '@/components/ui';
 import { fmtInt, fmtShortDay } from '../utils/formatters';
 
 const VIEW_HEIGHT = 180;

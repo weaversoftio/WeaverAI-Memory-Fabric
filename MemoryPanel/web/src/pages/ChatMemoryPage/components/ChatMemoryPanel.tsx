@@ -4,8 +4,8 @@
  * This file keeps only rendering and assembly; state/data logic is in useChatMemory, constants and utilities in memory-utils.
  */
 import { useTranslation } from 'react-i18next';
-import { Button, Segment, Select } from 'tea-component';
-import { tea } from '@/lib/tea-bridge';
+import { Button, Segment, Select } from '@/components/ui';
+import { feedback } from '@/lib/feedback';
 import { chatMemoryApi } from '@/lib/teamApi';
 import { type ScopeTab } from '../constants/types';
 
@@ -294,11 +294,11 @@ export default function ChatMemoryPanel(
           onAllocated={async (agentId) => {
             try {
               await chatMemoryApi.allocate(activeTeamId!, selected.id, agentId);
-              tea.notify.success(t('memory.notify.allocated'));
+              feedback.notify.success(t('memory.notify.allocated'));
               setShowAllocate(false);
               fetchBlocks();
             } catch (e: any) {
-              tea.notify.error(e?.message || t('memory.notify.allocateFailed'));
+              feedback.notify.error(e?.message || t('memory.notify.allocateFailed'));
             }
           }}
         />

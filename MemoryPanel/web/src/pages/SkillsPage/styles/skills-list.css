@@ -40,7 +40,7 @@
 /* Timestamp: unified with the username (the shared ._alp-item-time already declares 12px; the color is also pinned here as a fallback) */
 ._memory-skills-body ._alp-item-badges ._alp-item-time {
   font-size: 12px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
 }
 
 /* ===== Version Tag (before the name in the title row) =====

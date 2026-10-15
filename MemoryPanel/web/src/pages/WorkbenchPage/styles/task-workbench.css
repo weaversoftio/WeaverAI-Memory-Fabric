@@ -5,7 +5,7 @@
  *   - The page shows all task cards on entry (style aligned with Agents / Wiki cards); no left/right split
  *   - Status uses a compact pill (light background + same-color text), not bright Tag / dots
  *   - Details and settings go into the Drawer: title/ID in the drawer header; status switch, edit, delete inside the drawer
- *   - All colors use Tea Tokens; nothing hardcoded
+ *   - All colors use design tokens; nothing hardcoded
  */
 
 ._memory-workbench-body {
@@ -42,7 +42,7 @@
       see definitions in pages/team/components/team-management-panel.css */
 
 ._memory-workbench-list-empty {
-  border: 1px dashed var(--tea-color-border-primary-default);
+  border: 1px dashed var(--wf-color-border-primary-default);
   border-radius: 6px;
   padding: 32px 16px;
   text-align: center;
@@ -61,9 +61,9 @@
   gap: 8px;
   min-width: 0;
   padding: 12px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 6px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   font: inherit;
   color: inherit;
   text-align: start;
@@ -72,11 +72,11 @@
 }
 
 ._memory-workbench-task-card:hover {
-  border-color: var(--tea-color-border-brand-default);
+  border-color: var(--wf-color-border-brand-default);
 }
 
 ._memory-workbench-task-card:hover ._memory-workbench-task-card-chevron {
-  color: var(--tea-color-text-brand-default);
+  color: var(--wf-color-text-brand-default);
   opacity: 1;
   transform: translateX(2px);
 }
@@ -100,13 +100,13 @@
 }
 
 ._memory-workbench-status-pill--running {
-  color: var(--tea-color-text-brand-default);
-  background-color: var(--tea-color-bg-brand-lighten-default);
+  color: var(--wf-color-text-brand-default);
+  background-color: var(--wf-color-bg-brand-lighten-default);
 }
 
 ._memory-workbench-status-pill--completed {
-  color: var(--tea-color-text-success-default);
-  background-color: var(--tea-color-bg-success-lighten-default);
+  color: var(--wf-color-text-success-default);
+  background-color: var(--wf-color-bg-success-lighten-default);
 }
 
 ._memory-workbench-task-card-title {
@@ -114,7 +114,7 @@
   min-width: 0;
   font-size: 13px;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -122,7 +122,7 @@
 
 ._memory-workbench-task-card-chevron {
   flex-shrink: 0;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   opacity: 0.6;
   transition: color 0.15s ease-in-out, opacity 0.15s ease-in-out, transform 0.15s ease-in-out;
 }
@@ -132,7 +132,7 @@
   margin: 0;
   font-size: 12px;
   line-height: 1.6;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -147,7 +147,7 @@
   align-items: center;
   gap: 12px;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-workbench-meta-item {
@@ -158,7 +158,7 @@
 
 /* "Includes you" -- plain text, no Tag */
 ._memory-workbench-meta-you {
-  color: var(--tea-color-text-brand-default);
+  color: var(--wf-color-text-brand-default);
   font-weight: 500;
 }
 
@@ -168,7 +168,7 @@
 }
 
 ._memory-workbench-meta-sep {
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   margin: 0 4px;
 }
 
@@ -204,7 +204,7 @@
   display: flex;
   justify-content: flex-end;
   padding-top: 16px;
-  border-top: 1px solid var(--tea-color-border-secondary-default);
+  border-top: 1px solid var(--wf-color-border-secondary-default);
 }
 
 /* ===== Participants -- borderless, plain background sections ===== */
@@ -214,7 +214,7 @@
   align-items: flex-start;
   gap: 16px;
   padding: 12px 16px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
   border-radius: 6px;
 }
 
@@ -237,14 +237,14 @@
   align-items: center;
   gap: 4px;
   padding: 3px 10px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   border-radius: 9999px;
   font-size: 12px;
 }
 
 /* "You" marker -- plain text */
 ._memory-workbench-chip-you {
-  color: var(--tea-color-text-brand-default);
+  color: var(--wf-color-text-brand-default);
   font-weight: 500;
   font-size: 11px;
 }
@@ -256,7 +256,7 @@
   gap: 8px;
 }
 
-._memory-workbench-block-label.tea-text {
+._memory-workbench-block-label.wf-text {
   font-weight: 600;
 }
 
@@ -264,16 +264,16 @@
 ._memory-workbench-desc-view {
   margin: 0;
   padding: 16px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
   border-radius: 6px;
   font-size: 13px;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.7;
 }
 
-._memory-workbench-footer.tea-text {
+._memory-workbench-footer.wf-text {
   font-size: 12px;
 }
 
@@ -286,13 +286,13 @@
 }
 
 ._memory-workbench-skeleton-card {
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 8px;
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: var(--tea-color-bg-container-default);
+  background: var(--wf-color-bg-container-default);
 }
 
 ._memory-workbench-skeleton-line {
@@ -300,9 +300,9 @@
   border-radius: 4px;
   background: linear-gradient(
     90deg,
-    var(--tea-color-bg-secondary-default) 0%,
-    var(--tea-color-bg-tertiary-default) 50%,
-    var(--tea-color-bg-secondary-default) 100%
+    var(--wf-color-bg-secondary-default) 0%,
+    var(--wf-color-bg-tertiary-default) 50%,
+    var(--wf-color-bg-secondary-default) 100%
   );
   background-size: 200% 100%;
   animation: _memory-workbench-skeleton-shimmer 1.4s ease-in-out infinite;

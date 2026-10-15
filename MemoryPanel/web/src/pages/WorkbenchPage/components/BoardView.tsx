@@ -2,8 +2,8 @@
  * BoardView -- workbench task card grid + detail drawer.
  */
 import { useTranslation } from 'react-i18next';
-import { Button, Drawer, Pagination, Tag, Text } from 'tea-component';
-import { AddIcon, ChevronRightIcon, UsergroupIcon } from 'tea-icons-react';
+import { Button, Drawer, Pagination, Tag, Text } from '@/components/ui';
+import { AddIcon, ChevronRightIcon, TeamIcon } from '@/components/ui/icons';
 import { canDeleteTask, type Task, type Team } from '@/services';
 import { useDisplayNameResolver } from '@/services/user-profile-store';
 import TaskDetail from './TaskDetail';
@@ -120,7 +120,7 @@ export default function BoardView({
                     className="_memory-workbench-meta-item"
                     title={view.users.length === 0 ? t('task.participants.empty') : t('task.participants.tooltip', { users: view.users.map((u) => resolveUserName(u)).join('\n') })}
                   >
-                    <UsergroupIcon size={12} />
+                    <TeamIcon size={12} />
                     {t('task.peopleCount', { count: view.users.length })}
                     {imParticipant && <span className="_memory-workbench-meta-you">{t('common.you2')}</span>}
                   </span>

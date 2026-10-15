@@ -9,7 +9,7 @@
  */
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Card } from 'tea-component';
+import { Alert, Card } from '@/components/ui';
 import type { UsageRawReason } from '@/lib/api/analytics';
 import { TrendLines } from './TrendLines';
 import { UsageKpiRow } from './UsageKpiRow';
@@ -41,17 +41,17 @@ export function UsagePanel({
       {
         key: 'prompt_tokens' as const,
         label: t('analytics.usage.trend.prompt'),
-        color: 'var(--tea-color-text-brand-default)',
+        color: 'var(--wf-color-text-brand-default)',
       },
       {
         key: 'completion_tokens' as const,
         label: t('analytics.usage.trend.completion'),
-        color: 'var(--tea-color-text-success-default)',
+        color: 'var(--wf-color-text-success-default)',
       },
       {
         key: 'cache_hit_tokens' as const,
         label: t('analytics.usage.trend.cacheHit'),
-        color: 'var(--tea-color-text-warning-default)',
+        color: 'var(--wf-color-text-warning-default)',
       },
     ],
     [t],
@@ -62,12 +62,12 @@ export function UsagePanel({
       {
         key: 'credit' as const,
         label: t('analytics.usage.trend.credit'),
-        color: 'var(--tea-color-text-brand-default)',
+        color: 'var(--wf-color-text-brand-default)',
       },
       {
         key: 'credit_saved' as const,
         label: t('analytics.usage.trend.creditSaved'),
-        color: 'var(--tea-color-text-success-default)',
+        color: 'var(--wf-color-text-success-default)',
       },
     ],
     [t],

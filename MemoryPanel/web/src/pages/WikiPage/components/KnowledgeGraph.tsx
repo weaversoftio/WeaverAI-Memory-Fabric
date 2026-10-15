@@ -4,7 +4,7 @@ import Graph from "graphology";
 import { SigmaContainer, useLoadGraph, useRegisterEvents, useSigma } from "@react-sigma/core";
 import "@react-sigma/core/lib/style.css";
 import forceAtlas2 from "graphology-layout-forceatlas2";
-import { SearchIcon, CloseIcon } from 'tea-icons-react';
+import { SearchIcon, CloseIcon } from '@/components/ui/icons';
 
 // --- Types (re-exported from knowledge-api) ---
 export interface GraphNode {
@@ -16,8 +16,8 @@ export interface GraphData {
   communities?: { id: number; nodeCount: number; topNodes: string[] }[];
 }
 
-// Sigma's Canvas drawing cannot parse CSS var() directly, so the computed values of Tea Tokens are read when the component renders.
-// This avoids getting empty values when the module loads before the Tea theme CSS, and refreshes the canvas palette after theme attributes change.
+// Sigma's Canvas drawing cannot parse CSS var() directly, so the computed values of design tokens are read when the component renders.
+// This avoids getting empty values when the module loads before the UI kit theme CSS, and refreshes the canvas palette after theme attributes change.
 interface AtlasPalette {
   bg: string;
   toolbarBg: string;
@@ -35,12 +35,12 @@ function readTeaColor(token: string): string {
 }
 
 function createAtlasPalette(): AtlasPalette {
-  const dim = readTeaColor('--tea-color-bg-tertiary-default');
+  const dim = readTeaColor('--wf-color-bg-tertiary-default');
   const accents = [
-    readTeaColor('--tea-color-bg-brand-default'),
-    readTeaColor('--tea-color-bg-warning-default'),
-    readTeaColor('--tea-color-bg-amber-default'),
-    readTeaColor('--tea-color-bg-error-default'),
+    readTeaColor('--wf-color-bg-brand-default'),
+    readTeaColor('--wf-color-bg-warning-default'),
+    readTeaColor('--wf-color-bg-amber-default'),
+    readTeaColor('--wf-color-bg-error-default'),
   ];
   const nodeColors: Record<string, string> = {
     entity: accents[0],
@@ -57,13 +57,13 @@ function createAtlasPalette(): AtlasPalette {
   };
 
   return {
-    bg: readTeaColor('--tea-color-bg-primary-default'),
-    toolbarBg: readTeaColor('--tea-color-bg-secondary-default'),
+    bg: readTeaColor('--wf-color-bg-primary-default'),
+    toolbarBg: readTeaColor('--wf-color-bg-secondary-default'),
     dim,
-    dimFaded: readTeaColor('--tea-color-bg-secondary-default'),
-    edgeBase: readTeaColor('--tea-color-border-secondary-default'),
-    edgeHover: readTeaColor('--tea-color-border-brand-default'),
-    label: readTeaColor('--tea-color-text-primary'),
+    dimFaded: readTeaColor('--wf-color-bg-secondary-default'),
+    edgeBase: readTeaColor('--wf-color-border-secondary-default'),
+    edgeHover: readTeaColor('--wf-color-border-brand-default'),
+    label: readTeaColor('--wf-color-text-primary'),
     nodeColors,
     communityColors: [
       accents[0], dim, accents[1], dim, accents[2], dim,
@@ -127,7 +127,7 @@ function GraphLoader({ nodes, edges, colorMode, onNodeClick, highlightNode, pale
         const key = `${edge.source}->${edge.target}`;
         if (!graph.hasEdge(key) && !graph.hasEdge(`${edge.target}->${edge.source}`)) {
           const nw = edge.weight / maxW;
-          // Edge color uses Tea's secondary border Token; weight affects only line width.
+          // Edge color uses UI kit's secondary border Token; weight affects only line width.
           graph.addEdgeWithKey(key, edge.source, edge.target, { size: 0.5 + nw * 1.4, color: palette.edgeBase });
         }
       }
@@ -225,7 +225,7 @@ export default function KnowledgeGraph({ data, loading, onNodeClick, highlightNo
   const gridBg: CSSProperties = {
     background: palette.bg,
     backgroundImage:
-      'linear-gradient(var(--tea-color-border-secondary-default) 1px, transparent 1px), linear-gradient(90deg, var(--tea-color-border-secondary-default) 1px, transparent 1px)',
+      'linear-gradient(var(--wf-color-border-secondary-default) 1px, transparent 1px), linear-gradient(90deg, var(--wf-color-border-secondary-default) 1px, transparent 1px)',
     backgroundSize: '32px 32px'
   };
 
@@ -294,7 +294,7 @@ export default function KnowledgeGraph({ data, loading, onNodeClick, highlightNo
           const isAccent = c !== palette.dim;
           return (
             <div key={type} className="flex items-center gap-1.5">
-              <div className="h-2.5 w-2.5 rounded-full" style={{ background: c, boxShadow: isAccent ? 'var(--tea-shadow-xs)' : 'none' }} />
+              <div className="h-2.5 w-2.5 rounded-full" style={{ background: c, boxShadow: isAccent ? 'var(--wf-shadow-xs)' : 'none' }} />
               <span className="text-xs text-muted-foreground">{type}</span>
             </div>
           );

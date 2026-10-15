@@ -69,6 +69,14 @@ export const heIL = {
 
   // ===== LoginGate =====
   'login.welcome': 'WeaverAI Memory Fabric',
+  'login.brand.headline': 'זיכרון משותף אחד לכל סוכני ה-AI בצוות.',
+  'login.brand.memory.title': 'זיכרון סוכנים בשכבות',
+  'login.brand.memory.desc': 'שיחות מזוקקות לעובדות, תרחישים ופרסונות (L0–L3).',
+  'login.brand.knowledge.title': 'נכסי ידע של הצוות',
+  'login.brand.knowledge.desc': 'ויקי, גרפי קוד ומיומנויות מאומתות שהסוכנים יכולים למחזר.',
+  'login.brand.governance.title': 'גישה מבוקרת',
+  'login.brand.governance.desc': 'צוותים, תפקידים ומפתחות API קובעים מי רואה מה.',
+  'login.brand.foot': '© Weaversoft · WeaverAI',
   'login.subtitle': 'בחר מופע זיכרון והזן את ה-user_key שלך כדי להתחבר.',
   'login.tagline': 'Reusable agent memory and context recipes',
   'login.field.instance': 'מופע זיכרון',
@@ -1148,14 +1156,40 @@ export const heIL = {
   'apiKey.create.submit': 'יצירה',
   'apiKey.create.cancel': 'ביטול',
 
-  // ===== tea-bridge =====
-  'teaBridge.confirm.ok': 'אישור',
-  'teaBridge.confirm.cancel': 'ביטול',
-  'teaBridge.confirmDelete.message': 'למחוק את "{{name}}"?',
-  'teaBridge.confirmDelete.desc': 'הפעולה בלתי הפיכה.',
-  'teaBridge.confirmDelete.ok': 'מחיקה',
-  'teaBridge.notify.errorTitle': 'הפעולה נכשלה',
-  'teaBridge.notify.warningTitle': 'הודעה',
+  // ===== feedback (confirm dialogs / notifications) =====
+  'feedback.confirm.ok': 'אישור',
+  'feedback.confirm.cancel': 'ביטול',
+  'feedback.confirmDelete.message': 'למחוק את "{{name}}"?',
+  'feedback.confirmDelete.desc': 'הפעולה בלתי הפיכה.',
+  'feedback.confirmDelete.ok': 'מחיקה',
+  'feedback.notify.errorTitle': 'הפעולה נכשלה',
+  'feedback.notify.warningTitle': 'הודעה',
+
+  // ===== App shell =====
+  'layout.sider.collapse': 'כיווץ סרגל הצד',
+  'layout.sider.expand': 'הרחבת סרגל הצד',
+
+  // ===== UI kit built-in copy =====
+  'ui.loading': 'טוען…',
+  'ui.empty': 'אין נתונים',
+  'ui.noMatch': 'לא נמצאו תוצאות',
+  'ui.loadFailed': 'הטעינה נכשלה',
+  'ui.retry': 'נסה שוב',
+  'ui.close': 'סגירה',
+  'ui.clear': 'ניקוי',
+  'ui.search': 'חיפוש',
+  'ui.expand': 'הרחבה',
+  'ui.collapse': 'כיווץ',
+  'ui.copy.copy': 'העתקה',
+  'ui.copy.copied': 'הועתק',
+  'ui.password.show': 'הצגת סיסמה',
+  'ui.password.hide': 'הסתרת סיסמה',
+  'ui.select.placeholder': 'בחירה…',
+  'ui.pagination.label': 'דפדוף',
+  'ui.pagination.total': 'סה"כ {{count}}',
+  'ui.pagination.perPage': '{{count}} לעמוד',
+  'ui.pagination.prev': 'העמוד הקודם',
+  'ui.pagination.next': 'העמוד הבא',
 
   // ===== KnowledgeGraph =====
   'graph.loading': 'טוען את הגרף...',
@@ -1351,10 +1385,10 @@ export const heIL = {
   'onboarding.start': 'בואו נתחיל',
   'onboarding.finish': 'סיום',
   // Welcome (startContent, role-specific)
-  'onboarding.guide.start.admin.title': 'ברוכים הבאים ל-WAMF Panel',
+  'onboarding.guide.start.admin.title': 'ברוכים הבאים ל-WeaverAI Memory Fabric',
   'onboarding.guide.start.admin.desc':
     'אתה מנהל מערכת: אתה מנהל צוותים וחברים. בוא נעבור על היכולות המרכזיות – לחץ על "הבא" כדי להתחיל.',
-  'onboarding.guide.start.member.title': 'ברוכים הבאים ל-WAMF Panel',
+  'onboarding.guide.start.member.title': 'ברוכים הבאים ל-WeaverAI Memory Fabric',
   'onboarding.guide.start.member.desc':
     'אתה חבר צוות: אתה יכול לנהל Agents ונכסים בתוך הצוות. בוא נעבור על היכולות המרכזיות – לחץ על "הבא" כדי להתחיל.',
   // Login identity (shared by Admin / Member)

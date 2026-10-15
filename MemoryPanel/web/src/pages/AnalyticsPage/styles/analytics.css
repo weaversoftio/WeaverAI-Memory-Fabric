@@ -1,8 +1,8 @@
 /* AnalyticsPage - observability usage dashboard styles
  *
- * Convention: all colors go through Tea Tokens (adapts to light/dark), no hard-coded color values;
- * do not use the built-in `tea-` prefixed class names (classPrefix is configurable, hard-coding would silently break),
- * to target a Tea component, attach your own class name via the component's own className.
+ * Convention: all colors go through design tokens (adapts to light/dark), no hard-coded color values;
+ * do not use the built-in kit-internal class names (they are an implementation detail),
+ * to target a UI kit component, attach your own class name via the component's own className.
  */
 
 ._an-toolbar {
@@ -40,24 +40,24 @@
   line-height: 18px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
-  color: var(--tea-color-text-secondary);
-  background: var(--tea-color-bg-secondary-default);
+  color: var(--wf-color-text-secondary);
+  background: var(--wf-color-bg-secondary-default);
   white-space: nowrap;
 }
 
 ._an-delta--up {
-  color: var(--tea-color-text-success-default);
-  background: var(--tea-color-bg-success-lighten-default);
+  color: var(--wf-color-text-success-default);
+  background: var(--wf-color-bg-success-lighten-default);
 }
 
 ._an-delta--down {
-  color: var(--tea-color-text-error-default);
-  background: var(--tea-color-bg-error-lighten-default);
+  color: var(--wf-color-text-error-default);
+  background: var(--wf-color-bg-error-lighten-default);
 }
 
 ._an-delta--flat {
-  color: var(--tea-color-text-tertiary);
-  background: var(--tea-color-bg-secondary-default);
+  color: var(--wf-color-text-tertiary);
+  background: var(--wf-color-bg-secondary-default);
 }
 
 /* Proportion horizontal bar */
@@ -78,32 +78,32 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   font-size: 12px;
 }
 
 ._an-sharebar-track {
   height: 8px;
   border-radius: 9999px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
   overflow: hidden;
 }
 
 ._an-sharebar-fill {
   height: 100%;
   border-radius: 9999px;
-  background: var(--tea-color-bg-brand-default);
+  background: var(--wf-color-bg-brand-default);
 }
 
 ._an-sharebar-value {
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 ._an-sharebar-value em {
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   font-style: normal;
 }
 
@@ -118,7 +118,7 @@
   display: flex;
   justify-content: space-between;
   margin-top: 2px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
@@ -146,7 +146,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   font-size: 12px;
 }
 
@@ -159,7 +159,7 @@
 
 ._an-trend-max {
   margin-inline-start: auto;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   font-size: 12px;
 }
 
@@ -183,16 +183,16 @@
   gap: 6px;
   padding: 12px 14px;
   text-align: start;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 6px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 }
 
 ._an-cat-card:hover {
-  border-color: var(--tea-color-border-brand-default);
-  background: var(--tea-color-bg-secondary-default);
+  border-color: var(--wf-color-border-brand-default);
+  background: var(--wf-color-bg-secondary-default);
 }
 
 ._an-cat-badge {
@@ -203,7 +203,7 @@
   font-size: 12px;
   line-height: 18px;
   font-weight: 500;
-  color: var(--tea-color-text-on-bg-brand-default);
+  color: var(--wf-color-text-on-bg-brand-default);
 }
 
 ._an-cat-badge--sm {
@@ -216,7 +216,7 @@
   line-height: 1.2;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 ._an-cat-track {
@@ -224,7 +224,7 @@
   width: 100%;
   height: 6px;
   border-radius: 9999px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
   overflow: hidden;
 }
 
@@ -264,8 +264,8 @@
   font-family: SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
   line-height: 1.6;
-  color: var(--tea-color-text-secondary);
-  background: var(--tea-color-bg-secondary-default);
+  color: var(--wf-color-text-secondary);
+  background: var(--wf-color-bg-secondary-default);
   border-radius: 4px;
 }
 
@@ -317,7 +317,7 @@
   padding: 10px 14px;
   margin-bottom: 12px;
   border-radius: 4px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
 }
 
 ._an-raw-stat {
@@ -380,7 +380,7 @@
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   white-space: nowrap;
 }
 
@@ -395,11 +395,11 @@
   font-style: normal;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 /* Username drill-down link in a table: remove the Button's default padding to align with the text column */
-._an-user-link.tea-btn {
+._an-user-link.wf-btn {
   padding: 0;
   height: auto;
   line-height: inherit;

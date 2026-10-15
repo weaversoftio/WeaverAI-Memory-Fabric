@@ -1,11 +1,11 @@
 /**
  * StatusTag - generic "status tag" component.
  *
- * Previously Wiki (WikiStatusBadge) and Code (statusLabel) each implemented the status -> Tea Tag
+ * Previously Wiki (WikiStatusBadge) and Code (statusLabel) each implemented the status -> UI kit Tag
  * rendering (theme + variant="soft" + optional hint) with an identical structure. It is consolidated here,
  * and each asset page only supplies the business mapping of "status -> label/theme".
  */
-import { Tag } from 'tea-component';
+import { Tag } from '@/components/ui';
 
 export type StatusTheme = 'default' | 'success' | 'warning' | 'error';
 
@@ -17,7 +17,7 @@ export function StatusTag({
 }: {
   /** Translated status text (or the raw status as a fallback) */
   label: string;
-  /** Tea Tag semantic theme (soft variant) */
+  /** UI kit Tag semantic theme (soft variant) */
   theme?: StatusTheme;
   /** Optional supplementary status note (e.g. "Processing, may take a few minutes" for processing) */
   hint?: string;

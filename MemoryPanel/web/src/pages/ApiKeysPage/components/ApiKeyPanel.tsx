@@ -3,7 +3,7 @@
  *
  * Slimmed-down version: the list shows only 4 core fields - key_id / user_id / key_prefix / created time,
  * no longer showing the "name" and "expiry" columns (accordingly, the create dialog no longer asks for a name).
- * Tea components: the list uses Table + autotip, the header uses Justify + H3,
+ * UI kit components: the list uses Table + autotip, the header uses Justify + H3,
  * destructive actions all go through Modal.confirm for a second confirmation, and the create dialog reuses the site-wide Modal shell.
  *
  * Backend path: the new panel (stateless) uses the meta action `user-key/list|create|revoke`,
@@ -34,12 +34,12 @@ import {
   H3,
   Form,
   Modal,
-} from 'tea-component';
-import { AddIcon } from 'tea-icons-react';
+} from '@/components/ui';
+import { AddIcon } from '@/components/ui/icons';
 import { userKeysApi, metaInstancesApi, type UserKey } from '@/lib/teamApi';
 import { useCurrentRole } from '@/services/useCurrentRole';
 import { useAuthStore } from '@/stores/auth';
-import { tea } from '@/lib/tea-bridge';
+import { feedback } from '@/lib/feedback';
 import '../styles/api-key-panel.css';
 
 const { autotip } = Table.addons;
@@ -85,7 +85,7 @@ export default function ApiKeyPanel() {
       // Revoked keys are no longer shown
       setKeys(list.filter((k) => !k.revoked_at));
     } catch (e) {
-      tea.notify.error(e);
+      feedback.notify.error(e);
       setKeys([]);
     } finally {
       setLoading(false);
@@ -117,14 +117,14 @@ export default function ApiKeyPanel() {
       }
       await refresh();
     } catch (e) {
-      tea.notify.error(e);
+      feedback.notify.error(e);
     } finally {
       setCreating(false);
     }
   }
 
   async function handleDelete(key: UserKey) {
-    const ok = await tea.confirm({
+    const ok = await feedback.confirm({
       message: t('apiKey.confirm.revoke', { name: key.key_prefix || key.key_id }),
       description: t('apiKey.confirm.revoke.desc'),
       okText: t('apiKey.confirm.revoke.ok'),
@@ -134,7 +134,7 @@ export default function ApiKeyPanel() {
       await userKeysApi.revoke(key.key_id);
       await refresh();
     } catch (e) {
-      tea.notify.error(e);
+      feedback.notify.error(e);
     }
   }
 
@@ -288,7 +288,7 @@ export default function ApiKeyPanel() {
       <Card>
         <Card.Body title={t('apiKey.endpoint.title')}>
           {auth?.instance_name && (
-            <div style={{ marginBottom: 8, fontSize: 11, color: 'var(--tea-color-text-secondary)' }}>
+            <div style={{ marginBottom: 8, fontSize: 11, color: 'var(--wf-color-text-secondary)' }}>
               {t('apiKey.endpoint.current')}
               <code>{auth.instance_name}</code>
               <span style={{ opacity: 0.6, marginLeft: 6 }}>({auth.instance_id})</span>
@@ -341,7 +341,7 @@ export default function ApiKeyPanel() {
                         flex: 1,
                         fontSize: 11,
                         wordBreak: 'break-all',
-                        background: 'var(--tea-color-bg-secondary-default)',
+                        background: 'var(--wf-color-bg-secondary-default)',
                         padding: '4px 8px',
                         borderRadius: 4,
                       }}
@@ -376,7 +376,7 @@ export default function ApiKeyPanel() {
                 <DatePicker
                   value={newExpiresAt ?? undefined}
                   onChange={(v) => setNewExpiresAt(v)}
-                  disabledDate={(d) => !d.isBefore(moment().startOf('day'))}
+                  selectableDate={(d) => !d.isBefore(moment().startOf('day'))}
                   placeholder={t('apiKey.create.expiresAt.placeholder')}
                 />
               </Form.Item>

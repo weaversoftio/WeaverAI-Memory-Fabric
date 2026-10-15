@@ -2,10 +2,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 48px;
-  padding: 0 16px;
-  background: var(--tea-color-bg-primary-default);
-  border-bottom: 1px solid var(--tea-color-border-primary-default);
+  height: var(--wf-header-height);
+  padding: 0 20px;
+  background: var(--wf-color-bg-primary-default);
+  border-bottom: 1px solid var(--wf-color-border-primary-default);
   flex-shrink: 0;
 }
 
@@ -32,14 +32,14 @@
 ._memory-global-header-brand-text {
   font-size: 14px;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   white-space: nowrap;
 }
 
 ._memory-global-header-divider {
   width: 1px;
   height: 20px;
-  background: var(--tea-color-border-primary-default);
+  background: var(--wf-color-border-primary-default);
   flex-shrink: 0;
 }
 
@@ -55,7 +55,7 @@
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   white-space: nowrap;
 }
 
@@ -63,7 +63,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--tea-color-bg-success-default);
+  background: var(--wf-color-bg-success-default);
   flex-shrink: 0;
 }
 
@@ -80,15 +80,15 @@
 }
 
 ._memory-global-header-user-btn:hover {
-  background: var(--tea-color-bg-secondary-hover);
+  background: var(--wf-color-bg-secondary-hover);
 }
 
 ._memory-global-header-avatar {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: var(--tea-color-bg-brand-default);
-  color: var(--tea-color-text-on-bg-brand-default);
+  background: var(--wf-color-bg-brand-default);
+  color: var(--wf-color-text-on-bg-brand-default);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -99,7 +99,7 @@
 
 ._memory-global-header-username {
   font-size: 12px;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -113,14 +113,14 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   cursor: pointer;
   transition: background-color 0.15s, color 0.15s;
 }
 
 ._memory-global-header-icon-btn:hover {
-  background: var(--tea-color-bg-secondary-hover);
-  color: var(--tea-color-text-primary);
+  background: var(--wf-color-bg-secondary-hover);
+  color: var(--wf-color-text-primary);
 }
 
 /* ===== Usage guide button ===== */
@@ -129,7 +129,7 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   font-size: 13px;
   cursor: pointer;
   transition: background-color 0.15s, color 0.15s;
@@ -137,17 +137,17 @@
 }
 
 ._memory-global-header-guide-btn:hover {
-  background: var(--tea-color-bg-secondary-hover);
-  color: var(--tea-color-text-primary);
+  background: var(--wf-color-bg-secondary-hover);
+  color: var(--wf-color-text-primary);
 }
 
 ._memory-global-header-guide-btn.is-active {
-  background: var(--tea-color-bg-brand-lighten-default);
-  color: var(--tea-color-text-brand-default);
+  background: var(--wf-color-bg-brand-lighten-default);
+  color: var(--wf-color-text-brand-default);
   font-weight: 500;
 }
 
-/* ===== Profile Modal: tea Avatar + Justify + descriptive blocks ===== */
+/* ===== Profile Modal: UI kit Avatar + Justify + descriptive blocks ===== */
 
 ._memory-profile-identity {
   display: flex;
@@ -184,7 +184,7 @@
 
 ._memory-profile-divider {
   height: 1px;
-  background: var(--tea-color-border-secondary-default);
+  background: var(--wf-color-border-secondary-default);
   margin: 16px 0;
 }
 
@@ -208,7 +208,7 @@
   line-height: 16px;
 }
 
-/* Fix tea InputAdornment defaulting to display:inline-block, which stops the Input from stretching
+/* Fix UI kit InputAdornment defaulting to display:inline-block, which stops the Input from stretching
    (historically the Input with InputAdornment + size="full" shrank to its content width,
    leaving the right-hand Copy icon isolated and dangling). Make it a block container and let the inner Input fill it. */
 ._memory-profile-input-adornment {

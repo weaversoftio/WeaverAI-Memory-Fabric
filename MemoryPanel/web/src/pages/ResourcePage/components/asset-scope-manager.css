@@ -1,5 +1,5 @@
 /**
- * AssetScopeManager style patch - layout and spacing; colors all come from Tea Design Tokens.
+ * AssetScopeManager style patch - layout and spacing; colors all come from WeaverAI design system Tokens.
  */
 
 ._memory-asset-scope {
@@ -29,13 +29,13 @@
 }
 
 ._memory-asset-scope-empty {
-  border: 1px dashed var(--tea-color-border-primary-default);
+  border: 1px dashed var(--wf-color-border-primary-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
   padding: 24px;
   text-align: center;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-asset-scope-list {
@@ -53,14 +53,14 @@
   justify-content: space-between;
   gap: 12px;
   padding: 8px 12px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   transition: background-color 0.15s;
 }
 
 ._memory-asset-scope-item:hover {
-  background: var(--tea-color-bg-secondary-hover);
+  background: var(--wf-color-bg-secondary-hover);
 }
 
 ._memory-asset-scope-item-info {
@@ -77,26 +77,26 @@
 ._memory-asset-scope-item-name {
   font-size: 12px;
   font-weight: 500;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 320px;
 }
 
-._memory-asset-scope-item-owner.tea-text {
+._memory-asset-scope-item-owner.wf-text {
   font-size: 12px;
 }
 
 ._memory-asset-scope-item-owner-id {
   font-family: var(--font-mono);
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
 }
 
 ._memory-asset-scope-item-meta {
   margin-top: 2px;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

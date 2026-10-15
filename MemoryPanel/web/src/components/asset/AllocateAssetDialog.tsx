@@ -8,8 +8,8 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Button, Form, Modal, Select, Tag } from 'tea-component';
-import { tea } from '@/lib/tea-bridge';
+import { Alert, Button, Form, Modal, Select, Tag } from '@/components/ui';
+import { feedback } from '@/lib/feedback';
 import './allocate-dialog.css';
 
 export type AllocateAssetType = 'skill' | 'llm_wiki' | 'code_graph' | 'chat_memory';
@@ -44,10 +44,10 @@ export default function AllocateAssetDialog(props: {
     setSubmitting(true);
     try {
       await props.onAllocate(agentId);
-      tea.notify.success(t('allocAsset.notify.success', { label: props.assetLabel, agent: agentId }));
+      feedback.notify.success(t('allocAsset.notify.success', { label: props.assetLabel, agent: agentId }));
       props.onClose();
     } catch (err) {
-      tea.notify.error(err);
+      feedback.notify.error(err);
     } finally {
       setSubmitting(false);
     }

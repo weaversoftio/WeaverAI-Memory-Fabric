@@ -41,20 +41,20 @@
 ._asset-memory-page ._alp-item-btn {
   padding: 12px 14px;
   border-radius: 8px;
-  background-color: var(--tea-color-bg-primary-default);
+  background-color: var(--wf-color-bg-primary-default);
   transition: background-color 0.15s ease-in-out;
 }
 
 ._asset-memory-page ._alp-item-btn:hover {
-  background-color: var(--tea-color-bg-secondary-default);
+  background-color: var(--wf-color-bg-secondary-default);
 }
 
 ._asset-memory-page ._alp-item--selected ._alp-item-btn {
-  background-color: var(--tea-color-bg-brand-lighten-default);
+  background-color: var(--wf-color-bg-brand-lighten-default);
 }
 
 ._asset-memory-page ._alp-item--selected ._alp-item-btn:hover {
-  background-color: var(--tea-color-bg-brand-lighten-default);
+  background-color: var(--wf-color-bg-brand-lighten-default);
 }
 
 ._asset-memory-page ._alp-item--disabled {
@@ -77,7 +77,7 @@
 ._memory-card-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -94,8 +94,8 @@
   flex-shrink: 0;
   font-size: 11px;
   font-weight: 500;
-  color: var(--tea-color-text-brand-default);
-  background-color: var(--tea-color-bg-brand-lighten-default);
+  color: var(--wf-color-text-brand-default);
+  background-color: var(--wf-color-bg-brand-lighten-default);
   padding: 2px 8px;
   border-radius: 10px;
   white-space: nowrap;
@@ -106,7 +106,7 @@
   margin-top: 4px;
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -129,7 +129,7 @@
   background: none;
   font: inherit;
   font-size: 12px;
-  color: var(--tea-color-text-warning-default);
+  color: var(--wf-color-text-warning-default);
   cursor: pointer;
   white-space: nowrap;
   transition: opacity 0.15s ease-in-out;
@@ -151,7 +151,7 @@
   align-items: center;
   gap: 3px;
   font-size: 11px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   white-space: nowrap;
 }
 
@@ -160,7 +160,7 @@
 }
 
 ._memory-badge--warning {
-  color: var(--tea-color-text-warning-default);
+  color: var(--wf-color-text-warning-default);
   font-weight: 500;
   margin-inline-start: 6px;
 }
@@ -169,15 +169,15 @@
 ._memory-detail-panel {
   min-height: 480px;
   padding: 16px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 6px;
-  background: var(--tea-color-bg-primary-default);
-  box-shadow: var(--tea-shadow-xs);
+  background: var(--wf-color-bg-primary-default);
+  box-shadow: var(--wf-shadow-xs);
 }
 
 /* ===== Memory detail area ===== */
 ._memory-detail-head {
-  border-bottom: 1px solid var(--tea-color-border-secondary-default);
+  border-bottom: 1px solid var(--wf-color-border-secondary-default);
   padding-bottom: 12px;
   margin-bottom: 16px;
 }
@@ -213,13 +213,13 @@
   align-items: center;
   justify-content: center;
   padding: 0 6px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
 }
 
 ._memory-detail-title {
   font-size: 15px;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   line-height: 1.4;
   word-break: break-all;
   display: flex;
@@ -237,7 +237,7 @@
   font-size: 12px;
   font-weight: 400;
   font-family: var(--font-mono);
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-detail-meta {
@@ -247,7 +247,7 @@
   gap: 8px;
   margin-top: 6px;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-detail-meta-item {
@@ -258,7 +258,7 @@
 
 ._memory-detail-mono {
   font-family: var(--font-mono);
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
 }
 
 /* ===== Layer selector ===== */
@@ -279,9 +279,9 @@
   display: block;
   text-align: start;
   padding: 10px 12px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 6px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   cursor: pointer;
   transition:
     background-color 0.15s ease-in-out,
@@ -291,16 +291,16 @@
 }
 
 ._memory-detail-layer-btn:hover {
-  background-color: var(--tea-color-bg-secondary-default);
+  background-color: var(--wf-color-bg-secondary-default);
 }
 
 ._memory-detail-layer-btn--active {
-  border-color: var(--tea-color-border-brand-default);
-  background-color: var(--tea-color-bg-brand-lighten-default);
+  border-color: var(--wf-color-border-brand-default);
+  background-color: var(--wf-color-bg-brand-lighten-default);
 }
 
 ._memory-detail-layer-btn--active:hover {
-  background-color: var(--tea-color-bg-brand-lighten-default);
+  background-color: var(--wf-color-bg-brand-lighten-default);
 }
 
 ._memory-detail-layer-btn-top {
@@ -317,12 +317,12 @@
 ._memory-detail-layer-count {
   font-size: 11px;
   font-family: var(--font-mono);
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-detail-layer-desc {
   font-size: 11px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   margin-top: 2px;
 }
 
@@ -345,10 +345,10 @@
   min-height: 0;
   /* Card frame: visually consistent with the left list (_alp) and the Skills right-column detail (_memory-skill-detail-card) */
   padding: 16px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 6px;
-  background: var(--tea-color-bg-primary-default);
-  box-shadow: var(--tea-shadow-xs);
+  background: var(--wf-color-bg-primary-default);
+  box-shadow: var(--wf-shadow-xs);
 }
 
 /* Detail empty state: also wrapped in the card frame and filling the height, avoiding a "flush gray background" and blank space */
@@ -359,12 +359,12 @@
   height: 100%;
   min-height: 480px;
   padding: 16px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 6px;
-  background: var(--tea-color-bg-primary-default);
-  box-shadow: var(--tea-shadow-xs);
+  background: var(--wf-color-bg-primary-default);
+  box-shadow: var(--wf-shadow-xs);
   font-size: 13px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 /* In the narrow-screen stacked layout (AssetSplitLayout removes the height limit), the card also returns to document-flow height */
@@ -406,7 +406,7 @@
 ._memory-detail-skeleton-row {
   height: 56px;
   border-radius: 6px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
   animation: _memory-detail-pulse 1.5s ease-in-out infinite;
 }
 
@@ -424,7 +424,7 @@
 ._memory-detail-skel-line {
   height: 12px;
   border-radius: 4px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
   animation: _memory-detail-pulse 1.5s ease-in-out infinite;
 }
 
@@ -456,7 +456,7 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
   animation: _memory-detail-pulse 1.5s ease-in-out infinite;
 }
 
@@ -468,7 +468,7 @@
   max-width: 70%;
   padding: 10px 12px;
   border-radius: 10px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
   animation: _memory-detail-pulse 1.5s ease-in-out infinite;
 }
 
@@ -479,7 +479,7 @@
 }
 
 ._memory-detail-skel-chat-row--user ._memory-detail-skel-chat-bubble {
-  background: var(--tea-color-bg-brand-lighten-default);
+  background: var(--wf-color-bg-brand-lighten-default);
 }
 
 /* system row (centered full-width capsule) */
@@ -487,7 +487,7 @@
   align-self: center;
   padding: 4px 10px;
   border-radius: 999px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
   animation: _memory-detail-pulse 1.5s ease-in-out infinite;
 }
 
@@ -503,10 +503,10 @@
 ._memory-detail-skel-atomic {
   /* Same as the real _memory-detail-atomic-item: padding 12px 14px, 8px radius, light border + subtle shadow */
   padding: 12px 14px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 8px;
-  background: var(--tea-color-bg-primary-default);
-  box-shadow: var(--tea-shadow-xs);
+  background: var(--wf-color-bg-primary-default);
+  box-shadow: var(--wf-shadow-xs);
 }
 
 /* When entering L2 there is only the title row: remove bottom padding / shadow so the card height fits the actual head height */
@@ -526,11 +526,11 @@
   /* head no longer takes margin-bottom; spacing is provided by the body's padding-top + head's box-shadow 1px,
      aligned with the 16px breathing space of the real item's head (padding-bottom: 8px) + body (margin-top: 8px) */
   padding-bottom: 8px;
-  box-shadow: 0 1px 0 var(--tea-color-border-secondary-default);
+  box-shadow: 0 1px 0 var(--wf-color-border-secondary-default);
 }
 
 ._memory-detail-skel-block {
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
   animation: _memory-detail-pulse 1.5s ease-in-out infinite;
   border-radius: 4px;
 }
@@ -544,13 +544,13 @@
 
 /* Header layer badge colors (aligned with the real atomic item's _memory-detail-atomic-layer--*) */
 ._memory-detail-skel-block--layer._memory-detail-skel-block--brand {
-  background: var(--tea-color-bg-brand-lighten-default);
+  background: var(--wf-color-bg-brand-lighten-default);
 }
 ._memory-detail-skel-block--layer._memory-detail-skel-block--success {
-  background: var(--tea-color-bg-success-lighten-default);
+  background: var(--wf-color-bg-success-lighten-default);
 }
 ._memory-detail-skel-block--layer._memory-detail-skel-block--warning {
-  background: var(--tea-color-bg-warning-lighten-default);
+  background: var(--wf-color-bg-warning-lighten-default);
 }
 
 ._memory-detail-skel-block--title {
@@ -598,14 +598,14 @@
   padding: 32px 16px;
   text-align: center;
   font-size: 13px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-detail-empty--warn {
-  color: var(--tea-color-text-warning, #e6a23c);
+  color: var(--wf-color-text-warning, #e6a23c);
 }
 
-/* ===== Time filter (L0 / L1, uses Tea RangePicker) ===== */
+/* ===== Time filter (L0 / L1, uses UI kit RangePicker) ===== */
 /* Placed at the top right of the detail header, top-aligned with the title row, does not shrink with content width */
 ._memory-detail-timefilter {
   flex-shrink: 0;
@@ -627,8 +627,8 @@
   display: inline-flex;
   padding: 2px;
   border-radius: 6px;
-  background: var(--tea-color-bg-secondary, #f2f3f5);
-  border: 1px solid var(--tea-color-border, #e5e6eb);
+  background: var(--wf-color-bg-secondary, #f2f3f5);
+  border: 1px solid var(--wf-color-border, #e5e6eb);
 }
 
 ._memory-detail-mode-btn {
@@ -639,7 +639,7 @@
   border: none;
   border-radius: 4px;
   background: transparent;
-  color: var(--tea-color-text-secondary, #86909c);
+  color: var(--wf-color-text-secondary, #86909c);
   font-size: 12px;
   line-height: 18px;
   cursor: pointer;
@@ -649,12 +649,12 @@
 }
 
 ._memory-detail-mode-btn:hover:not(:disabled):not(._memory-detail-mode-btn--active) {
-  color: var(--tea-color-text-primary, #1d2129);
+  color: var(--wf-color-text-primary, #1d2129);
 }
 
 ._memory-detail-mode-btn--active {
-  background: var(--tea-color-bg-primary, #fff);
-  color: var(--tea-color-primary, #0052d9);
+  background: var(--wf-color-bg-primary, #fff);
+  color: var(--wf-color-primary, #0052d9);
   font-weight: 500;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
@@ -674,12 +674,12 @@
 
 ._memory-chat-more-btn {
   padding: 4px 14px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 999px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   cursor: pointer;
   font-size: 12px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   transition:
     background-color 0.15s ease-in-out,
     color 0.15s ease-in-out,
@@ -687,9 +687,9 @@
 }
 
 ._memory-chat-more-btn:hover {
-  color: var(--tea-color-text-brand-default);
-  border-color: var(--tea-color-border-brand-default);
-  background: var(--tea-color-bg-brand-lighten-default);
+  color: var(--wf-color-text-brand-default);
+  border-color: var(--wf-color-border-brand-default);
+  background: var(--wf-color-bg-brand-lighten-default);
 }
 
 ._memory-chat-more-loading {
@@ -697,14 +697,14 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-chat-more-spinner {
   width: 12px;
   height: 12px;
-  border: 2px solid var(--tea-color-border-primary-default);
-  border-top-color: var(--tea-color-text-brand-default);
+  border: 2px solid var(--wf-color-border-primary-default);
+  border-top-color: var(--wf-color-text-brand-default);
   border-radius: 50%;
   animation: _memory-chat-spin 0.7s linear infinite;
 }
@@ -717,7 +717,7 @@
 
 ._memory-chat-more-end {
   font-size: 11px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 /* Message stream: laid out vertically as a whole, with slightly larger row spacing so the bubbles can breathe */
@@ -768,12 +768,12 @@
   font-family: var(--font-mono);
   font-weight: 700;
   letter-spacing: 0.4px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
 }
 
 ._memory-chat-time {
   font-size: 11px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   white-space: nowrap;
 }
 
@@ -783,14 +783,14 @@
   max-width: 100%;
   padding: 9px 13px;
   border-radius: 10px;
-  border: 1px solid var(--tea-color-border-primary-default);
-  background: var(--tea-color-bg-primary-default);
-  box-shadow: var(--tea-shadow-xs);
+  border: 1px solid var(--wf-color-border-primary-default);
+  background: var(--wf-color-bg-primary-default);
+  box-shadow: var(--wf-shadow-xs);
   transition: box-shadow 0.15s ease-in-out;
 }
 
 ._memory-chat-bubble:hover {
-  box-shadow: var(--tea-shadow-sm);
+  box-shadow: var(--wf-shadow-sm);
 }
 
 /* assistant / tool: on the left, the top-left corner is pointed toward the avatar */
@@ -803,14 +803,14 @@
 ._memory-chat-bubble--user {
   border-top-right-radius: 3px;
   border-color: transparent;
-  background: var(--tea-color-bg-brand-lighten-default);
+  background: var(--wf-color-bg-brand-lighten-default);
 }
 
 ._memory-chat-body {
   margin: 0;
   font-size: 13px;
   line-height: 1.65;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   white-space: pre-wrap;
   word-break: break-word;
   font-family: inherit;
@@ -825,8 +825,8 @@
   max-width: 90%;
   padding: 5px 12px;
   border-radius: 999px;
-  background: var(--tea-color-bg-secondary-default);
-  color: var(--tea-color-text-tertiary);
+  background: var(--wf-color-bg-secondary-default);
+  color: var(--wf-color-text-tertiary);
   font-size: 12px;
 }
 
@@ -862,10 +862,10 @@
    because li padding and head margin add up or cancel out badly. */
 ._memory-detail-atomic-item {
   padding: 0;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 8px;
-  background: var(--tea-color-bg-primary-default);
-  box-shadow: var(--tea-shadow-xs);
+  background: var(--wf-color-bg-primary-default);
+  box-shadow: var(--wf-shadow-xs);
   /* Do not set overflow:hidden here - it would break the head's position:sticky pinning
      (overflow turns the li into sticky's scroll container, and the li has no extra scroll space, so it cannot stick).
      The head is now aligned with the card edges with no overflow, so no clipping is needed; the rounded corners are guaranteed by the head's own border-radius. */
@@ -875,8 +875,8 @@
 }
 
 ._memory-detail-atomic-item:hover {
-  border-color: var(--tea-color-border-brand-default);
-  box-shadow: var(--tea-shadow-sm);
+  border-color: var(--wf-color-border-brand-default);
+  box-shadow: var(--wf-shadow-sm);
 }
 
 /* Title row: layer badge + title + right side (loading/time/expand arrow).
@@ -898,14 +898,14 @@
   min-width: 0;
   margin: 0;
   padding: 12px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   border-radius: 8px 8px 0 0;
 }
 
 /* With body: draw a 1px divider at the bottom of the head, connecting to the body below (or the loading skeleton).
    When L2 is not expanded (no body) this class is not added, so there is no line; it is added when expanded / loading. */
 ._memory-detail-atomic-head--with-body {
-  box-shadow: 0 1px 0 var(--tea-color-border-secondary-default);
+  box-shadow: 0 1px 0 var(--wf-color-border-secondary-default);
 }
 
 ._memory-detail-atomic-head--btn {
@@ -931,23 +931,23 @@
 }
 
 ._memory-detail-atomic-layer--default {
-  color: var(--tea-color-text-secondary);
-  background-color: var(--tea-color-bg-secondary-default);
+  color: var(--wf-color-text-secondary);
+  background-color: var(--wf-color-bg-secondary-default);
 }
 
 ._memory-detail-atomic-layer--brand {
-  color: var(--tea-color-text-brand-default);
-  background-color: var(--tea-color-bg-brand-lighten-default);
+  color: var(--wf-color-text-brand-default);
+  background-color: var(--wf-color-bg-brand-lighten-default);
 }
 
 ._memory-detail-atomic-layer--success {
-  color: var(--tea-color-text-success-default);
-  background-color: var(--tea-color-bg-success-lighten-default);
+  color: var(--wf-color-text-success-default);
+  background-color: var(--wf-color-bg-success-lighten-default);
 }
 
 ._memory-detail-atomic-layer--warning {
-  color: var(--tea-color-text-warning-default);
-  background-color: var(--tea-color-bg-warning-lighten-default);
+  color: var(--wf-color-text-warning-default);
+  background-color: var(--wf-color-bg-warning-lighten-default);
 }
 
 ._memory-detail-atomic-title {
@@ -955,7 +955,7 @@
   min-width: 0;
   font-size: 13px;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   line-height: 1.5;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -971,7 +971,7 @@
 
 ._memory-detail-atomic-loading {
   font-size: 11px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 /* Body-line skeleton (multiple stacked lines, imitating the text-line shape of MarkdownView).
@@ -988,18 +988,18 @@
 ._memory-detail-atomic-body-skel-line {
   height: 12px;
   border-radius: 4px;
-  background-color: var(--tea-color-bg-secondary-default);
+  background-color: var(--wf-color-bg-secondary-default);
   animation: _memory-detail-pulse 1.5s ease-in-out infinite;
 }
 
 ._memory-detail-atomic-time {
   font-size: 11px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   white-space: nowrap;
 }
 
 ._memory-detail-atomic-chevron {
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   transition: transform 0.15s ease-in-out;
 }
 
@@ -1014,11 +1014,11 @@
 }
 
 ._memory-detail-atomic-chevron-btn:hover {
-  background-color: var(--tea-color-bg-secondary-default);
+  background-color: var(--wf-color-bg-secondary-default);
 }
 
 ._memory-detail-atomic-chevron-btn:hover ._memory-detail-atomic-chevron {
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
 }
 
 ._memory-detail-atomic-chevron--open {
@@ -1032,7 +1032,7 @@
   padding: 8px 12px 12px;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   white-space: pre-wrap;
   word-break: break-word;
   font-family: inherit;
@@ -1071,7 +1071,7 @@
   margin-top: 8px;
   padding: 8px 12px 12px;
   font-size: 11px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-detail-atomic-meta {
@@ -1082,7 +1082,7 @@
   margin-top: 8px;
   padding: 0 12px 12px;
   font-size: 11px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-detail-atomic-ref {
@@ -1094,7 +1094,7 @@
   font-weight: 500;
 }
 
-/* ===== Paginator (same as the task board, centered Tea Pagination) ===== */
+/* ===== Paginator (same as the task board, centered UI kit Pagination) ===== */
 ._memory-detail-pager {
   display: flex;
   justify-content: center;
@@ -1116,13 +1116,13 @@
 
 ._memory-detail-search-count {
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   white-space: nowrap;
 }
 
 ._memory-detail-search-score {
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   margin-inline-start: 4px;
   font-variant-numeric: tabular-nums;
 }
@@ -1134,17 +1134,17 @@
   align-items: center;
 }
 
-/* Three-dot trigger button (tea Button type=text): compact size, aligned with time/chevron */
-._memory-detail-atomic-more.tea-btn {
+/* Three-dot trigger button (UI kit Button type=text): compact size, aligned with time/chevron */
+._memory-detail-atomic-more.wf-btn {
   min-width: auto;
   height: 20px;
   padding: 0 4px;
   line-height: 1;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
-._memory-detail-atomic-more.tea-btn:hover {
-  color: var(--tea-color-text-primary);
+._memory-detail-atomic-more.wf-btn:hover {
+  color: var(--wf-color-text-primary);
 }
 
 /* L2 expanded loading state: reuses the chat spinner animation, takes the same space as the chevron */
@@ -1158,7 +1158,7 @@
 ._memory-detail-edit-name {
   margin-bottom: 8px;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   word-break: break-all;
 }
 
@@ -1174,11 +1174,11 @@
 /* Content area - borderless, plain background + rounded corners */
 ._memory-item-content {
   padding: 16px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
   border-radius: 6px;
   font-size: 13px;
   line-height: 1.7;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   white-space: pre-wrap;
   word-break: break-word;
 }

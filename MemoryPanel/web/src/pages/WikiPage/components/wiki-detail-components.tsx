@@ -6,20 +6,11 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Card, StatusTip, Tag, Text } from 'tea-component';
-import {
-  BooksIcon,
-  ChevronRightIcon,
-  CloseIcon,
-  DeleteIcon,
-  FileIcon,
-  FolderIcon,
-  LayersIcon as ArchitectureIcon,
-  StarIcon,
-} from 'tea-icons-react';
+import { Button, Card, StatusTip, Tag, Text } from '@/components/ui';
+import { LibraryIcon, ChevronRightIcon, CloseIcon, DeleteIcon, FileIcon, FolderIcon, LayersIcon as ArchitectureIcon, StarIcon } from '@/components/ui/icons';
 import { knowledgeApi, type GraphData, type GraphNode, type WikiDetail, type WikiPage } from '@/lib/api/knowledge-api';
 import { useResizable } from '@/lib/useResizable';
-import { tea } from '@/lib/tea-bridge';
+import { feedback } from '@/lib/feedback';
 import { AssetMarkdown } from '@/components/asset/AssetMarkdown';
 import { TYPE_COLORS, TYPE_COLOR_FALLBACK, type WikiScopeTab } from '../constants/wiki-constants';
 import { KnowledgeGraphEmbed } from './wiki-ui';
@@ -160,7 +151,7 @@ export function GraphTabContent({
           </>
         ) : (
           <div className="_wiki-detail-side-empty">
-            <ArchitectureIcon size="large" />
+            <ArchitectureIcon size={40} strokeWidth={1.5} />
             <Text theme="label">{t('wiki.detail.graph.clickToView')}</Text>
           </div>
         )}
@@ -313,7 +304,7 @@ export function PagesTabContent({
           </div>
         ) : (
           <div className="_wiki-detail-side-empty">
-            <BooksIcon size="large" />
+            <LibraryIcon size={40} strokeWidth={1.5} />
             <Text theme="label">{t('wiki.detail.pages.selectPage')}</Text>
           </div>
         )}
@@ -350,7 +341,7 @@ export function RawFilesSection({
     knowledgeApi.wiki
       .rawList(wikiId)
       .then((r: any) => setFiles(r?.files || []))
-      .catch((e: any) => tea.notify.error(e?.message || t('wiki.notify.loadRawFailed')))
+      .catch((e: any) => feedback.notify.error(e?.message || t('wiki.notify.loadRawFailed')))
       .finally(() => setLoading(false));
   }, [wikiId]);
 

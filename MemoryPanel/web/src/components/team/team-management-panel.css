@@ -1,5 +1,5 @@
 /**
- * TeamManagementPanel style patch -- layout and spacing; colors all use Tea Design Tokens.
+ * TeamManagementPanel style patch -- layout and spacing; colors all use WeaverAI design system Tokens.
  */
 
 ._memory-team-mgmt {
@@ -9,9 +9,9 @@
 }
 
 ._memory-panel-card {
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   padding: 12px;
 }
 
@@ -35,8 +35,8 @@
   width: 36px;
   height: 36px;
   border-radius: 6px;
-  background: var(--tea-color-bg-brand-default);
-  color: var(--tea-color-text-on-bg-brand-default);
+  background: var(--wf-color-bg-brand-default);
+  color: var(--wf-color-text-on-bg-brand-default);
   display: grid;
   place-items: center;
   font-size: 14px;
@@ -57,7 +57,7 @@
 ._memory-team-header-name {
   font-size: 14px;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -65,13 +65,13 @@
 
 ._memory-team-header-count {
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-team-header-desc {
   margin-top: 2px;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   max-width: 480px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -80,7 +80,7 @@
 
 ._memory-team-header-empty-hint {
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-team-header-ops {
@@ -114,13 +114,13 @@
 ._memory-section-title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 ._memory-section-subtitle {
   margin-top: 2px;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-mono-inline {
@@ -147,19 +147,19 @@
 
 ._memory-agent-grid-empty {
   grid-column: 1 / -1;
-  border: 1px dashed var(--tea-color-border-primary-default);
+  border: 1px dashed var(--wf-color-border-primary-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
   padding: 24px;
   text-align: center;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-agent-card {
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -173,8 +173,8 @@
   cursor: pointer;
 }
 ._memory-agent-card--clickable:hover {
-  box-shadow: var(--tea-shadow-sm);
-  border-color: var(--tea-color-border-brand-default);
+  box-shadow: var(--wf-shadow-sm);
+  border-color: var(--wf-color-border-brand-default);
 }
 
 ._memory-agent-card-top {
@@ -201,7 +201,7 @@
 ._memory-agent-card-name {
   font-size: 13px;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -211,7 +211,7 @@
   margin-top: 2px;
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-agent-card-delete {
@@ -220,21 +220,21 @@
   align-items: center;
   border: none;
   background: transparent;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   cursor: pointer;
   padding: 2px;
 }
 ._memory-agent-card-delete:hover:not(:disabled) {
-  color: var(--tea-color-text-error-default);
+  color: var(--wf-color-text-error-default);
 }
 ._memory-agent-card-delete:disabled {
-  color: var(--tea-color-text-disabled);
+  color: var(--wf-color-text-disabled);
   cursor: not-allowed;
 }
 
 ._memory-agent-card-desc {
   font-size: 12px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   line-height: 18px;
 }
 
@@ -243,7 +243,7 @@
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   margin-top: -4px;
 }
 
@@ -254,14 +254,14 @@
   border-radius: 2px;
   padding: 2px 8px;
   font-family: var(--font-mono);
-  background: var(--tea-color-bg-secondary-default);
-  color: var(--tea-color-text-secondary);
+  background: var(--wf-color-bg-secondary-default);
+  color: var(--wf-color-text-secondary);
 }
 
 ._memory-agent-card-owner-value--me {
-  background: var(--tea-color-bg-warning-lighten-default);
-  color: var(--tea-color-text-warning-default);
-  border: 1px solid var(--tea-color-border-warning-default);
+  background: var(--wf-color-bg-warning-lighten-default);
+  color: var(--wf-color-text-warning-default);
+  border: 1px solid var(--wf-color-border-warning-default);
 }
 
 ._memory-agent-card-mounted-grid {
@@ -275,16 +275,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
   padding: 4px 8px;
 }
 
 ._memory-mounted-chip-label {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -293,38 +293,38 @@
 ._memory-mounted-chip-count {
   font-family: var(--font-mono);
   font-weight: 600;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
 }
 
 /* ===== Empty team state ===== */
 ._memory-empty-team {
-  border: 1px dashed var(--tea-color-border-primary-default);
+  border: 1px dashed var(--wf-color-border-primary-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   padding: 40px 24px;
   text-align: center;
 }
 
 ._memory-empty-team-icon {
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-empty-team-title {
   margin-top: 8px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
 }
 
 ._memory-empty-team-desc {
   margin: 4px auto 0;
   max-width: 380px;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   line-height: 18px;
 }
 
-._memory-empty-team-cta.tea-btn {
+._memory-empty-team-cta.wf-btn {
   margin-top: 16px;
 }
 
@@ -354,9 +354,9 @@
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   padding: 8px 12px;
   transition:
     background-color 0.15s,
@@ -367,8 +367,8 @@
   cursor: pointer;
 }
 ._memory-member-card--clickable:hover {
-  border-color: var(--tea-color-border-brand-default);
-  background: var(--tea-color-bg-brand-lighten-default);
+  border-color: var(--wf-color-border-brand-default);
+  background: var(--wf-color-bg-brand-lighten-default);
 }
 
 ._memory-member-avatar {
@@ -380,13 +380,13 @@
   place-items: center;
   font-size: 12px;
   font-weight: 700;
-  background: var(--tea-color-bg-secondary-default);
-  color: var(--tea-color-text-secondary);
+  background: var(--wf-color-bg-secondary-default);
+  color: var(--wf-color-text-secondary);
 }
 
 ._memory-member-avatar--owner {
-  background: var(--tea-color-bg-warning-lighten-default);
-  color: var(--tea-color-text-warning-default);
+  background: var(--wf-color-bg-warning-lighten-default);
+  color: var(--wf-color-text-warning-default);
 }
 
 ._memory-member-info {
@@ -397,7 +397,7 @@
 ._memory-member-id {
   font-size: 12px;
   font-weight: 500;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -405,18 +405,18 @@
 
 ._memory-member-me-tag {
   font-size: 12px;
-  color: var(--tea-color-text-brand-default);
+  color: var(--wf-color-text-brand-default);
 }
 
 ._memory-member-role {
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-member-desc {
   margin-top: 2px;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   overflow: hidden;
   display: -webkit-box;
   line-clamp: 2;
@@ -441,16 +441,16 @@
   background: transparent;
   cursor: pointer;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   padding: 2px 4px;
   border-radius: 2px;
 }
 ._memory-member-edit-btn:hover {
-  color: var(--tea-color-text-brand-default);
-  background: var(--tea-color-bg-brand-lighten-default);
+  color: var(--wf-color-text-brand-default);
+  background: var(--wf-color-bg-brand-lighten-default);
 }
 ._memory-member-remove-btn:hover:not(:disabled) {
-  color: var(--tea-color-text-error-default);
+  color: var(--wf-color-text-error-default);
 }
 ._memory-member-remove-btn:disabled {
   opacity: 0.4;
@@ -467,9 +467,9 @@
 ._memory-userid-code {
   flex: 1;
   min-width: 0;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
   padding: 4px 8px;
   font-size: 12px;
   font-family: var(--font-mono);
@@ -479,46 +479,46 @@
 ._memory-userid-hint {
   margin-top: 4px;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-desc-count {
   margin-top: 4px;
   text-align: end;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-desc-readonly {
   min-height: 60px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
   padding: 8px 12px;
   font-size: 13px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 ._memory-desc-empty {
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 /* ===== Common form elements ===== */
 ._memory-field-hint {
   margin-top: 4px;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-form-error {
-  border: 1px solid var(--tea-color-border-error-default);
+  border: 1px solid var(--wf-color-border-error-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-error-lighten-default);
+  background: var(--wf-color-bg-error-lighten-default);
   padding: 8px 12px;
   font-size: 12px;
-  color: var(--tea-color-text-error-default);
+  color: var(--wf-color-text-error-default);
 }
 
 ._memory-modal-footer-split {
@@ -531,7 +531,7 @@
 
 ._memory-modal-footer-hint {
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-modal-footer-actions {
@@ -552,9 +552,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
   padding: 8px 12px;
 }
 
@@ -563,8 +563,8 @@
   width: 28px;
   height: 28px;
   border-radius: 4px;
-  background: var(--tea-color-bg-brand-default);
-  color: var(--tea-color-text-on-bg-brand-default);
+  background: var(--wf-color-bg-brand-default);
+  color: var(--wf-color-text-on-bg-brand-default);
   display: grid;
   place-items: center;
   font-size: 12px;
@@ -580,7 +580,7 @@
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-target-team-name-row {
@@ -593,7 +593,7 @@
 ._memory-target-team-name {
   font-size: 13px;
   font-weight: 500;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -602,7 +602,7 @@
 ._memory-target-team-hint {
   flex-shrink: 0;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   text-align: end;
   line-height: 14px;
 }
@@ -612,9 +612,9 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  border: 1px solid var(--tea-color-border-brand-default);
+  border: 1px solid var(--wf-color-border-brand-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-brand-lighten-default);
+  background: var(--wf-color-bg-brand-lighten-default);
   padding: 8px 12px;
 }
 
@@ -627,12 +627,12 @@
 ._memory-template-box-title {
   font-size: 12px;
   font-weight: 600;
-  color: var(--tea-color-text-brand-default);
+  color: var(--wf-color-text-brand-default);
 }
 
 ._memory-template-box-hint {
   font-size: 12px;
-  color: var(--tea-color-text-brand-default);
+  color: var(--wf-color-text-brand-default);
   opacity: 0.85;
 }
 
@@ -646,17 +646,17 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 9999px;
   padding: 4px 4px 4px 8px;
   font-size: 12px;
-  background: var(--tea-color-bg-primary-default);
-  color: var(--tea-color-text-tertiary);
+  background: var(--wf-color-bg-primary-default);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-template-chip--active {
-  border-color: var(--tea-color-border-brand-default);
-  color: var(--tea-color-text-brand-default);
+  border-color: var(--wf-color-border-brand-default);
+  color: var(--wf-color-text-brand-default);
 }
 
 ._memory-template-chip-btn {
@@ -675,22 +675,22 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 ._memory-template-chip-close:hover {
-  color: var(--tea-color-text-error-default);
+  color: var(--wf-color-text-error-default);
 }
 
 ._memory-template-save-btn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: 1px dashed var(--tea-color-border-brand-default);
+  border: 1px dashed var(--wf-color-border-brand-default);
   border-radius: 9999px;
   padding: 4px 8px;
   font-size: 12px;
   background: transparent;
-  color: var(--tea-color-text-brand-default);
+  color: var(--wf-color-text-brand-default);
   cursor: pointer;
 }
 
@@ -698,15 +698,15 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  border: 1px solid var(--tea-color-border-brand-default);
+  border: 1px solid var(--wf-color-border-brand-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   padding: 8px 12px;
 }
 
 ._memory-template-save-hint {
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-template-save-actions {
@@ -723,24 +723,24 @@
 ._memory-light-field-label {
   font-size: 12px;
   font-weight: 500;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   margin-bottom: 4px;
 }
 
 ._memory-light-field-hint {
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   margin-bottom: 4px;
   line-height: 14px;
 }
 
-._memory-mono-textarea.tea-input {
+._memory-mono-textarea.wf-input {
   font-family: var(--font-mono);
 }
 
 /* ===== Atomic capability toolbar + Collapse ===== */
 ._memory-asset-section {
-  border-top: 1px solid var(--tea-color-border-primary-default);
+  border-top: 1px solid var(--wf-color-border-primary-default);
   padding-top: 12px;
 }
 
@@ -753,17 +753,17 @@
 
 ._memory-asset-toolbar-label {
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-asset-toolbar-hint {
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._memory-asset-loading {
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   padding: 12px 0;
   text-align: center;
 }
@@ -771,22 +771,22 @@
 /* Skill group read-only description */
 ._memory-asset-readonly-hint {
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   padding: 4px 0 8px;
 }
 
 ._memory-asset-toolbar-btn {
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 2px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   padding: 2px 8px;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   cursor: pointer;
 }
 ._memory-asset-toolbar-btn:hover {
-  color: var(--tea-color-text-brand-default);
-  border-color: var(--tea-color-border-brand-default);
+  color: var(--wf-color-text-brand-default);
+  border-color: var(--wf-color-border-brand-default);
 }
 
 ._memory-collapse-group-stack {
@@ -796,7 +796,7 @@
 }
 
 ._memory-collapse-group {
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 4px;
   overflow: hidden;
   margin-bottom: 4px;
@@ -817,12 +817,12 @@
   text-align: start;
 }
 ._memory-collapse-group-header:hover {
-  background: var(--tea-color-bg-secondary-hover);
+  background: var(--wf-color-bg-secondary-hover);
 }
 
 ._memory-collapse-group-chevron {
   flex-shrink: 0;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   transition: transform 0.15s;
 }
 ._memory-collapse-group-chevron--open {
@@ -831,20 +831,20 @@
 
 ._memory-collapse-group-icon {
   display: inline-flex;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
 }
 
 ._memory-collapse-group-title {
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 500;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 ._memory-collapse-group-count {
   margin-inline-start: 4px;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 /* ============================================================
@@ -861,9 +861,9 @@
   border-radius: 3px;
   background: linear-gradient(
     90deg,
-    var(--tea-color-bg-secondary-default) 0%,
-    var(--tea-color-bg-secondary-hover) 50%,
-    var(--tea-color-bg-secondary-default) 100%
+    var(--wf-color-bg-secondary-default) 0%,
+    var(--wf-color-bg-secondary-hover) 50%,
+    var(--wf-color-bg-secondary-default) 100%
   );
   background-size: 200% 100%;
   animation: _memory-agents-skeleton-shimmer 1.4s ease-in-out infinite;
@@ -877,9 +877,9 @@
   border-radius: 3px;
   background: linear-gradient(
     90deg,
-    var(--tea-color-bg-secondary-default) 0%,
-    var(--tea-color-bg-secondary-hover) 50%,
-    var(--tea-color-bg-secondary-default) 100%
+    var(--wf-color-bg-secondary-default) 0%,
+    var(--wf-color-bg-secondary-hover) 50%,
+    var(--wf-color-bg-secondary-default) 100%
   );
   background-size: 200% 100%;
   animation: _memory-agents-skeleton-shimmer 1.4s ease-in-out infinite;
@@ -897,8 +897,8 @@
 }
 
 ._memory-collapse-group-body {
-  border-top: 1px solid var(--tea-color-border-primary-default);
-  background: var(--tea-color-bg-primary-default);
+  border-top: 1px solid var(--wf-color-border-primary-default);
+  background: var(--wf-color-bg-primary-default);
   padding: 8px 12px;
 }
 
@@ -913,7 +913,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   margin-bottom: 4px;
 }
 
@@ -939,7 +939,7 @@
 
 ._memory-asset-check-item-title {
   font-size: 12px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -950,14 +950,14 @@
   margin-inline-start: auto;
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
-/* ===== Agents management page: aligned with the Memory project's Tea Card / ActionPanel layout ===== */
+/* ===== Agents management page: aligned with the Memory project's UI kit Card / ActionPanel layout ===== */
 ._memory-agents-panel {
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   padding: 16px;
 }
 
@@ -970,7 +970,7 @@
 
 ._memory-agents-section-title {
   margin: 0;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   font-size: 16px;
   font-weight: 600;
   line-height: 22px;
@@ -978,7 +978,7 @@
 
 ._memory-agents-section-subtitle {
   margin-top: 2px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   font-size: 12px;
   line-height: 18px;
 }
@@ -992,18 +992,18 @@
 }
 
 /* SearchBox in the Agent list toolbar: the English placeholder ("Search agent name / description / ID")
-      is long, and tea's default width gets truncated in narrow containers. Give a min width to ensure full display.
-      Actual tea-component class names: outer .tea-form--search, inner .tea-search. */
-._memory-agents-toolbar .tea-form--search,
-._memory-agents-toolbar .tea-search {
+      is long, and UI kit's default width gets truncated in narrow containers. Give a min width to ensure full display.
+      Actual UI kit class names: outer .wf-form--search, inner .wf-search. */
+._memory-agents-toolbar .wf-form--search,
+._memory-agents-toolbar .wf-search {
   min-width: 280px;
   max-width: 100%;
 }
 
 ._memory-agents-empty {
-  border: 1px dashed var(--tea-color-border-primary-default);
+  border: 1px dashed var(--wf-color-border-primary-default);
   border-radius: 4px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   font-size: 12px;
   padding: 32px 16px;
   text-align: center;
@@ -1021,17 +1021,17 @@
   gap: 8px;
   min-width: 0;
   padding: 12px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   transition:
     background-color 0.15s ease-in-out,
     border-color 0.15s ease-in-out;
 }
 
 ._memory-agents-card--editable:hover {
-  border-color: var(--tea-color-border-brand-default);
-  background: var(--tea-color-bg-primary-hover);
+  border-color: var(--wf-color-border-brand-default);
+  background: var(--wf-color-bg-primary-hover);
 }
 
 ._memory-agents-card-head {
@@ -1047,7 +1047,7 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   text-align: start;
 }
 
@@ -1062,7 +1062,7 @@
 ._memory-agents-name {
   overflow: hidden;
   flex: 1 1 auto;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   font-size: 14px;
   font-weight: 600;
   text-overflow: ellipsis;
@@ -1071,7 +1071,7 @@
 
 ._memory-agents-chevron {
   flex: 0 0 auto;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   opacity: 0.6;
   transition:
     color 0.15s ease-in-out,
@@ -1080,13 +1080,13 @@
 }
 
 ._memory-agents-name-trigger--editable:hover ._memory-agents-chevron {
-  color: var(--tea-color-text-brand-default);
+  color: var(--wf-color-text-brand-default);
   opacity: 1;
   transform: translateX(2px);
 }
 
 ._memory-agents-card-id {
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   font-family: var(--font-mono);
   font-size: 12px;
 }
@@ -1094,7 +1094,7 @@
 ._memory-agents-card-desc,
 ._memory-agents-list-description,
 ._memory-agents-list-assets {
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   font-size: 12px;
 }
 
@@ -1108,12 +1108,12 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   font-size: 12px;
 }
 
 ._memory-agents-readonly {
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 /* Owner tag: compact pill, same style as the Memory detail badge (light background + same-color text) */
@@ -1124,14 +1124,14 @@
   border-radius: 4px;
   font-size: 11px;
   line-height: 16px;
-  color: var(--tea-color-text-secondary);
-  background-color: var(--tea-color-bg-secondary-default);
+  color: var(--wf-color-text-secondary);
+  background-color: var(--wf-color-bg-secondary-default);
   white-space: nowrap;
 }
 
 ._memory-agents-owner-tag--me {
-  color: var(--tea-color-text-brand-default);
-  background-color: var(--tea-color-bg-brand-lighten-default);
+  color: var(--wf-color-text-brand-default);
+  background-color: var(--wf-color-bg-brand-lighten-default);
   font-weight: 500;
 }
 
@@ -1148,7 +1148,7 @@
   min-height: 28px;
   margin-top: auto;
   padding-top: 8px;
-  border-top: 1px solid var(--tea-color-border-secondary-default);
+  border-top: 1px solid var(--wf-color-border-secondary-default);
 }
 
 @media (max-width: 767px) {
@@ -1161,8 +1161,8 @@
     width: 100%;
   }
 
-  ._memory-agents-toolbar .tea-form--search,
-  ._memory-agents-toolbar .tea-search {
+  ._memory-agents-toolbar .wf-form--search,
+  ._memory-agents-toolbar .wf-search {
     flex: 1 1 180px;
   }
 }
@@ -1182,9 +1182,9 @@
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   /* Load orchestration: skeleton cards fade in and move up, with JS-injected animationDelay staggering them one by one */
   opacity: 0;
   animation: _memory-agents-skeleton-card-in 0.35s ease-out forwards;
@@ -1207,9 +1207,9 @@
   border-radius: 4px;
   background: linear-gradient(
     90deg,
-    var(--tea-color-bg-secondary-default) 0%,
-    var(--tea-color-bg-tertiary-default) 50%,
-    var(--tea-color-bg-secondary-default) 100%
+    var(--wf-color-bg-secondary-default) 0%,
+    var(--wf-color-bg-tertiary-default) 50%,
+    var(--wf-color-bg-secondary-default) 100%
   );
   background-size: 200% 100%;
   animation: _memory-agents-skeleton-shimmer 1.4s ease-in-out infinite;
@@ -1283,9 +1283,9 @@
   justify-content: space-between;
   gap: 8px;
   padding: 4px 8px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
 }
 
 ._memory-agents-skeleton-line--chip-label {
@@ -1306,7 +1306,7 @@
   min-height: 28px;
   margin-top: auto;
   padding-top: 8px;
-  border-top: 1px solid var(--tea-color-border-secondary-default);
+  border-top: 1px solid var(--wf-color-border-secondary-default);
 }
 
 ._memory-agents-skeleton-line--action {
@@ -1329,9 +1329,9 @@
   border-radius: 3px;
   background: linear-gradient(
     90deg,
-    var(--tea-color-bg-secondary-default) 0%,
-    var(--tea-color-bg-secondary-hover) 50%,
-    var(--tea-color-bg-secondary-default) 100%
+    var(--wf-color-bg-secondary-default) 0%,
+    var(--wf-color-bg-secondary-hover) 50%,
+    var(--wf-color-bg-secondary-default) 100%
   );
   background-size: 200% 100%;
   animation: _memory-agents-skeleton-shimmer 1.4s ease-in-out infinite;
@@ -1339,7 +1339,7 @@
 
 /* Placeholder for the list view's assets column: while counts load, the whole row shows "—" and keeps a stable height, avoiding row-height flicker */
 ._memory-agents-list-assets--loading {
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 /* ===== DefaultAgentTemplateSection (default Agent template, admin only) ===== */
@@ -1362,14 +1362,14 @@
 }
 
 ._memory-default-agent-title {
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   font-size: 14px;
   font-weight: 600;
   line-height: 20px;
 }
 
 ._memory-default-agent-desc {
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   font-size: 12px;
   line-height: 18px;
 }
@@ -1386,19 +1386,19 @@
 }
 
 ._memory-default-agent-placeholder {
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   font-size: 12px;
 }
 
 ._memory-default-agent-name {
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   font-size: 13px;
   font-weight: 600;
   line-height: 18px;
 }
 
 ._memory-default-agent-detail {
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   font-size: 12px;
   line-height: 18px;
   white-space: pre-wrap;

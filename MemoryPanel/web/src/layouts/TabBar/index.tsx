@@ -1,7 +1,7 @@
 /**
  * TabBar — multi-tab bar.
  *
- * Uses Tea Design Tokens for unified styling.
+ * Uses WeaverAI design system Tokens for unified styling.
  */
 import { ITEM_ICON, usePageMeta, type PageId } from '@/constants/menu';
 import './style.css';

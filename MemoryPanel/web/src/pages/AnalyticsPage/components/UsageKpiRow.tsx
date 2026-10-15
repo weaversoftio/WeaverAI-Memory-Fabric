@@ -8,7 +8,7 @@
  * fmtPctValue shows a placeholder -- do not change it to `?? 0`.
  */
 import { useTranslation } from 'react-i18next';
-import { MetricsBoard } from 'tea-component';
+import { MetricsBoard } from '@/components/ui';
 import type { UsageSummary } from '@/lib/api/analytics';
 import { fmtCompact, fmtCredit, fmtInt, fmtPctValue } from '../utils/formatters';
 

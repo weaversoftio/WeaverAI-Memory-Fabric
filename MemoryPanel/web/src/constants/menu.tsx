@@ -5,16 +5,7 @@
  * Shared by modules such as Sidebar / TabBar / routing.
  */
 import { useTranslation } from 'react-i18next';
-import {
-  DashboardIcon,
-  UserIcon,
-  UsergroupIcon,
-  LockOnIcon,
-  BooksIcon,
-  CodeIcon,
-  ToolsIcon,
-  ChatIcon,
-} from 'tea-icons-react';
+import { AnalyticsIcon, DashboardIcon, UserIcon, TeamIcon, LockIcon, LibraryIcon, CodeIcon, ToolsIcon, ChatIcon } from '@/components/ui/icons';
 
 export type PageId =
   | 'workbench_board'
@@ -59,21 +50,14 @@ export function usePageMeta(): Record<PageId, PageMeta> {
 /** Group ordering */
 export const GROUP_ORDER_KEYS = ['workbench', 'observability', 'organization', 'assets'] as const;
 
-/** Icon of each page in the sidebar menu (official Tea icons, size 16) */
+/** Icon of each page in the sidebar menu (lucide icons, size 16) */
 export const ITEM_ICON: Record<PageId, JSX.Element> = {
   workbench_board: <DashboardIcon size={16} />,
-  analytics: (
-    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="4" y1="20" x2="20" y2="20" />
-      <rect x="6" y="10" width="3" height="6" rx="0.8" />
-      <rect x="10.5" y="6" width="3" height="10" rx="0.8" />
-      <rect x="15" y="13" width="3" height="3" rx="0.8" />
-    </svg>
-  ),
+  analytics: <AnalyticsIcon size={16} />,
   team_members: <UserIcon size={16} />,
-  team_agents: <UsergroupIcon size={16} />,
-  api_keys: <LockOnIcon size={16} />,
-  wiki: <BooksIcon size={16} />,
+  team_agents: <TeamIcon size={16} />,
+  api_keys: <LockIcon size={16} />,
+  wiki: <LibraryIcon size={16} />,
   code: <CodeIcon size={16} />,
   skills: <ToolsIcon size={16} />,
   chat_memory: <ChatIcon size={16} />,

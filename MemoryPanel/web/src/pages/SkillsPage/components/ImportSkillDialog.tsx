@@ -5,8 +5,8 @@
  *      The user picks a local directory; the frontend splits its Files into a "main file" (SKILL.md,
  *      which must be in the root or under <skill-name>/) and "resource files" (everything else, keeping
  *      relative paths). It then persists everything in one v3 create call (including resources, new = v1).
- *      The browser directory picker has no Tea component equivalent, so a native <input type="file"
- *      webkitdirectory> is kept, hidden and triggered by a Tea Button.
+ *      The browser directory picker has no UI kit component equivalent, so a native <input type="file"
+ *      webkitdirectory> is kept, hidden and triggered by a UI kit Button.
  *
  *   2. Session import (session)
  *      The user pastes a conversation with this agent (the JSON input of the skill/extract endpoint,
@@ -32,8 +32,8 @@ import {
   type SkillResourcePayload,
   type ExtractParams,
 } from '@/lib/api/skill-api';
-import { Alert, Button, Form, Input, Modal, Segment, Select } from 'tea-component';
-import { FolderOpenIcon } from 'tea-icons-react';
+import { Alert, Button, Form, Input, Modal, Segment, Select } from '@/components/ui';
+import { FolderOpenIcon } from '@/components/ui/icons';
 import i18n from '@/i18n';
 import '../styles/import-skill-dialog.css';
 
@@ -350,8 +350,8 @@ export default function ImportSkillDialog(props: {
         <div className="_memory-isd-section">
           <div className="_memory-isd-label">{t('importSkill.directory.label')}</div>
           {/*
-            The directory picker has no Tea component equivalent, so the native input is kept here as the sole exemption, hidden and
-                triggered by the Tea Button below. webkitdirectory/directory are non-standard but widely supported browser
+            The directory picker has no UI kit component equivalent, so the native input is kept here as the sole exemption, hidden and
+                triggered by the UI kit Button below. webkitdirectory/directory are non-standard but widely supported browser
                 attributes not included in React's type definitions, so they are passed through via spread + any rather than per-attribute @ts-expect-error.
           */}
           <input

@@ -1,8 +1,8 @@
 /* code-sources-panel.css - styles specific to the Code_Graph detail page (_codedetail-) + differentiated overrides.
  *
- * Visually aligned with the Memory project's Code.css: colors all use Tea Design Tokens (--tea-color-*),
+ * Visually aligned with the Memory project's Code.css: colors all use WeaverAI design system Tokens (--wf-color-*),
  * spacing/radius/font size are taken from the design whitelist, and className uses the _codedetail- prefix throughout, to avoid conflicts with
- * Tea built-in class names.
+ * UI kit built-in class names.
  *
  * Shared structures of the list page such as the page shell / stats bar / toolbar / skeleton / card grid have been consolidated into
  * ResourcePage/components/asset-card.css (shared with the Wiki page); only
@@ -19,7 +19,7 @@
 
 ._codelist-delete-action:not(.is-disabled),
 ._codelist-delete-action:not(.is-disabled):hover {
-  color: var(--tea-color-text-error-default);
+  color: var(--wf-color-text-error-default);
 }
 
 /* ============================================================
@@ -38,13 +38,13 @@
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 ._codedetail-breadcrumb-sep {
-  color: var(--tea-color-text-disabled);
+  color: var(--wf-color-text-disabled);
 }
 ._codedetail-breadcrumb-current {
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   font-weight: 500;
 }
 
@@ -71,7 +71,7 @@
   font-family: var(--font-mono);
   font-size: 20px;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -121,8 +121,8 @@
 ._codedetail-result-box {
   max-height: 400px;
   overflow: auto;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
   padding: 16px;
 }

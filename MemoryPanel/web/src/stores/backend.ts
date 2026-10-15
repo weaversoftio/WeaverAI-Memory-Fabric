@@ -20,7 +20,7 @@ import {
   tasksApi,
   type TeamMember as BackendMember,
 } from '@/lib/teamApi';
-import { tea } from '@/lib/tea-bridge';
+import { feedback } from '@/lib/feedback';
 import i18n from '@/i18n';
 import { seedDisplayNameCache } from '@/services/user-profile-store';
 
@@ -152,7 +152,7 @@ export const useBackendStore = create<BackendState>((set, get) => ({
         if (get().epoch !== epoch) return;
         console.error('[backend store] refreshTeams failed:', err);
         set({ teamsLoading: false });
-        tea.notify.error(i18n.t('backend.loadTeamsFailed'));
+        feedback.notify.error(i18n.t('backend.loadTeamsFailed'));
       } finally {
         // Only clear "our own" in-flight marker: an expired request must not clear a newer request's reference
         set((s) => (s.inflightTeams === promise ? { inflightTeams: null } : {}));
@@ -197,7 +197,7 @@ export const useBackendStore = create<BackendState>((set, get) => ({
             Object.entries(s.inflightAgents).filter(([k]) => k !== teamId)
           ),
         }));
-        tea.notify.error(i18n.t('backend.loadAgentsFailed'));
+        feedback.notify.error(i18n.t('backend.loadAgentsFailed'));
         return [];
       }
     })();
@@ -246,7 +246,7 @@ export const useBackendStore = create<BackendState>((set, get) => ({
             Object.entries(s.inflightTasks).filter(([k]) => k !== cacheKey)
           ),
         }));
-        tea.notify.error(i18n.t('backend.loadTasksFailed'));
+        feedback.notify.error(i18n.t('backend.loadTasksFailed'));
         return [];
       }
     })();

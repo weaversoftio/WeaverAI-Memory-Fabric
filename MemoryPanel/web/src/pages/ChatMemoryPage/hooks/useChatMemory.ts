@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAgents, useTeams } from '@/services';
 import { readAuth } from '@/components/LoginGate';
-import { tea, confirmThenRun } from '@/lib/tea-bridge';
+import { feedback, confirmThenRun } from '@/lib/feedback';
 import { chatMemoryApi, type ChatMemoryBlock, type ChatMemorySearchHit } from '@/lib/teamApi';
 import { type MemoryBlock, type MemoryLayer, type ScopeTab } from '../constants/types';
 import { useScopeTabLabels } from '../constants/constants';
@@ -135,7 +135,7 @@ export function useChatMemory(props: { activeTeamId?: string | null } = {}) {
       setBlocks(mapped);
     } catch (e: unknown) {
       if (seq !== fetchSeqRef.current) return;
-      tea.notify.error((e instanceof Error ? e.message : String(e)) || t('memory.notify.loadFailed'));
+      feedback.notify.error((e instanceof Error ? e.message : String(e)) || t('memory.notify.loadFailed'));
       setBlocks([]);
     } finally {
       if (seq === fetchSeqRef.current) setBlocksLoading(false);
@@ -295,7 +295,7 @@ export function useChatMemory(props: { activeTeamId?: string | null } = {}) {
           setRangeTooLarge(true);
           return;
         }
-        tea.notify.error(e instanceof Error ? e.message : t('memory.notify.layerFailed'));
+        feedback.notify.error(e instanceof Error ? e.message : t('memory.notify.layerFailed'));
       })
       .finally(() => {
         if (!cancelled) setLayerLoading(false);
@@ -375,7 +375,7 @@ export function useChatMemory(props: { activeTeamId?: string | null } = {}) {
         return;
       }
     } catch (e: unknown) {
-      tea.notify.error((e instanceof Error ? e.message : String(e)) || t('memory.notify.layerFailed'));
+      feedback.notify.error((e instanceof Error ? e.message : String(e)) || t('memory.notify.layerFailed'));
     } finally {
       setL0MoreLoading(false);
     }
@@ -421,7 +421,7 @@ export function useChatMemory(props: { activeTeamId?: string | null } = {}) {
           }),
         );
       } catch (e: unknown) {
-        tea.notify.error((e instanceof Error ? e.message : String(e)) || t('memory.notify.l2Failed'));
+        feedback.notify.error((e instanceof Error ? e.message : String(e)) || t('memory.notify.l2Failed'));
       } finally {
         setLayerItemLoadingId(null);
       }
@@ -453,7 +453,7 @@ export function useChatMemory(props: { activeTeamId?: string | null } = {}) {
           };
         }),
       );
-      tea.notify.success(t('memory.notify.editSuccess'));
+      feedback.notify.success(t('memory.notify.editSuccess'));
     },
     [selected?.id, t],
   );
@@ -532,9 +532,9 @@ export function useChatMemory(props: { activeTeamId?: string | null } = {}) {
         await chatMemoryApi.unbind(teamId, id, agentId);
         setBlocks((prev) => prev.filter((b) => b.id !== id));
         if (selectedId === id) setSelectedId(null);
-        tea.notify.success(t('memory.notify.unbound'));
+        feedback.notify.success(t('memory.notify.unbound'));
       },
-      (e) => tea.notify.error((e as Error)?.message || t('memory.notify.unbindFailed')),
+      (e) => feedback.notify.error((e as Error)?.message || t('memory.notify.unbindFailed')),
     );
   }
 
@@ -547,15 +547,15 @@ export function useChatMemory(props: { activeTeamId?: string | null } = {}) {
   }) {
     try {
       if (!activeTeamId || !agent_id) {
-        tea.notify.warning(t('memory.notify.selectAgent'));
+        feedback.notify.warning(t('memory.notify.selectAgent'));
         return;
       }
       await chatMemoryApi.import({ teamId: activeTeamId, agentId: agent_id, messages });
-      tea.notify.success(t('memory.notify.importSuccess', { count: messages.length }));
+      feedback.notify.success(t('memory.notify.importSuccess', { count: messages.length }));
       setShowImport(false);
       fetchBlocks();
     } catch (e: unknown) {
-      tea.notify.error((e instanceof Error ? e.message : String(e)) || t('memory.notify.importFailed'));
+      feedback.notify.error((e instanceof Error ? e.message : String(e)) || t('memory.notify.importFailed'));
     }
   }
 
@@ -566,7 +566,7 @@ export function useChatMemory(props: { activeTeamId?: string | null } = {}) {
     // Confirm first when switching to private: other agents that already borrowed this memory can no longer use it.
     // The note only raises awareness and doesn't list affected agents (the kernel doesn't prune actively, so no exact number is needed).
     if (newScope === 'private') {
-      const ok = await tea.confirm({
+      const ok = await feedback.confirm({
         message: t('memory.confirm.private'),
         description: t('memory.confirm.private.desc'),
         okText: t('memory.confirm.private.ok'),
@@ -575,12 +575,12 @@ export function useChatMemory(props: { activeTeamId?: string | null } = {}) {
     }
     try {
       await chatMemoryApi.patchScope(block.id, newScope);
-      tea.notify.success(
+      feedback.notify.success(
         newScope === 'team' ? t('memory.notify.scopeTeam') : t('memory.notify.scopePrivate'),
       );
       fetchBlocks();
     } catch (e: unknown) {
-      tea.notify.error((e instanceof Error ? e.message : String(e)) || t('memory.notify.scopeFailed'));
+      feedback.notify.error((e instanceof Error ? e.message : String(e)) || t('memory.notify.scopeFailed'));
     }
   }
 

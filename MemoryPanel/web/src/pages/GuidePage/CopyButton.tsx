@@ -10,7 +10,7 @@
  */
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { tea } from '@/lib/tea-bridge';
+import { feedback } from '@/lib/feedback';
 import { copyToClipboard } from '@/pages/ChatMemoryPage/utils/memory-utils';
 
 export function CopyButton({ value, label }: { value: string; label?: string }) {
@@ -22,7 +22,7 @@ export function CopyButton({ value, label }: { value: string; label?: string }) 
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } else {
-      tea.notify.error(t('guide.copyFailed'));
+      feedback.notify.error(t('guide.copyFailed'));
     }
   };
   return (

@@ -3,11 +3,11 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Input, Segment, Text } from 'tea-component';
-import { DeleteIcon, EditIcon, UserIcon, UsergroupIcon } from 'tea-icons-react';
+import { Button, Input, Segment, Text } from '@/components/ui';
+import { DeleteIcon, EditIcon, UserIcon, TeamIcon } from '@/components/ui/icons';
 import { canEditTask, type Task, type Team } from '@/services';
 import { useUserDisplayName } from '@/services/user-profile-store';
-import { tea } from '@/lib/tea-bridge';
+import { feedback } from '@/lib/feedback';
 import { useStatusLabels, type AgentOption, type TaskParticipationView } from '../utils/workbench-utils';
 
 /**
@@ -88,7 +88,7 @@ export default function TaskDetail({
     const patch: Partial<Pick<Task, 'title' | 'description' | 'source_type' | 'source_url' | 'linked_agents'>> = {};
     const title = draftTitle.trim();
     if (title.length === 0) {
-      tea.notify.warning(t('task.titleRequired'));
+      feedback.notify.warning(t('task.titleRequired'));
       return;
     }
     if (title !== task.title) patch.title = title;
@@ -188,7 +188,7 @@ export default function TaskDetail({
                 className="_memory-workbench-chip"
                 title={t('task.sessionAgents.tooltip', { id: a.id })}
               >
-                <UsergroupIcon size={12} />
+                <TeamIcon size={12} />
                 <Text theme="text">{a.name}</Text>
               </span>
             ))

@@ -3,8 +3,8 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import { Alert, Segment, Tag, Text } from 'tea-component';
-import { UsergroupIcon, LockOnIcon } from 'tea-icons-react';
+import { Alert, Segment, Tag, Text } from '@/components/ui';
+import { TeamIcon, LockIcon } from '@/components/ui/icons';
 import {
   type AssetKind,
   type AssetConfigScope,
@@ -69,11 +69,11 @@ export default function AssetScopeManager({
         <div className="_memory-asset-scope-alert-desc">
           {t('assetScope.desc', { label })}
           <span className="_memory-asset-scope-alert-em">
-            <UsergroupIcon size={12} /> {t('assetScope.team')}
+            <TeamIcon size={12} /> {t('assetScope.team')}
           </span>
           ({t('assetScope.team.desc')}) {t('assetScope.or')}
           <span className="_memory-asset-scope-alert-em">
-            <LockOnIcon size={12} /> {t('assetScope.private')}
+            <LockIcon size={12} /> {t('assetScope.private')}
           </span>
           ({t('assetScope.private.desc')}). {t('assetScope.manageHint')}
         </div>

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Card } from 'tea-component';
+import { Card } from '@/components/ui';
 import './asset-page-header.css';
 
 interface AssetPageHeaderProps {

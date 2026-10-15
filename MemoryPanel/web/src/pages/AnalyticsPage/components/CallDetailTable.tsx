@@ -12,7 +12,7 @@
  */
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Card, Input, Justify, Table, Text } from 'tea-component';
+import { Button, Card, Input, Justify, Table, Text } from '@/components/ui';
 import type { ToolCallRow } from '@/lib/api/analytics';
 import { DetailPager } from './DetailPager';
 import { UserName } from './UserName';

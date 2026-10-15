@@ -10,7 +10,7 @@
  */
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Card } from 'tea-component';
+import { Card } from '@/components/ui';
 import { KpiRow } from './KpiRow';
 import { ShareBar } from './ShareBar';
 import { TrendLines } from './TrendLines';
@@ -52,17 +52,17 @@ export function BehaviorPanel({
       {
         key: 'init_sessions' as const,
         label: t('analytics.trend.init'),
-        color: 'var(--tea-color-text-brand-default)',
+        color: 'var(--wf-color-text-brand-default)',
       },
       {
         key: 'called_sessions' as const,
         label: t('analytics.trend.called'),
-        color: 'var(--tea-color-text-success-default)',
+        color: 'var(--wf-color-text-success-default)',
       },
       {
         key: 'bypass_sessions' as const,
         label: t('analytics.trend.bypass'),
-        color: 'var(--tea-color-text-error-default)',
+        color: 'var(--wf-color-text-error-default)',
       },
     ],
     [t],

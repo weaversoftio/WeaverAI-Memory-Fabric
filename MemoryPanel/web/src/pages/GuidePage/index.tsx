@@ -17,7 +17,7 @@ import { useAuthStore } from '@/stores/auth';
 import { resetOnboarding } from '@/layouts/OnboardingGuide';
 import { metaInstancesApi } from '@/lib/teamApi';
 import { getPanelSession } from '@/lib/panelSession';
-import { tea } from '@/lib/tea-bridge';
+import { feedback } from '@/lib/feedback';
 import { CopyButton } from './CopyButton';
 import { MemCommands } from './MemCommands';
 import './style.css';
@@ -319,7 +319,7 @@ export function GuidePage() {
       resetOnboarding(auth.user_id);
       // ConsoleLayout listens for this event and calls setOnboardingVisible(true)
       window.dispatchEvent(new CustomEvent('wamf-replay-onboarding'));
-      tea.notify.success(t('guide.replayStarted'));
+      feedback.notify.success(t('guide.replayStarted'));
     }
   };
 

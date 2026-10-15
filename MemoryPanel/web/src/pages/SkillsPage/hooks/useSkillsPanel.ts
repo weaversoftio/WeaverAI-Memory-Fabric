@@ -15,7 +15,7 @@ import {
 import { getPanelSession } from '@/lib/panelSession';
 import { useTeams } from '@/services';
 import { useSkillDetailCache } from '@/services/use-skill-detail-cache';
-import { tea } from '@/lib/tea-bridge';
+import { feedback } from '@/lib/feedback';
 
 export type Tab = 'team' | 'fixed';
 
@@ -70,7 +70,7 @@ export function useSkillsPanel() {
       .catch((err) => {
         if (cancelled) return;
         // Agent load failure is not fatal (the list falls back to showing agent_id), but still surface a hint.
-        tea.notify.error(err?.message || t('skills.notify.loadAgentsFailed'));
+        feedback.notify.error(err?.message || t('skills.notify.loadAgentsFailed'));
         setAgentNameMap({});
         setTeamAgents([]);
       })
@@ -238,7 +238,7 @@ export function useSkillsPanel() {
       }
     } catch (err) {
       if (seq !== refreshSeqRef.current) return;
-      tea.notify.error(err);
+      feedback.notify.error(err);
       setSkills([]);
       setVisibilityMap({});
     } finally {
@@ -325,10 +325,10 @@ export function useSkillsPanel() {
         if (selectedSkillId === skill.skill_id) {
           setSelectedSkillId(null);
         }
-        tea.notify.success(t('skills.notify.deleted', { name: skill.name }));
+        feedback.notify.success(t('skills.notify.deleted', { name: skill.name }));
         void refresh();
       } catch (err) {
-        tea.notify.error(err);
+        feedback.notify.error(err);
       } finally {
         setDeleteLoading(false);
       }
@@ -366,7 +366,7 @@ export function useSkillsPanel() {
       URL.revokeObjectURL(url);
 
       if (result.warnings.length > 0) {
-        tea.notify.warning(t('skills.export.partial', { warnings: result.warnings.join('; ') }));
+        feedback.notify.warning(t('skills.export.partial', { warnings: result.warnings.join('; ') }));
       }
     } catch (err: unknown) {
       const errorName = err instanceof Error ? err.name : '';
@@ -374,7 +374,7 @@ export function useSkillsPanel() {
         errorName === 'AbortError' || errorName === 'TimeoutError'
           ? t('skills.export.timeout')
           : (err instanceof Error ? err.message : String(err));
-      tea.notify.error({ description: msg });
+      feedback.notify.error({ description: msg });
     } finally {
       setExportLoading(false);
     }
@@ -397,7 +397,7 @@ export function useSkillsPanel() {
         // Update the visibility badge locally to avoid whole-table flicker
         setVisibilityMap((prev) => ({ ...prev, [skill.skill_id]: scope }));
       } catch (err) {
-        tea.notify.error(err);
+        feedback.notify.error(err);
       }
     },
     [visibilityMap],

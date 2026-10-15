@@ -1,12 +1,21 @@
 /**
  * ConsoleLayout - main layout shell.
  *
- * Based on tea-component's `Layout` + `Menu` components, containing business logic such as TabBar, routing and menu filtering.
+ *   ┌──────────┬──────────────────────────────┐
+ *   │          │ GlobalHeader                 │
+ *   │  Sider   ├──────────────────────────────┤
+ *   │ (brand + │ TabBar                       │
+ *   │   nav)   ├──────────────────────────────┤
+ *   │          │ page content (scrolls)       │
+ *   └──────────┴──────────────────────────────┘
+ *
+ * Contains business logic such as TabBar, routing and role-based menu filtering.
  */
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu } from 'tea-component';
 import { useTranslation } from 'react-i18next';
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Tooltip, cn } from '@/components/ui';
 import { useAuthStore } from '@/stores/auth';
 import { useCurrentRole, type TeamRole } from '@/services/useCurrentRole';
 import { usePanelAnalyticsEnabled, useAnalyticsChConfigured } from '@/services/usePanelCapabilities';
@@ -14,8 +23,6 @@ import { GlobalHeader } from '@/layouts/GlobalHeader';
 import { TabBar } from '@/layouts/TabBar';
 import { OnboardingGuide, shouldShowOnboarding, resetOnboarding } from '@/layouts/OnboardingGuide';
 import { ITEM_ICON, usePageMeta, GROUP_ORDER_KEYS, type PageId } from '@/constants/menu';
-
-const { Body, Sider, Content } = Layout;
 
 /** Route path -> PageId */
 const PATH_TO_PAGE: Record<string, PageId> = {
@@ -35,6 +42,8 @@ const PAGE_TO_PATH: Record<PageId, string> = Object.fromEntries(
   Object.entries(PATH_TO_PAGE).map(([path, id]) => [id, path]),
 ) as Record<PageId, string>;
 
+const SIDER_COLLAPSED_KEY = 'wamf-panel.sider-collapsed';
+
 function legacyHashToPath(): string | null {
   const raw = window.location.hash.replace(/^#\/?/, '');
   const leaf = raw.split('/').filter(Boolean).pop();
@@ -47,6 +56,14 @@ function legacyHashToPath(): string | null {
   if (leaf === 'team' || leaf === 'members' || leaf === 'team_members') return '/team/members';
   if (leaf === 'api_keys' || leaf === 'apikey' || leaf === 'api-keys') return '/team/api-keys';
   return null;
+}
+
+function readCollapsed(): boolean {
+  try {
+    return window.localStorage.getItem(SIDER_COLLAPSED_KEY) === '1';
+  } catch {
+    return false;
+  }
 }
 
 export function ConsoleLayout() {
@@ -82,7 +99,17 @@ export function ConsoleLayout() {
     setOpenPages((prev) => (prev.includes(activePage) ? prev : [...prev, activePage]));
   }, [activePage, isGuide]);
 
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [siderCollapsed, setSiderCollapsed] = useState(readCollapsed);
+  const toggleSider = () => {
+    setSiderCollapsed((prev) => {
+      try {
+        window.localStorage.setItem(SIDER_COLLAPSED_KEY, prev ? '0' : '1');
+      } catch {
+        // Preference is optional
+      }
+      return !prev;
+    });
+  };
 
   // First-use guide: after login, pop up automatically on a "first time per user" basis
   const currentUserId = auth?.user_id;
@@ -96,10 +123,9 @@ export function ConsoleLayout() {
   /**
    * Review guide: clear the onboarded flag + set the Guide visible again.
    * The flag must be cleared before setVisible, otherwise the Guide's internal close -> markOnboarded chain
-   * would immediately mark it as seen again (no conflict this time, but the next automatic check would still treat it as "seen").
+   * would immediately mark it as seen again.
    *
-   * The entry point is kept only at the bottom of the "Usage guide" page (GuidePage fires the wamf-replay-onboarding event);
-   * the review-guide entries in the top bar "My profile" etc. were removed on request.
+   * The entry point is kept only at the bottom of the "Usage guide" page (GuidePage fires the wamf-replay-onboarding event).
    */
   const handleReplayOnboarding = useCallback(() => {
     if (!currentUserId) return;
@@ -147,8 +173,7 @@ export function ConsoleLayout() {
   //      (keep showing while probing, hide after confirming it is not configured, to avoid flicker)
   const analyticsSwitchOn = usePanelAnalyticsEnabled();
   const analyticsChConfigured = useAnalyticsChConfigured(analyticsSwitchOn === true);
-  const analyticsVisible =
-    analyticsSwitchOn === true && analyticsChConfigured !== false;
+  const analyticsVisible = analyticsSwitchOn === true && analyticsChConfigured !== false;
 
   const menuGroups = useMemo(() => {
     const byGroup = new Map<string, (typeof PAGE_META)[PageId][]>();
@@ -178,64 +203,95 @@ export function ConsoleLayout() {
 
   const renderMenuItem = (item: (typeof PAGE_META)[PageId]) => {
     const isActive = activePage === item.id;
-    return (
-      <Menu.Item
-        key={item.id}
-        title={item.label}
-        icon={ITEM_ICON[item.id]}
-        selected={isActive}
+    const link = (
+      <button
+        type="button"
+        className={cn('wf-nav__item', isActive && 'is-active')}
+        aria-current={isActive ? 'page' : undefined}
         onClick={() => navigateTo(item.id)}
-      />
+      >
+        <span className="wf-nav__icon">{ITEM_ICON[item.id]}</span>
+        <span className="wf-nav__label">{item.label}</span>
+      </button>
+    );
+    return (
+      <li key={item.id}>
+        {siderCollapsed ? (
+          <Tooltip title={item.label} placement="right">
+            {link}
+          </Tooltip>
+        ) : (
+          link
+        )}
+      </li>
     );
   };
 
   return (
-    <div className="_memory-app-shell">
+    <div className={cn('wf-shell', siderCollapsed && 'is-sider-collapsed')}>
       <OnboardingGuide
         visible={onboardingVisible}
         userId={currentUserId}
         userRole={userRole}
         onClose={() => setOnboardingVisible(false)}
       />
-      <GlobalHeader
-        userRole={userRole}
-        currentUser={auth?.user ?? ''}
-        currentUserId={auth?.user_id}
-        instanceName={auth?.instance_name}
-        onLogout={logout}
-      />
-      <Layout>
-        <Body>
-          <Sider>
-            {/* The brand is already shown in the global Header; the sidebar only carries navigation (consistent with the Memory project's shared shell). */}
-            <Menu collapsable collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed}>
-              {pinnedGroup?.items.map((item) => renderMenuItem(item))}
-              {restGroups.map((group) => (
-                <Menu.Group key={group.title} title={group.title}>
-                  {group.items.map((item) => renderMenuItem(item))}
-                </Menu.Group>
-              ))}
-            </Menu>
-          </Sider>
-          <Content>
-            {!isGuide && (
-              <TabBar
-                pages={openPages}
-                activePage={activePage}
-                onNavigate={navigateTo}
-                onClose={closePage}
-              />
-            )}
-            <Content.Body className="_memory-content-body">
-              {/* key bound to pathname: remount the page frame on route change to trigger the _page-enter transition and keep cross-page continuity */}
-              <main key={location.pathname} className="_memory-page-frame">
-                <Outlet />
-              </main>
-            </Content.Body>
-          </Content>
-        </Body>
-      </Layout>
+
+      <aside className="wf-sider" aria-label={t('header.brand')}>
+        <div className="wf-sider__brand _memory-global-header-brand">
+          <img src="/logo.png" alt="" className="wf-sider__logo" />
+          <div className="wf-sider__wordmark">
+            <span className="wf-sider__wordmark-top">WeaverAI</span>
+            <span className="wf-sider__wordmark-bottom">Memory Fabric</span>
+          </div>
+        </div>
+
+        <nav className="wf-nav">
+          {pinnedGroup && <ul className="wf-nav__list">{pinnedGroup.items.map(renderMenuItem)}</ul>}
+          {restGroups.map((group) => (
+            <div key={group.title} className="wf-nav__group">
+              <div className="wf-nav__group-title">{group.title}</div>
+              <ul className="wf-nav__list">{group.items.map(renderMenuItem)}</ul>
+            </div>
+          ))}
+        </nav>
+
+        <div className="wf-sider__footer">
+          <Tooltip title={siderCollapsed ? t('layout.sider.expand') : undefined} placement="right">
+            <button
+              type="button"
+              className="wf-sider__toggle"
+              aria-label={siderCollapsed ? t('layout.sider.expand') : t('layout.sider.collapse')}
+              onClick={toggleSider}
+            >
+              {siderCollapsed ? (
+                <PanelLeftOpen size={16} className="wf-flip-rtl" />
+              ) : (
+                <PanelLeftClose size={16} className="wf-flip-rtl" />
+              )}
+              <span className="wf-nav__label">{t('layout.sider.collapse')}</span>
+            </button>
+          </Tooltip>
+        </div>
+      </aside>
+
+      <div className="wf-main">
+        <GlobalHeader
+          userRole={userRole}
+          currentUser={auth?.user ?? ''}
+          currentUserId={auth?.user_id}
+          instanceName={auth?.instance_name}
+          onLogout={logout}
+        />
+        {!isGuide && (
+          <TabBar pages={openPages} activePage={activePage} onNavigate={navigateTo} onClose={closePage} />
+        )}
+        <div className="wf-content _memory-content-body">
+          {/* key bound to pathname: remount the page frame on route change to trigger the _page-enter transition and keep cross-page continuity */}
+          <main key={location.pathname} className="_memory-page-frame">
+            <Outlet />
+          </main>
+        </div>
+      </div>
     </div>
   );
 }
- 

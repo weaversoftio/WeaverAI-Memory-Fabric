@@ -1,7 +1,7 @@
 /**
- * OnboardingGuide - first-use guide (Tea Guide component version)
+ * OnboardingGuide - first-use product tour
  *
- * Uses the tea-component `Guide` to highlight page elements step by step, replacing the old full-screen two-column guide.
+ * Uses the UI kit `Guide` to highlight page elements step by step.
  *
  * Dual-role SOP (switching steps automatically navigates to the matching page, not just displays it):
  *   - Admin: login identity -> create/switch team -> create member and issue user_key -> Agent -> click Agent to bind assets -> four asset pages
@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Guide, type GuideStep } from 'tea-component';
+import { Guide, type GuideStep } from '@/components/ui';
 
 const STORAGE_PREFIX = 'wamf-panel.onboarded';
 
@@ -418,11 +418,9 @@ export function OnboardingGuide({
     [isAdmin, t, visible],
   );
 
-  // ===== Custom precise highlight layer =====
-  // The tea Guide's built-in mask is positioned by react-popper: under the inner scroll container (tea-layout__content)
-  // it has a fixed offset (about 3~5px) and does not update on scroll (the offset grows after scrolling), so the highlight box
-  // "leaks at the edges". Here we compute in real time with getBoundingClientRect (capture-listen to inner container scroll +
-  // resize) and hide the Guide's own mask via global CSS (see index.css `.tea-overlay[style*="z-index: 9999"]`).
+  // ===== Precise highlight layer =====
+  // The Guide renders only the bubble; the dimming mask with its highlight hole is drawn here, measured live with
+  // getBoundingClientRect (capture-listening to inner scroll containers + resize) so it stays aligned while the page scrolls.
   const anchorSelector =
     current >= 0 && steps[current] ? steps[current].selector : FALLBACK_SELECTOR;
   const [anchorBox, setAnchorBox] = useState<{

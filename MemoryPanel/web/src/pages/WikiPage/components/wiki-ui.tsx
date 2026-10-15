@@ -4,7 +4,7 @@
  */
 import { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StatusTip } from 'tea-component';
+import { StatusTip } from '@/components/ui';
 import type { GraphData, GraphNode, WikiDetail, WikiPage } from '@/lib/api/knowledge-api';
 import { StatusTag } from '@/components/StatusTag';
 import { OwnerLabel } from '@/components/OwnerLabel';

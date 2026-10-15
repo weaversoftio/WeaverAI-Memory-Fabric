@@ -32,20 +32,20 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   font-size: 12px;
 }
 
 ._wiki-detail-breadcrumb-sep {
-  color: var(--tea-color-text-disabled);
+  color: var(--wf-color-text-disabled);
 }
 
 ._wiki-detail-breadcrumb-current {
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   font-weight: 500;
 }
 
-._wiki-detail-breadcrumb .tea-btn {
+._wiki-detail-breadcrumb .wf-btn {
   padding-inline-start: 0;
 }
 
@@ -72,7 +72,7 @@
 }
 
 ._wiki-detail-title {
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   font-size: 20px;
   font-weight: 600;
   overflow: hidden;
@@ -97,14 +97,14 @@
 }
 
 ._wiki-detail-ingest-title {
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   font-size: 13px;
   font-weight: 600;
 }
 
 ._wiki-detail-ingest-file,
 ._wiki-detail-ingest-log-item {
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   font-size: 12px;
 }
 
@@ -123,78 +123,66 @@
 }
 
 ._wiki-detail-ingest-log-error {
-  color: var(--tea-color-text-error-default);
+  color: var(--wf-color-text-error-default);
 }
 
-/* Align with the card-outline Tab of the Mock Wiki detail: Tea's actual single-item container is
- * `.tea-tabs__tabitem` (not `.tea-tabs__tab`); previously only the inner link got a border,
- * so the outer layer still kept the default text Tab spacing, which did not look like equal-width outlined cards. */
-._wiki-detail-tabs .tea-tabs__tabbar {
+/* Wiki detail: four equal-width outlined tabs sitting on the panel border. */
+._wiki-detail-tabs .wf-tabs__tabbar {
   margin-bottom: 16px;
 }
 
-._wiki-detail-tabs .tea-tabs__tabbar::before {
-  border-bottom-color: var(--tea-color-border-primary-default);
+._wiki-detail-tabs .wf-tabs__tablist {
+  gap: 0;
 }
 
-/* Even when disableTabScrolling is passed, Tea 2.8 may still keep the built-in paging arrows in narrow containers.
- * This page's four fixed Tabs do not use that interaction, so the two scroll controls are forcibly hidden. */
-._wiki-detail-tabs .tea-tabs__backward,
-._wiki-detail-tabs .tea-tabs__forward {
-  display: none !important;
-}
-
-._wiki-detail-tabs .tea-tabs__tablist {
+._wiki-detail-tabs .wf-tabs__tab {
   display: flex;
-  min-width: 0;
-}
-
-._wiki-detail-tabs .tea-tabs__tabitem {
-  display: block;
   flex: 0 0 208px;
+  align-items: center;
+  justify-content: center;
   height: 48px;
-  margin-inline-end: 0;
-  border: 1px solid var(--tea-color-border-primary-default);
+  padding: 0 16px;
+  border: 1px solid var(--wf-color-border-primary-default);
   border-bottom: 0;
+  color: var(--wf-color-text-secondary);
 }
 
-._wiki-detail-tabs .tea-tabs__tabitem + .tea-tabs__tabitem {
+._wiki-detail-tabs .wf-tabs__tab:first-child {
+  border-start-start-radius: var(--wf-radius-md);
+}
+
+._wiki-detail-tabs .wf-tabs__tab:last-child {
+  border-start-end-radius: var(--wf-radius-md);
+}
+
+._wiki-detail-tabs .wf-tabs__tab + .wf-tabs__tab {
   border-inline-start: 0;
 }
 
-._wiki-detail-tabs .tea-tabs__tab {
-  display: flex;
-  width: 100%;
-  height: 100%;
-  align-items: center;
-  justify-content: center;
-  padding: 0 16px;
-  color: var(--tea-color-text-secondary);
+._wiki-detail-tabs .wf-tabs__tab:hover {
+  background: var(--wf-color-bg-primary-hover);
+  color: var(--wf-color-text-primary);
 }
 
-._wiki-detail-tabs .tea-tabs__tab:hover,
-._wiki-detail-tabs .tea-tabs__tab.is-active {
-  background: var(--tea-color-bg-primary-hover);
-  color: var(--tea-color-text-primary);
-}
-
-._wiki-detail-tabs .tea-tabs__tab.is-active {
+._wiki-detail-tabs .wf-tabs__tab.is-active {
+  background: var(--wf-color-bg-brand-lighten-default);
+  color: var(--wf-color-text-brand-default);
   font-weight: 600;
 }
 
-._wiki-detail-tabs .tea-tabs__tab::after {
-  display: none;
+._wiki-detail-tabs .wf-tabs__tab.is-active::after {
+  inset-inline: 0;
 }
 
 @media (max-width: 900px) {
-  ._wiki-detail-tabs .tea-tabs__tabitem {
+  ._wiki-detail-tabs .wf-tabs__tab {
     flex-basis: 160px;
     height: 44px;
   }
 }
 
 @media (max-width: 640px) {
-  ._wiki-detail-tabs .tea-tabs__tabitem {
+  ._wiki-detail-tabs .wf-tabs__tab {
     flex: 1 0 132px;
   }
 }
@@ -227,7 +215,7 @@
 ._wiki-detail-type-label {
   width: 112px;
   flex-shrink: 0;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   font-size: 12px;
   font-weight: 600;
 }
@@ -249,7 +237,7 @@
   flex: 1;
   overflow: hidden;
   border-radius: 9999px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
 }
 
 ._wiki-detail-type-bar-fill {
@@ -276,20 +264,20 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   cursor: pointer;
   text-align: start;
 }
 
 ._wiki-detail-overview-item:hover {
-  background: var(--tea-color-bg-secondary-hover);
+  background: var(--wf-color-bg-secondary-hover);
 }
 
 ._wiki-detail-overview-item-title {
   overflow: hidden;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   font-size: 12px;
   font-weight: 600;
   text-overflow: ellipsis;
@@ -299,9 +287,9 @@
 ._wiki-detail-split {
   display: flex;
   overflow: hidden;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
 }
 
 ._wiki-detail-split-main,
@@ -312,7 +300,7 @@
 
 ._wiki-detail-split-content {
   overflow: auto;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
 }
 
 ._wiki-detail-split-side,
@@ -321,19 +309,19 @@
   flex-shrink: 0;
   flex-direction: column;
   overflow: hidden;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
 }
 
 ._wiki-detail-resize-handle {
   width: 4px;
   flex-shrink: 0;
-  background: var(--tea-color-border-primary-default);
+  background: var(--wf-color-border-primary-default);
   cursor: col-resize;
 }
 
 ._wiki-detail-resize-handle:hover,
 ._wiki-detail-resize-handle:active {
-  background: var(--tea-color-border-brand-default);
+  background: var(--wf-color-border-brand-default);
 }
 
 ._wiki-detail-side-head {
@@ -342,12 +330,12 @@
   justify-content: space-between;
   gap: 8px;
   padding: 12px;
-  border-bottom: 1px solid var(--tea-color-border-secondary-default);
+  border-bottom: 1px solid var(--wf-color-border-secondary-default);
 }
 
 ._wiki-detail-side-title {
   overflow: hidden;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   font-size: 13px;
   font-weight: 600;
   text-overflow: ellipsis;
@@ -374,7 +362,7 @@
   justify-content: center;
   gap: 8px;
   flex-direction: column;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._wiki-detail-type-filter {
@@ -382,28 +370,28 @@
   flex-wrap: wrap;
   gap: 4px;
   padding: 8px;
-  border-bottom: 1px solid var(--tea-color-border-secondary-default);
+  border-bottom: 1px solid var(--wf-color-border-secondary-default);
 }
 
 ._wiki-detail-filter-tag {
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 9999px;
   padding: 2px 8px;
-  background: var(--tea-color-bg-primary-default);
-  color: var(--tea-color-text-secondary);
+  background: var(--wf-color-bg-primary-default);
+  color: var(--wf-color-text-secondary);
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
 }
 
 ._wiki-detail-filter-tag:hover {
-  background: var(--tea-color-bg-secondary-hover);
+  background: var(--wf-color-bg-secondary-hover);
 }
 
 ._wiki-detail-filter-tag.is-active {
-  border-color: var(--tea-color-bg-brand-default);
-  background: var(--tea-color-bg-brand-default);
-  color: var(--tea-color-text-on-bg-brand-default);
+  border-color: var(--wf-color-bg-brand-default);
+  background: var(--wf-color-bg-brand-default);
+  color: var(--wf-color-text-on-bg-brand-default);
 }
 
 ._wiki-detail-page-list {
@@ -415,16 +403,16 @@
 ._wiki-detail-rawfiles-item {
   display: flex;
   min-width: 0;
-  border-bottom: 1px solid var(--tea-color-border-secondary-default);
+  border-bottom: 1px solid var(--wf-color-border-secondary-default);
 }
 
 ._wiki-detail-page-row:hover,
 ._wiki-detail-rawfiles-item:hover {
-  background: var(--tea-color-bg-secondary-hover);
+  background: var(--wf-color-bg-secondary-hover);
 }
 
 ._wiki-detail-page-row.is-active {
-  background: var(--tea-color-bg-brand-lighten-default);
+  background: var(--wf-color-bg-brand-lighten-default);
 }
 
 ._wiki-detail-page-item {
@@ -433,14 +421,14 @@
   padding: 8px 12px;
   border: 0;
   background: transparent;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   cursor: pointer;
   font-size: 12px;
   text-align: start;
 }
 
 ._wiki-detail-page-row.is-active ._wiki-detail-page-item {
-  color: var(--tea-color-text-brand-default);
+  color: var(--wf-color-text-brand-default);
 }
 
 ._wiki-detail-page-item-title {
@@ -451,7 +439,7 @@
 
 ._wiki-detail-page-delete {
   align-self: stretch;
-  color: var(--tea-color-text-error-default);
+  color: var(--wf-color-text-error-default);
 }
 
 ._wiki-detail-content-inner {
@@ -469,7 +457,7 @@
 
 ._wiki-detail-content-title {
   margin: 0;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   font-size: 20px;
   font-weight: 600;
 }
@@ -480,13 +468,13 @@
 }
 
 ._wiki-detail-rawfiles {
-  border-top: 1px solid var(--tea-color-border-secondary-default);
+  border-top: 1px solid var(--wf-color-border-secondary-default);
 }
 
 ._wiki-detail-rawfiles-loading {
   padding: 8px 12px;
-  border-top: 1px solid var(--tea-color-border-secondary-default);
-  color: var(--tea-color-text-tertiary);
+  border-top: 1px solid var(--wf-color-border-secondary-default);
+  color: var(--wf-color-text-tertiary);
   font-size: 12px;
 }
 
@@ -498,14 +486,14 @@
   padding: 8px 12px;
   border: 0;
   background: transparent;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
 }
 
 ._wiki-detail-rawfiles-toggle:hover {
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 ._wiki-detail-rawfiles-toggle svg:last-child {
@@ -527,7 +515,7 @@
   padding: 8px 12px;
   border: 0;
   background: transparent;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   cursor: pointer;
   font-size: 12px;
   text-align: start;
@@ -541,7 +529,7 @@
 
 ._wiki-detail-rawfiles-item em {
   flex-shrink: 0;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   font-size: 12px;
   font-style: normal;
 }
@@ -557,15 +545,15 @@
   flex-direction: column;
   gap: 4px;
   padding: 12px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--wf-color-bg-primary-default);
   cursor: pointer;
   text-align: start;
 }
 
 ._wiki-detail-search-item:hover {
-  border-color: var(--tea-color-border-brand-default);
+  border-color: var(--wf-color-border-brand-default);
 }
 
 ._wiki-detail-search-item-head {
@@ -578,7 +566,7 @@
   min-width: 0;
   flex: 1;
   overflow: hidden;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   font-size: 13px;
   font-weight: 600;
   text-overflow: ellipsis;
@@ -607,14 +595,14 @@
   gap: 8px;
   flex-direction: column;
   padding: 16px;
-  border: 2px dashed var(--tea-color-border-primary-default);
+  border: 2px dashed var(--wf-color-border-primary-default);
   border-radius: 4px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   cursor: pointer;
 }
 
 ._wiki-detail-dropzone:hover {
-  background: var(--tea-color-bg-secondary-hover);
+  background: var(--wf-color-bg-secondary-hover);
 }
 
 ._wiki-detail-upload-files {
@@ -631,9 +619,9 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 4px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   font-size: 12px;
 }
 
@@ -647,24 +635,24 @@
 
 ._wiki-detail-upload-file-size {
   flex-shrink: 0;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._wiki-detail-upload-file-success {
-  color: var(--tea-color-text-success-default);
+  color: var(--wf-color-text-success-default);
 }
 
 ._wiki-detail-upload-file-error {
-  color: var(--tea-color-text-error-default);
+  color: var(--wf-color-text-error-default);
 }
 
 ._wiki-detail-upload-file-pending {
-  color: var(--tea-color-text-warning-default);
+  color: var(--wf-color-text-warning-default);
 }
 
 ._wiki-detail-upload-footer {
   padding-top: 8px;
-  border-top: 1px solid var(--tea-color-border-secondary-default);
+  border-top: 1px solid var(--wf-color-border-secondary-default);
 }
 
 ._wiki-detail-markdown-doc {
@@ -672,7 +660,7 @@
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 4px;
 }
 

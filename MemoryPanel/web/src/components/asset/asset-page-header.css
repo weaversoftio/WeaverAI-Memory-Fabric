@@ -30,7 +30,7 @@
   font-size: 16px;
   font-weight: 600;
   line-height: 24px;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
 }
 
 ._asset-page-header-filters,
@@ -44,7 +44,7 @@
   flex: 0 0 auto;
 }
 
-._asset-page-header-filters .tea-select {
+._asset-page-header-filters .wf-select {
   min-width: 180px;
   max-width: 320px;
 }
@@ -56,8 +56,8 @@
 
 ._asset-page-header-subtitle {
   margin-top: 8px;
-  font: var(--tea-typography-body-sm);
-  color: var(--tea-color-text-tertiary);
+  font: var(--wf-typography-body-sm);
+  color: var(--wf-color-text-tertiary);
 }
 
 @media (max-width: 720px) {

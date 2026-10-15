@@ -12,13 +12,13 @@
   min-width: 0;
 }
 
-._asset-status .tea-tag {
+._asset-status .wf-tag {
   flex-shrink: 0;
 }
 
 ._asset-status-hint {
   font-size: 12px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   white-space: normal;
   word-break: break-word;
   line-height: 1.5;
@@ -28,5 +28,5 @@
 ._owner-label-you {
   margin-inline-start: 4px;
   font-size: 12px;
-  color: var(--tea-color-text-brand-default);
+  color: var(--wf-color-text-brand-default);
 }

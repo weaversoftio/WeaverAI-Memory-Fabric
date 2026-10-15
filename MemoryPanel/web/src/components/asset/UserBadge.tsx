@@ -6,7 +6,7 @@
  * It is unified here; displayName is obtained via the useUserDisplayName global cache, and title /
  * youText / getTitle are injected by the caller to accommodate each page's i18n.
  */
-import { UserIcon } from 'tea-icons-react';
+import { UserIcon } from '@/components/ui/icons';
 import { useUserDisplayName } from '@/services/user-profile-store';
 import { AssetBadge, AssetBadgeYou } from './AssetListPanel';
 

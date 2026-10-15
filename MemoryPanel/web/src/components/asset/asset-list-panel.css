@@ -6,7 +6,7 @@
  *   - Badges use plain text + small icons, not bright Tags
  *   - The selected state uses a light brand background, not a left border
  *   - Skeleton, empty and disabled states are unified
- *   - Colors all go through var(--tea-color-*), nothing hard-coded
+ *   - Colors all go through var(--wf-color-*), nothing hard-coded
  */
 
 /* ===== Panel container ===== */
@@ -15,10 +15,10 @@
   height: 100%;
   min-height: 480px;
   padding: 16px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--wf-color-border-primary-default);
   border-radius: 6px;
-  background: var(--tea-color-bg-primary-default);
-  box-shadow: var(--tea-shadow-xs);
+  background: var(--wf-color-bg-primary-default);
+  box-shadow: var(--wf-shadow-xs);
   display: flex;
   flex-direction: column;
 }
@@ -32,13 +32,13 @@
   min-height: 28px;
   padding-bottom: 8px;
   margin-bottom: 4px;
-  border-bottom: 1px solid var(--tea-color-border-secondary-default);
+  border-bottom: 1px solid var(--wf-color-border-secondary-default);
 }
 
 ._alp-title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -46,12 +46,12 @@
 
 ._alp-title-suffix {
   font-weight: 400;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._alp-count {
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   flex-shrink: 0;
 }
 
@@ -71,12 +71,12 @@
   padding: 48px 12px;
   text-align: center;
   font-size: 13px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 /* ===== List items ===== */
 ._alp-item {
-  border-bottom: 1px solid var(--tea-color-border-secondary-default);
+  border-bottom: 1px solid var(--wf-color-border-secondary-default);
   transition: background-color 0.15s ease-in-out;
   position: relative;
 }
@@ -99,15 +99,20 @@
 }
 
 ._alp-item-btn:hover {
-  background-color: var(--tea-color-bg-secondary-default);
+  background-color: var(--wf-color-bg-secondary-default);
+}
+
+._alp-item-btn:focus-visible {
+  outline: 2px solid var(--wf-color-border-brand-default);
+  outline-offset: -2px;
 }
 
 ._alp-item--selected ._alp-item-btn {
-  background-color: var(--tea-color-bg-brand-lighten-default);
+  background-color: var(--wf-color-bg-brand-lighten-default);
 }
 
 ._alp-item--selected ._alp-item-btn:hover {
-  background-color: var(--tea-color-bg-brand-lighten-default);
+  background-color: var(--wf-color-bg-brand-lighten-default);
 }
 
 ._alp-item--disabled ._alp-item-btn {
@@ -127,7 +132,7 @@
 
 ._alp-skeleton-line {
   border-radius: 3px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--wf-color-bg-secondary-default);
   margin-bottom: 6px;
 }
 
@@ -162,7 +167,7 @@
 ._alp-item-name {
   font-size: 14px;
   font-weight: 600;
-  color: var(--tea-color-text-primary);
+  color: var(--wf-color-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -178,7 +183,7 @@
   font-size: 11px;
   font-weight: 400;
   font-family: var(--font-mono);
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -189,7 +194,7 @@
   margin: 4px 0 0;
   font-size: 13px;
   line-height: 1.5;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -213,7 +218,7 @@
   align-items: center;
   gap: 3px;
   font-size: 11px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -223,7 +228,7 @@
 }
 
 ._alp-badge-you {
-  color: var(--tea-color-text-brand-default);
+  color: var(--wf-color-text-brand-default);
   font-weight: 500;
 }
 
@@ -235,7 +240,7 @@
   flex-wrap: wrap;
   margin-top: 8px;
   font-size: 12px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 ._alp-item-time {
@@ -243,13 +248,13 @@
   white-space: nowrap;
   /* Declare font size and color independently, no longer relying on inheritance from the _alp-item-meta row, so it is consistent wherever placed */
   font-size: 12px;
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
 }
 
 /* Monospace font (unique identifiers such as user_id / agent_id) */
 ._alp-mono {
   font-family: var(--font-mono);
-  color: var(--tea-color-text-secondary);
+  color: var(--wf-color-text-secondary);
 }
 
 /* Detail panel empty state */
@@ -259,7 +264,7 @@
   justify-content: center;
   min-height: 480px;
   font-size: 13px;
-  color: var(--tea-color-text-tertiary);
+  color: var(--wf-color-text-tertiary);
 }
 
 /* ===== Responsive ===== */

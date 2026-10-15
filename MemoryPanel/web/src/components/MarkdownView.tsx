@@ -2,7 +2,7 @@
  * MarkdownView — unified Markdown rendering component.
  *
  * Pages such as Skill details / Memory details share one rendering and display style:
- * ReactMarkdown + remark-gfm, with a Tea token bordered box as the shell
+ * ReactMarkdown + remark-gfm, with a design token bordered box as the shell
  * (see markdown-view.css), not using tailwind semantic colors or inline style.
  */
 
