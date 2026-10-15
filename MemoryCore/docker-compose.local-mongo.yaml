@@ -1,0 +1,82 @@
+# ============================================================
+# Agent-Memory: local Mongo Docker Compose
+# ============================================================
+# Two containers: atlas-local (mongod + mongot, $search/Lucene BM25) + gateway.
+# Mode: standalone (no Redis, in-process pipeline) with the data plane on Mongo.
+#
+# Start (the LLM key is borrowed from .env.knowledge-local so it's never committed):
+#   set -a && source ../.env.knowledge-local && set +a   # in memory-weaverai/
+#   docker compose -f docker-compose.local-mongo.yaml up --build -d   # in MemoryCore/
+# Health: curl http://localhost:8420/health
+# Logs: docker compose -f docker-compose.local-mongo.yaml logs -f memory
+#       (you should see "cluster profile: topology=replicaSet mongot=yes")
+# Stop: docker compose -f docker-compose.local-mongo.yaml down        (keeps the data volumes)
+# Wipe: docker compose -f docker-compose.local-mongo.yaml down -v     (deletes the data and search indexes too)
+# ============================================================
+
+services:
+  # ── MongoDB 8.3 + Search (mongot) ──
+  # Same image as docker/mongo-search, but on a fully internal network (no host ports mapped),
+  # so it doesn't clash with a wamf-mongo-search container that may be running on the host.
+  mongo-search:
+    image: mongodb/mongodb-atlas-local:8.3
+    # hostname must be fixed: atlas-local's runner initialises the single-node RS member with the container hostname.
+    # If it isn't fixed, compose recreates the container → hostname changes → RS config in the volume mismatches → never a primary.
+    hostname: mongo-search
+    environment:
+      - MONGOT_LOG_FILE=/dev/stderr
+      - RUNNER_LOG_FILE=/dev/stderr
+    volumes:
+      - mongo-db:/data/db
+      - mongo-configdb:/data/configdb
+      # must be persisted, otherwise restarts lose the $search indexes
+      - mongo-mongot:/data/mongot
+    healthcheck:
+      # ping succeeds even when the RS has no primary, so wait for isWritablePrimary,
+      # otherwise depends_on would start core before the RS election finishes.
+      test: ["CMD", "mongosh", "--quiet", "--eval", "if (db.adminCommand('hello').isWritablePrimary === true) process.exit(0); else process.exit(1)"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  # ── WAMF Memory Gateway (Mongo backend) ──
+  memory:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: weaveraidb-agent-memory:mongo
+    ports:
+      - "8420:8420"
+    volumes:
+      - ./wamf-gateway.local-mongo.yaml:/data/config/wamf-gateway.yaml:ro
+      - memory-data:/data/wamf-memory
+    environment:
+      # ── Storage backend choice (the gateway mode only reads env) ──
+      - STORE_MODE=mongodb
+      - MONGODB_ENDPOINT=mongodb://mongo-search:27017/?directConnection=true
+      - MONGODB_DATABASE=wamf_memory
+      # ── Metadata goes into the same Mongo (database wamf_metadata_<instance>; transactions need a replica set, which atlas-local provides) ──
+      # To keep the metadata in sqlite inside the container, delete the line below.
+      - WAMF_METADATA_MONGO_URI=mongodb://mongo-search:27017/?directConnection=true
+      # ── No auth locally (Layer1 off; api_key only serves as the Layer3 admin user_key) ──
+      - WAMF_GATEWAY_API_KEY=
+      # ── LLM (injected from the host environment, see the usage at the top) ──
+      - WAMF_LLM_API_KEY=${WAMF_LLM_API_KEY:?run set -a && source ../.env.knowledge-local && set +a first}
+      - WAMF_LLM_BASE_URL=${WAMF_LLM_BASE_URL:?set WAMF_LLM_BASE_URL to your OpenAI-compatible endpoint}
+      - WAMF_LLM_MODEL=${WAMF_LLM_MODEL:?set WAMF_LLM_MODEL}
+    depends_on:
+      mongo-search:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8420/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  mongo-db:
+  mongo-configdb:
+  mongo-mongot:
+  memory-data:

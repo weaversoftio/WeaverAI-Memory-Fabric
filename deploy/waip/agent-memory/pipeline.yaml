@@ -1,0 +1,188 @@
+description: "WeaverAI Memory Fabric — reusable agent memory and context recipes for coding agents. Control panel plus an OpenAI/Anthropic-compatible proxy that agents point their base URL at; memory-core stays internal. SQLite on two PVCs, LLM via LiteLLM."
+
+app_name: "Agent Memory"
+version: "0.1.7"
+has_ui: true
+
+# WARNING: never use the bash colon-dash or colon-question forms for any var
+# declared below: WAIP substitutes $NAME / ${NAME} itself and leaves the rest
+# of the expression in the script. Shell-local variables pass through untouched.
+
+vars:
+  RELEASE_NAME:
+    description: "Helm release name — Service names (<release>-core/-hub/-proxy) derive from it, so keep it stable"
+    default: "agent-memory"
+    required: true
+  NAMESPACE:
+    description: "Namespace to install into"
+    default: "apps"
+    required: true
+  HTTPROUTE_HOSTNAME:
+    description: "Public hostname of the WeaverAI Memory Fabric panel"
+    default: "agent-memory.platform.weaversoft.io"
+    required: true
+  PROXY_HOSTNAME:
+    description: "Public hostname of the proxy that coding agents use as their base URL"
+    default: "agent-memory-proxy.platform.weaversoft.io"
+    required: true
+  IMAGE_CORE:
+    description: "memory-core image (immutable tag or digest)"
+    default: "zot.platform.weaversoft.io/apps/agent-memory-core:a912d5e"
+    required: true
+  IMAGE_HUB:
+    description: "memory-hub image (immutable tag or digest)"
+    default: "zot.platform.weaversoft.io/apps/agent-memory-hub:29c978e"
+    required: true
+  IMAGE_PROXY:
+    description: "memory-proxy image (immutable tag or digest)"
+    default: "zot.platform.weaversoft.io/apps/agent-memory-proxy:77357c5"
+    required: true
+  LLM_BASE_URL:
+    description: "OpenAI-compatible endpoint for memory extraction, wiki/codegraph and proxied agent traffic"
+    default: "http://litellm.inference.svc.cluster.local:4000/v1"
+    required: true
+  LLM_MODEL:
+    description: "Model name — verify it with a real completion first; it must also answer /v1/responses for Codex"
+    default: "gpt-5.6-luna"
+    required: true
+  LLM_API_KEY:
+    description: "API key for LLM_BASE_URL (a LiteLLM virtual key)"
+    default: ""
+    required: true
+    sensitive: true
+  GIT_AUTH_URL_PREFIX:
+    description: "Code Graph private repos: the credential below is used for every repo URL under this prefix"
+    default: "https://bitbucket.org/weaversoft/"
+    required: true
+  GIT_AUTH_USERNAME:
+    description: "Username for that credential — x-token-auth for Bitbucket repository/project/workspace access tokens"
+    default: "x-token-auth"
+    required: true
+  GIT_AUTH_TOKEN:
+    description: "Read-only git access token (leave empty for public repos only)"
+    default: ""
+    required: false
+    sensitive: true
+  SSO_ENABLED:
+    description: "Panel sign-in with the platform's Keycloak (user_key login stays available)"
+    default: "true"
+    required: true
+  SSO_DISPLAY_NAME:
+    description: "Login button text: Sign in with <this>"
+    default: "WeaverAI"
+    required: true
+  SSO_ISSUER_URL:
+    description: "Public Keycloak realm URL"
+    default: "https://auth.platform.weaversoft.io/realms/weaverai"
+    required: true
+  SSO_INTERNAL_ISSUER_URL:
+    description: "In-cluster Keycloak realm URL the panel calls server-side"
+    default: "http://keycloak.platform.svc.cluster.local/realms/weaverai"
+    required: false
+  SSO_CLIENT_ID:
+    description: "Keycloak client; its redirect URI is https://<panel host>/api/v1/auth/idp/keycloak/callback"
+    default: "agent-memory"
+    required: true
+  SSO_CLIENT_SECRET_NAME:
+    description: "Existing Secret in the namespace holding the client secret under key client-secret"
+    default: "agent-memory-oidc"
+    required: true
+  SSO_DEFAULT_TEAM:
+    description: "Team that new SSO accounts join as members (created on first use)"
+    default: "weaversoft"
+    required: false
+  WAIP_IDENTITY_JWKS_URL:
+    description: "Platform public keys for the MCP proxy's signed caller identity (agents act as their WAIP user without an sk-mem key); empty = off"
+    default: "http://weaverai-platform-backend.platform.svc.cluster.local:9000/api/auth/jwks.json"
+    required: false
+  WAIP_IDENTITY_AUDIENCE:
+    description: "mcp:<name of the memory MCP's MCP store entry>"
+    default: "mcp:memory-mcp"
+    required: false
+  L0_RETENTION_DAYS:
+    description: "Days to keep raw conversation history (L0); facts extracted from it are kept. 0 = forever, minimum 3"
+    default: "30"
+    required: true
+  STORAGE_CLASS:
+    description: "StorageClass for the two data PVCs"
+    default: "mayastor-1rep-wait"
+    required: true
+  CORE_STORAGE_SIZE:
+    description: "memory-core data PVC (memories, users, teams — SQLite)"
+    default: "2Gi"
+    required: true
+  HUB_STORAGE_SIZE:
+    description: "memory-hub data PVC (wiki pages, cloned repos for code graph, logs)"
+    default: "5Gi"
+    required: true
+
+install:
+  - task: ensure_namespace
+    namespace: $NAMESPACE
+
+  - task: apply_chart
+    release_name: $RELEASE_NAME
+    chart: $CHART_PATH
+    namespace: $NAMESPACE
+    values_file: $VALUES_FILE
+    wait: true
+    timeout: 10m
+
+  # Create the admin user once and keep its user_key in Secret <release>-admin-key.
+  # Idempotent: skipped when the Secret already exists (reinstall / upgrade).
+  - task: exec_command
+    script: |
+      set -eu
+      ADMIN_SECRET="$RELEASE_NAME-admin-key"
+
+      if kubectl -n "$NAMESPACE" get secret "$ADMIN_SECRET" >/dev/null 2>&1; then
+        echo "[agent-memory] $ADMIN_SECRET exists - admin already initialised."
+        exit 0
+      fi
+
+      kubectl -n "$NAMESPACE" rollout status "deploy/$RELEASE_NAME-core" --timeout=5m
+
+      ADMIN_KEY="sk-mem-$(head -c 512 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9' | head -c 32)"
+
+      # The key goes in on stdin so it never appears in a command line or the install log.
+      CODE=$(printf '%s' "$ADMIN_KEY" | kubectl -n "$NAMESPACE" exec -i "deploy/$RELEASE_NAME-core" -- node -e '
+      let k = ""; process.stdin.on("data", d => k += d).on("end", async () => {
+        const r = await fetch("http://127.0.0.1:8420/v3/internal/meta/user/init-admin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-wamf-service-id": "default" },
+          body: JSON.stringify({ username: "admin", user_key: k.trim() }),
+        });
+        console.log(r.status);
+      });')
+
+      case "$CODE" in
+        200)
+          kubectl -n "$NAMESPACE" create secret generic "$ADMIN_SECRET" --from-literal=user-key="$ADMIN_KEY"
+          kubectl -n "$NAMESPACE" annotate secret "$ADMIN_SECRET" \
+            weaverai.io/purpose="agent-memory admin user_key - the panel login, do not delete" >/dev/null
+          echo "[agent-memory] Admin user created. Panel login key:"
+          echo "[agent-memory]   kubectl -n $NAMESPACE get secret $ADMIN_SECRET -o jsonpath='{.data.user-key}' | base64 -d"
+          ;;
+        409)
+          echo "[agent-memory] WARNING: admin user exists but $ADMIN_SECRET is missing; its key cannot be recovered."
+          ;;
+        *)
+          echo "[agent-memory] init-admin failed with HTTP $CODE"
+          exit 1
+          ;;
+      esac
+
+  - task: apply_yaml
+    file: "httproute.yaml"
+    namespace: $NAMESPACE
+
+uninstall:
+  # Both data PVCs carry helm.sh/resource-policy: keep and survive this, as does
+  # the <release>-admin-key Secret. Delete them by hand only to wipe all data.
+  - task: apply_yaml
+    file: "httproute.yaml"
+    namespace: $NAMESPACE
+    delete: true
+  - task: delete_release
+    release_name: $RELEASE_NAME
+    namespace: $NAMESPACE

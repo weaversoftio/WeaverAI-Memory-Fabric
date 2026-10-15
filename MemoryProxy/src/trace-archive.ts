@@ -1,0 +1,235 @@
+/**
+ * Trace archive -- local JSONL cold storage.
+ *
+ * Each trace + span is written as a JSONL line to a local file, split into files by date.
+ * Can be paired with a crontab script to periodically compress and upload to object/archive storage.
+ *
+ * Design:
+ *  - uses a WriteStream with async buffered writes, not blocking the event loop
+ *  - isolates archive files of multiple instances by hostname
+ *  - Backpressure handling: pause writing when the buffer is full, resume after drain
+ *  - controlled by the config option `traceArchive.enabled`, off by default
+ */
+
+import { createWriteStream, mkdirSync, existsSync, type WriteStream } from "node:fs";
+import { join, resolve } from "node:path";
+import { hostname } from "node:os";
+import { log } from "./report/log.js";
+
+/** Host identifier for multi-instance isolation. */
+const HOST_ID = hostname();
+
+/** Default archive file directory */
+const DEFAULT_ARCHIVE_DIR = "logs/traces";
+
+/** Shutdown timeout (ms) -- prevents end() from hanging */
+const SHUTDOWN_TIMEOUT_MS = 5000;
+
+/** WriteStream highWaterMark (bytes) — 64KB buffer */
+const HIGH_WATER_MARK = 64 * 1024;
+
+let archiveDir = "";
+let enabled = false;
+let currentDate = "";
+let currentStream: WriteStream | null = null;
+let warnedDisabled = false;
+let backpressure = false;
+let droppedLines = 0;
+
+// ── Public types ─────────────────────────────────────────────────────────────
+
+/** Configuration for trace archive. */
+export interface TraceArchiveConfig {
+  /** Master switch -- whether to enable local JSONL archiving. Default false (off). */
+  enabled: boolean;
+  /** Archive directory (relative to the project root or an absolute path). Default "logs/traces". */
+  dir: string;
+}
+
+/** Archived trace event shape (trace create). */
+export interface ArchivedTrace {
+  type: "trace";
+  id: string;
+  name: string;
+  projectName: string;
+  startTime: string;
+  input: unknown;
+  tags?: string[];
+}
+
+/** Archived span event shape (LLM span). */
+export interface ArchivedSpan {
+  type: "span";
+  id: string;
+  traceId: string;
+  name: string;
+  projectName: string;
+  model: string;
+  startTime: string;
+  endTime: string;
+  input: unknown;
+  output: unknown;
+  usage: Record<string, unknown>;
+  tags?: string[];
+}
+
+// ── Lifecycle ────────────────────────────────────────────────────────────────
+
+/**
+ * initTraceArchive initializes the trace archive system.
+ * Writing is actually enabled only when config.enabled === true.
+ *
+ * @param baseDir project root directory (used to resolve relative paths)
+ * @param config  TraceArchive config
+ */
+export function initTraceArchive(baseDir: string, config: TraceArchiveConfig): void {
+  if (!config.enabled) {
+    log.info("trace_archive.disabled");
+    return;
+  }
+
+  const dir = config.dir || DEFAULT_ARCHIVE_DIR;
+  archiveDir = resolve(baseDir, dir);
+  if (!existsSync(archiveDir)) {
+    mkdirSync(archiveDir, { recursive: true });
+  }
+  enabled = true;
+  log.info("trace_archive.init", { dir: archiveDir, host: HOST_ID });
+}
+
+/**
+ * shutdownTraceArchive closes the archive write stream, making sure data is flushed to disk.
+ * Called at graceful shutdown. Has a timeout fallback to prevent hanging.
+ */
+export function shutdownTraceArchive(): Promise<void> {
+  if (droppedLines > 0) {
+    log.warn("trace_archive.dropped_lines", { count: droppedLines });
+  }
+
+  return new Promise((resolvePromise) => {
+    if (!currentStream) {
+      resolvePromise();
+      return;
+    }
+
+    const stream = currentStream;
+    currentStream = null;
+    enabled = false;
+
+    // Timeout fallback: force resolve if not finished within 5 seconds
+    const timer = setTimeout(() => {
+      log.warn("trace_archive.shutdown_timeout", { timeoutMs: SHUTDOWN_TIMEOUT_MS });
+      stream.destroy();
+      resolvePromise();
+    }, SHUTDOWN_TIMEOUT_MS);
+
+    stream.on("error", () => {
+      clearTimeout(timer);
+      resolvePromise();
+    });
+
+    stream.end(() => {
+      clearTimeout(timer);
+      resolvePromise();
+    });
+  });
+}
+
+// ── Internal ─────────────────────────────────────────────────────────────────
+
+/**
+ * getOrCreateStream returns the write stream for the current date.
+ * Automatically closes the old stream and creates a new one when the day changes.
+ */
+function getOrCreateStream(): WriteStream | null {
+  if (!enabled) return null;
+
+  const today = new Date().toISOString().slice(0, 10);
+  if (today !== currentDate) {
+    // Day changed: close the old stream (fire-and-forget; the old stream's data is flushed asynchronously)
+    if (currentStream) {
+      const oldStream = currentStream;
+      oldStream.end();
+    }
+    currentDate = today;
+    backpressure = false;
+    const filePath = join(archiveDir, `${HOST_ID}-${today}.jsonl`);
+    currentStream = createWriteStream(filePath, {
+      flags: "a",
+      encoding: "utf-8",
+      highWaterMark: HIGH_WATER_MARK,
+    });
+    currentStream.on("error", (err) => {
+      log.warn("trace_archive.stream_error", { error: err.message });
+    });
+    currentStream.on("drain", () => {
+      backpressure = false;
+    });
+  }
+  return currentStream;
+}
+
+/**
+ * archiveLine appends one JSON line to the archive file.
+ * Uses a WriteStream with async buffered writes, not blocking the event loop.
+ * Handles backpressure: when the buffer is full, drop new data and keep a count.
+ */
+function archiveLine(line: string): void {
+  if (!enabled) {
+    if (!warnedDisabled) {
+      warnedDisabled = true;
+      // If the caller calls it while not enabled, skip silently (the config option being off by default is the normal case)
+    }
+    return;
+  }
+
+  // Backpressure: drop when the buffer is full (best-effort archive)
+  if (backpressure) {
+    droppedLines++;
+    return;
+  }
+
+  const stream = getOrCreateStream();
+  if (stream) {
+    const ok = stream.write(line + "\n");
+    if (!ok) {
+      backpressure = true;
+    }
+  }
+}
+
+// ── Public API ───────────────────────────────────────────────────────────────
+
+/**
+ * archiveTrace archives one trace-creation event.
+ * Exception safe: a JSON.stringify or write failure will not throw.
+ * No-op when traceArchive.enabled = false.
+ */
+export function archiveTrace(trace: ArchivedTrace): void {
+  if (!enabled) return;
+  try {
+    archiveLine(JSON.stringify(trace));
+  } catch (err: unknown) {
+    log.warn("trace_archive.serialize_error", {
+      type: "trace",
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+/**
+ * archiveSpan archives one LLM span event.
+ * Exception safe: a JSON.stringify or write failure will not throw.
+ * No-op when traceArchive.enabled = false.
+ */
+export function archiveSpan(span: ArchivedSpan): void {
+  if (!enabled) return;
+  try {
+    archiveLine(JSON.stringify(span));
+  } catch (err: unknown) {
+    log.warn("trace_archive.serialize_error", {
+      type: "span",
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}

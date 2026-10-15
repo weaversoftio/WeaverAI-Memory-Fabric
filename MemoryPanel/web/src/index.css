@@ -1,0 +1,270 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * ===== Design token bridge: Tailwind semantic colors -> Tea Design Token =====
+ *
+ * This file no longer maintains a separate shadcn/HSL palette; all semantic variables are aliased directly to
+ * tea-component's official Design Tokens (--tea-color-*, --tea-shadow-*),
+ * ensuring Tailwind's semantic utility classes such as bg-primary / text-muted-foreground / border-border
+ * look exactly the same as Tea components and automatically follow Tea theme changes.
+ *
+ * Naming reference:
+ *   background      -> default card/panel background   (--tea-color-bg-primary-default)
+ *   background-deep -> outer page background         (--tea-color-bg-page-default)
+ *   foreground      -> primary text               (--tea-color-text-primary)
+ *   card            -> card background/text
+ *   primary         -> brand color (buttons/highlights)   (--tea-color-bg-brand-default)
+ *   secondary/muted -> secondary background / secondary text
+ *   accent          -> hover-state background
+ *   destructive     -> error semantic color
+ *   success/warning -> success/warning semantic colors
+ *   border/input    -> border color
+ *   ring            -> focus ring color (brand color)
+ */
+:root {
+  --background: var(--tea-color-bg-primary-default);
+  --background-deep: var(--tea-color-bg-page-default);
+  --foreground: var(--tea-color-text-primary);
+  --card: var(--tea-color-bg-primary-default);
+  --card-foreground: var(--tea-color-text-primary);
+  --popover: var(--tea-color-bg-primary-default);
+  --popover-foreground: var(--tea-color-text-primary);
+  --primary: var(--tea-color-bg-brand-default);
+  --primary-foreground: var(--tea-color-text-on-bg-brand-default);
+  --secondary: var(--tea-color-bg-secondary-default);
+  --secondary-foreground: var(--tea-color-text-primary);
+  --muted: var(--tea-color-bg-secondary-default);
+  --muted-foreground: var(--tea-color-text-secondary);
+  --accent: var(--tea-color-bg-secondary-default);
+  --accent-hover: var(--tea-color-bg-secondary-hover);
+  --accent-foreground: var(--tea-color-text-primary);
+  --destructive: var(--tea-color-bg-error-default);
+  --destructive-foreground: var(--tea-color-text-on-bg-error-default);
+  --success: var(--tea-color-bg-success-default);
+  --success-foreground: var(--tea-color-text-on-bg-success-default);
+  --warning: var(--tea-color-bg-warning-default);
+  --warning-foreground: var(--tea-color-text-on-bg-warning-default);
+  --border: var(--tea-color-border-primary-default);
+  --input: var(--tea-color-border-primary-default);
+  --input-background: var(--tea-color-bg-primary-default);
+  --ring: var(--tea-color-border-brand-default);
+  --heavy: var(--tea-color-border-secondary-default);
+  /* Monospace font stack (code / keys / IDs all use this token) */
+  --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  color-scheme: light;
+}
+
+/* Mapped to usable bg-* / text-* / border-* in Tailwind */
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+}
+
+body {
+  /* Aligned with Tea Design's official font stack (node_modules/tea-component/dist/tea.css) */
+  font-family:
+    Roboto, 'San Francisco', 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  background: var(--background-deep);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== Global interaction feedback (0.25s cubic-bezier) ===== */
+
+/* Buttons: color change on hover + scale on active */
+button,
+[role='button'] {
+  transition:
+    color 0.2s,
+    background-color 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s,
+    transform 0.15s,
+    opacity 0.2s;
+}
+button:not(:disabled):active,
+[role='button']:not(:disabled):active {
+  transform: scale(0.97);
+  transition-duration: 0.1s;
+}
+
+/* Inputs: ring on focus */
+input,
+select,
+textarea {
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+/* Links */
+a {
+  transition: color 0.2s;
+}
+
+/* Focus ring */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role='button']:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Cards / rounded containers: raised shadow + slight shift on hover */
+[class*='rounded-xl'],
+[class*='rounded-lg'] {
+  transition:
+    border-color 0.25s cubic-bezier(0.25, 0.8, 0.5, 1),
+    box-shadow 0.25s cubic-bezier(0.25, 0.8, 0.5, 1),
+    background-color 0.2s,
+    transform 0.25s cubic-bezier(0.25, 0.8, 0.5, 1);
+}
+
+/* Left highlight bar of the selected list item */
+.active-bar-left {
+  position: relative;
+}
+.active-bar-left::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--primary);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.active-bar-left.is-active::before {
+  opacity: 1;
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--foreground) 12%, transparent);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--foreground) 20%, transparent);
+}
+
+/* ===== Input focus ===== */
+input[type='text']:focus,
+input[type='search']:focus,
+input[type='email']:focus,
+input[type='password']:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+/* ===== Card hover (raised shadow + slight upward shift) ===== */
+.card-hover:hover {
+  box-shadow: var(--tea-shadow-md);
+  transform: translateY(-1px);
+}
+
+/* Gradient divider between list items */
+.skill-list-item:not(:last-child)::after,
+.memory-list-item:not(:last-child)::after,
+.agent-list-item:not(:last-child)::after,
+.list-item-divider:not(:last-child)::after {
+  position: absolute;
+  inset-inline-end: 14px;
+  bottom: 0;
+  inset-inline-start: 14px;
+  height: 1px;
+  content: '';
+  background: linear-gradient(to right, transparent, var(--border) 50%, transparent);
+}
+
+/* ===== Onboarding custom highlight layer (replaces tea Guide's built-in mask) =====
+   tea Guide's built-in mask is positioned with react-popper: under the inner scroll container
+   (.tea-layout__content) it has a fixed offset (about 3~5px) and does not update on scroll,
+   so the highlight box "leaks at the edges". Here the built-in mask is hidden and the _guide-mask layer
+   computed live via getBoundingClientRect in OnboardingGuide is used instead. */
+.tea-overlay[style*='z-index: 9999'] {
+  display: none !important;
+}
+
+/* ===== Onboarding smooth animation (aligned with the scrollIntoView smooth scroll curve) =====
+   On step change the bubble (popper transform) and the highlight box / mask blocks (top/left/width/height)
+   animate with transitions: same-page changes slide smoothly to the new position along with scrolling, always visible, with no "unmasked gap". */
+.tea-guide {
+  transition:
+    transform 0.3s ease-in-out,
+    opacity 0.18s ease-in-out;
+}
+
+._guide-mask-block,
+._guide-mask-ring {
+  transition:
+    top 0.3s ease-in-out,
+    left 0.3s ease-in-out,
+    width 0.3s ease-in-out,
+    height 0.3s ease-in-out,
+    opacity 0.18s ease-in-out;
+}
+
+/* Cross-page switch window: the old anchor unmounts with the page (popper positions a detached element at 0,0),
+   so fade out first to cover this window; once the new page's anchor is ready, snap into place and fade in again (see OnboardingGuide.tsx).
+   Warning: only fade out the "bubble" and the "highlight outline (ring)" - they jump to (0,0) when the old anchor unmounts and need to be covered;
+   the dark mask block (_guide-mask-block) must stay throughout and never fade out as a whole:
+   otherwise at the moment of the page switch the dark mask is removed and the light page underneath is fully exposed, causing a "whole-screen white flash".
+   The hole's movement is done by _guide-no-anim snapping into place once the new page is ready, so the background stays dark throughout with no white flash. */
+body._guide-fading .tea-guide,
+body._guide-fading ._guide-mask-ring {
+  opacity: 0 !important;
+}
+
+/* Transitions are disabled until first-frame positioning is done: avoids sliding in from (0,0) on initial display / cross-page placement */
+body._guide-no-anim .tea-guide,
+body._guide-no-anim ._guide-mask-block,
+body._guide-no-anim ._guide-mask-ring {
+  transition: none !important;
+}
+
+._guide-mask-block {
+  position: fixed;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 9998;
+  pointer-events: none;
+}
+
+._guide-mask-ring {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.9),
+    0 0 16px rgba(0, 0, 0, 0.4);
+}
+
+/* RTL (Hebrew): code, commands, keys and IDs stay left-to-right inside right-to-left pages */
+[dir='rtl'] pre,
+[dir='rtl'] code,
+[dir='rtl'] kbd,
+[dir='rtl'] .font-mono {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: left;
+}

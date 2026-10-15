@@ -1,0 +1,509 @@
+/**
+ * Context Injection Module — Public API.
+ *
+ * This module provides:
+ * - Type definitions (AgentContext, InjectionHook, InjectionPoint, etc.)
+ * - HookRegistry for registering injection hooks
+ * - InjectionPipeline for executing the full injection flow
+ * - Protocol adapters (OpenAI, Anthropic)
+ * - Context utility functions
+ */
+
+// Types
+export type {
+  AgentContext,
+  AgentContextMetadata,
+  AgentTool,
+  AnchorRelation,
+  AnchorTarget,
+  CacheStrategy,
+  ContextBlock,
+  ContextBlockType,
+  ContextMessage,
+  HookPriority,
+  HookRegistry,
+  InjectionHook,
+  InjectionPoint,
+  MessageRole,
+  PrewarmInput,
+  Protocol,
+  SemanticSlot,
+} from "./types.js";
+export { HOOK_PRIORITY, INJECTION_POINTS } from "./types.js";
+
+// Agent adaptation layer
+export type { AgentProfile, PromptSegment, ResolvedAnchor, SegmentKind } from "./agents/interface.js";
+
+// Content provider + generic hook factory
+export type { ContextContentProvider, InjectionHookSpec } from "./provider.js";
+export { createInjectionHook } from "./provider.js";
+
+// Context utilities
+export {
+  appendTextToMessage,
+  createAgentContext,
+  getLastUserMessage,
+  getMessageText,
+  getSystemMessage,
+  isFirstTurn,
+  prependTextToMessage,
+  textBlock,
+  textMessage,
+} from "./context.js";
+
+// Registry
+export { HookRegistryImpl } from "./registry.js";
+
+// Pipeline
+export { InjectionPipeline } from "./pipeline.js";
+
+// Observer (injection pipeline observability)
+export type { InjectionObserver, HookResult } from "./observer.js";
+export { NoopInjectionObserver, LoggingInjectionObserver } from "./observer.js";
+
+// Prewarm runner
+export { prewarmAll } from "./prewarm.js";
+export type { PrewarmOptions, PrewarmResult } from "./prewarm.js";
+
+// Adapters
+export type { ProtocolAdapter } from "./adapters/interface.js";
+export { OpenAIAdapter } from "./adapters/openai.js";
+export { AnthropicAdapter } from "./adapters/anthropic.js";
+
+// Injectors
+export { SkillInjector } from "./injectors/skill-injector.js";
+export { SkillToolsInjector } from "./injectors/skill-tools-injector.js";
+export { WamfL1RecallInjector } from "./injectors/wamf-l1-recall-injector.js";
+export { WamfProfileMemoryInjector } from "./injectors/wamf-profile-memory-injector.js";
+export { WamfToolsInjector } from "./injectors/wamf-tools-injector.js";
+export { KnowledgeToolsInjector } from "./injectors/knowledge-tools-injector.js";
+export { AssetReflectionInjector, renderAssetReflectionBlock } from "./injectors/asset-reflection-injector.js";
+
+// CodeBuddy
+export { isCodeBuddyPrompt, parseCodeBuddySystemPrompt } from "./agents/codebuddy/parser.js";
+export { rebuildSystemPrompt, insertBeforeTag, insertAfterTag, appendInsideTag, prependInsideTag } from "./agents/codebuddy/serializer.js";
+export { detectUnknownTags, classifyTags } from "./agents/codebuddy/constants.js";
+export { CodeBuddyProfile } from "./agents/codebuddy/profile.js";
+
+// Claude Code
+export { ClaudeCodeProfile } from "./agents/claude-code/index.js";
+
+// WorkBuddy — independent client (structurally XML-tag, wire protocol OpenAI/Responses).
+// Deliberately kept as a distinct namespace with duplicated logic; no cross-imports
+// from codebuddy/codex/claude-code.
+export {
+  WorkbuddyProfile,
+  parseWorkbuddySystemPrompt,
+  isWorkbuddyPrompt,
+  WORKBUDDY_KNOWN_TAGS,
+} from "./agents/workbuddy/index.js";
+
+// ── Pipeline Factory ──────────────────────────────────────────────────────────
+
+import os from "os";
+import type { ProxyConfig } from "../types.js";
+import { InjectionPipeline } from "./pipeline.js";
+import { HookRegistryImpl } from "./registry.js";
+import { OpenAIAdapter } from "./adapters/openai.js";
+import { AnthropicAdapter } from "./adapters/anthropic.js";
+import { SkillInjector } from "./injectors/skill-injector.js";
+import { SkillToolsInjector } from "./injectors/skill-tools-injector.js";
+import { WamfProfileMemoryInjector } from "./injectors/wamf-profile-memory-injector.js";
+import { WamfToolsInjector } from "./injectors/wamf-tools-injector.js";
+import { KnowledgeToolsInjector } from "./injectors/knowledge-tools-injector.js";
+import { AssetReflectionInjector } from "./injectors/asset-reflection-injector.js";
+import type { ProtocolAdapter } from "./adapters/interface.js";
+import type { AgentProfile } from "./agents/interface.js";
+import { CodeBuddyProfile } from "./agents/codebuddy/profile.js";
+import { ClaudeCodeProfile } from "./agents/claude-code/index.js";
+import { WorkbuddyProfile } from "./agents/workbuddy/profile.js";
+import { PiProfile } from "./agents/pi/index.js";
+import { getHookCacheRepo, setHookCacheRepo, type HookCacheRepo } from "../db/hookCacheRepo.js";
+import { getSessionRepo, setSessionRepo, type SessionRepo } from "../db/sessionRepo.js";
+import { getRedisClient } from "../db/redis-client.js";
+import { RedisSessionRepo } from "../db/redis-session-repo.js";
+import { RedisHookCacheRepo } from "../db/redis-hook-cache-repo.js";
+import { RedisBindingRepo } from "../db/binding-repo.js";
+import { KvSessionRepo } from "../db/kv-session-repo.js";
+import { KvHookCacheRepo } from "../db/kv-hook-cache-repo.js";
+import { KvBindingRepo } from "../db/kv-binding-repo.js";
+import { getProxyStorage, getEffectiveBackend } from "../storage/factory.js";
+import { FsStorage } from "../storage/fs-storage.js";
+import { getSessionStore } from "../session/store.js";
+import type { HookRegistry, PrewarmInput } from "./types.js";
+import { prewarmAll, type PrewarmOptions, type PrewarmResult } from "./prewarm.js";
+import { LoggingInjectionObserver, NoopInjectionObserver, LangfuseInjectionObserver } from "./observer.js";
+
+// ... (rest)
+
+interface PipelineBundle {
+  pipeline: InjectionPipeline;
+  registry: HookRegistry;
+  hookCacheRepo?: HookCacheRepo;
+}
+
+let cachedBundle: PipelineBundle | null = null;
+let cachedConfigHash = "";
+
+/**
+ * Try to activate ProxyStorage (Kv*Repo) if `storage.enabled`.
+ *
+ * When active, replaces the RedisSessionRepo / RedisHookCacheRepo /
+ * RedisBindingRepo entirely with their Kv* equivalents.
+ *
+ * Returns true iff ProxyStorage repos were installed (Redis path bypassed).
+ */
+export function tryActivateStorage(config: ProxyConfig): boolean {
+  if (!config.storage?.enabled) return false;
+  try {
+    const storage = getProxyStorage(config.storage);
+    setSessionRepo(new KvSessionRepo(storage));
+    setHookCacheRepo(new KvHookCacheRepo(storage));
+    const store = getSessionStore();
+    store.setBindingRepo(new KvBindingRepo(storage));
+    const eff = getEffectiveBackend();
+    console.log(
+      `[injection] activated ProxyStorage (requested=${eff.requested}, effective=${eff.effective})`,
+    );
+    return true;
+  } catch (err) {
+    console.warn(
+      "[injection] ProxyStorage init failed, falling back to Redis/SQLite:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return false;
+  }
+}
+
+/** Try to activate Redis repos. Called once at pipeline build time, also exported for early activation. */
+export function tryActivateRedis(config: ProxyConfig): boolean {
+  if (!config.redis?.enabled) return false;
+  try {
+    const redis = getRedisClient(config.redis);
+    if (!redis) return false;
+
+    const ttl = config.redis.injectionTtlSeconds;
+    setSessionRepo(new RedisSessionRepo(redis, ttl));
+    setHookCacheRepo(new RedisHookCacheRepo(redis, ttl));
+    const store = getSessionStore();
+    store.setBindingRepo(new RedisBindingRepo(redis));
+    console.log("[injection] activated Redis storage");
+    return true;
+  } catch (err) {
+    console.warn("[injection] Redis unavailable, falling back to SQLite:", err instanceof Error ? err.message : String(err));
+    return false;
+  }
+}
+
+/**
+ * The session binding must always be persisted; there is no pure in-memory mode.
+ *
+ * If neither storage nor redis is active (bindingRepo is still undefined),
+ * use fs to automatically create a KvBindingRepo as a fallback.
+ *
+ * Default path: ~/.weaverai-memory-fabric/proxy-state/ (at the same level as MemoryCore's
+ * ~/.weaverai-memory-fabric/memory-wamf/, keeping project data together).
+ * Can be overridden via config.storage.fs.fsRoot or the environment variable PROXY_DATA_DIR.
+ *
+ * Degradation: if fs creation fails (insufficient permission, disk full, etc.) -> log a warn and fall back to in-memory logic,
+ * without blocking proxy startup. Users can still use it online, but after a proxy restart they must run session-init again.
+ */
+export function ensureBindingRepoPersistent(config: ProxyConfig): void {
+  const store = getSessionStore();
+  if (store.getBindingRepo()) return; // already present (storage/redis was activated)
+
+  const home = process.env.HOME || process.env.USERPROFILE || "/tmp";
+  const defaultFsRoot = `${home}/.memory-weaverai/proxy-state`;
+  const fsRoot = process.env.PROXY_DATA_DIR || config.storage?.fs?.fsRoot || defaultFsRoot;
+
+  try {
+    const fsStorage = new FsStorage(fsRoot);
+    store.setBindingRepo(new KvBindingRepo(fsStorage));
+    console.log(`[injection] bindingRepo fallback → fs (${fsRoot})`);
+  } catch (err) {
+    // Degradation: when fs is unavailable fall back to in-memory logic, without blocking startup.
+    // The proxy runs normally, but bindings are lost after restart -> users must run session-init again.
+    console.warn(
+      `[injection] fs bindingRepo at ${fsRoot} failed: ${(err as Error).message}. ` +
+      `Falling back to in-memory — session bindings will NOT persist across restarts.`,
+    );
+  }
+}
+
+/** Resolve `HookCacheRepo`. `getHookCacheRepo()` self-degrades to a NullRepo
+ *  when better-sqlite3 is absent, so callers always receive a usable instance. */
+function tryLoadHookCacheRepo(): HookCacheRepo | undefined {
+  try {
+    return getHookCacheRepo();
+  } catch (err) {
+    console.warn(
+      "[injection] hook-cache repo unavailable, hooks will run without caching:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return undefined;
+  }
+}
+
+function buildPipelineBundle(config: ProxyConfig): PipelineBundle {
+  const registry = new HookRegistryImpl();
+  const adapters = new Map<string, ProtocolAdapter>();
+  adapters.set("openai", new OpenAIAdapter());
+  adapters.set("anthropic", new AnthropicAdapter());
+
+  // Register configured injectors. Each injector reads its own kernel config
+  // (`coreSkill`, `wamf`, ...); there is no shared external endpoint anymore.
+  const injectors = config.injection?.injectors ?? [];
+
+  // proxyBaseUrl is shared between skill-tools-injector and wamf-tools-injector.
+  //
+  // WARNING: multi-node deployments must explicitly configure `injection.externalGatewayUrl` (the gateway's external domain,
+  // e.g. https://gateway.example.com) - otherwise each pod embeds
+  // its own host:port into the `<skill_tools>` / `<wamf_memory_tools>` text,
+  // pods overwrite each other's hook cache, and the upstream KV cache misses every time.
+  //
+  // When not configured, fall back to the local host:port (only usable for single-node / local development), warning once at startup.
+  let proxyBaseUrl: string | undefined;
+  if (injectors.includes("skill") || (injectors.includes("wamf-memory") && config.wamf.enabled)) {
+    const externalBase = config.injection?.externalGatewayUrl;
+    if (externalBase && externalBase.length > 0) {
+      proxyBaseUrl = externalBase.replace(/\/$/, "");
+      console.log(`[injection] proxyBaseUrl (from injection.externalGatewayUrl) = ${proxyBaseUrl}`);
+    } else {
+      let hostIp = config.server.host;
+      if (hostIp === "0.0.0.0" || hostIp === "127.0.0.1") {
+        const interfaces = os.networkInterfaces();
+        let foundIp = "";
+        for (const name of Object.keys(interfaces)) {
+          const iface = interfaces[name];
+          if (!iface) continue;
+          for (const entry of iface) {
+            if (entry.family === "IPv4" && !entry.internal) {
+              foundIp = entry.address;
+              break;
+            }
+          }
+          if (foundIp) break;
+        }
+        hostIp = foundIp || "127.0.0.1";
+      }
+      proxyBaseUrl = `http://${hostIp}:${config.server.port}`;
+      console.warn(
+        `[injection] injection.externalGatewayUrl not set — falling back to ` +
+        `${proxyBaseUrl}. This causes hook cache thrashing + upstream KV-cache misses ` +
+        `in multi-node deployments; set injection.externalGatewayUrl to the shared ` +
+        `gateway domain (e.g. https://gateway.example.com).`,
+      );
+    }
+  }
+
+  if (injectors.includes("skill")) {
+    // RAG-driven `<cloud_skills>` block. Calls /v3/skill/search at prewarm time.
+    // When coreSkill is unconfigured (no serviceToken), the searchSkills call
+    // will fail and the injector silently degrades to no <cloud_skills> block.
+    registry.register(
+      new SkillInjector({ coreSkill: config.coreSkill }),
+    );
+
+    // Always inject the curl-recipe `<skill_tools>` block alongside the
+    // dynamic `<cloud_skills>` block. Even when there are no skills to
+    // recommend, the LLM still needs to know how to create / search them.
+    const allowLlmWrite = config.skillRuntime?.allowLlmWrite ?? false;
+    registry.register(new SkillToolsInjector({ proxyBaseUrl: proxyBaseUrl!, allowLlmWrite }));
+  }
+
+  if (injectors.includes("knowledge")) {
+    // Knowledge tools injector — fetches team knowledge from kernel and
+    // renders <knowledge_tools> prompt block with two-step self-discovery flow.
+    // Independent `knowledge:` config (endpoint can diverge from skill).
+    if (shouldRegisterKnowledgeInjector(config)) {
+      registry.register(new KnowledgeToolsInjector({
+        coreSkill: config.knowledge,
+      }));
+    }
+  }
+
+  if (injectors.includes("wamf-memory") && config.wamf.enabled && config.wamf.memory.enabled && config.wamf.memory.inject) {
+    // Base WamfClient config. `WamfProfileMemoryInjector` rebuilds a per-request
+    // WamfClient with `serviceId := session.space_id || baseConfig.serviceId`
+    // so writes/recalls hit the correct kernel tenant (was hard-coded to
+    // `config.wamf.serviceId` before; broke multi-tenant tests).
+    const wamfBaseConfig = {
+      enabled: config.wamf.enabled && config.wamf.memory.enabled,
+      endpoint: config.wamf.endpoint,
+      apiKey: config.wamf.apiKey,
+      serviceId: config.wamf.serviceId,
+      writeL0: config.wamf.memory.writeL0,
+      recallL1: config.wamf.memory.recallL1,
+      injectL2L3: config.wamf.memory.injectL2L3,
+      l1Limit: config.wamf.memory.l1Limit,
+      l2Limit: config.wamf.memory.l2Limit,
+      timeoutMs: config.wamf.memory.timeoutMs,
+    };
+    // fixed-asset-agents (self + up to 2 borrowed) are obtained through the kernel MetadataClient;
+    // when the kernel is unreachable the injector automatically degrades to "only query the current agent's memory".
+    if (config.wamf.memory.injectL2L3) {
+      registry.register(new WamfProfileMemoryInjector(wamfBaseConfig, config.coreSkill));
+    }
+    // Note: L0/L1 are no longer auto-recalled every turn and injected into the user prompt (that would break the KV/prompt cache).
+    // Instead only read-only tools are exposed in the system prompt (see WamfToolsInjector), reusing the system
+    // prompt cache. The L1 recall injector is offline; the recallL1 config is kept but no longer registered.
+    // Companion profile-memory-injector: L2 only injects the path index; the LLM calls the read-only tools via Bash curl
+    // <proxy>/memory-bridge/v3/*. The proxy injects identity automatically.
+    // proxyBaseUrl reuses the value computed by skill-tools-injector (same host:port).
+    if (typeof proxyBaseUrl !== "undefined") {
+      registry.register(new WamfToolsInjector({ proxyBaseUrl }));
+    }
+  }
+
+  // -- Asset Reflection (internal effectiveness evaluation) ------------------------------
+  // Enabled by default (markerOptIn=true) - pods without assetReflection configured also register
+  // this injector. Registering only adds it to the registry; when the marker is not hit execute() directly
+  // returns [], so normal request prompts are completely unchanged; only requests whose URL carries the `/analyse` marker
+  // actually emit the block. The tag list is derived from "the asset injectors actually registered on this node",
+  // to avoid making the LLM reflect on an asset this node never connected.
+  //
+  // When markerOptIn=false is configured explicitly, the injector is not registered, and the gate at the top of server.ts
+  // rejects any request with an `/analyse/` segment with a 404.
+  if (config.injection?.assetReflection?.markerOptIn) {
+    const registeredIds = new Set(registry.getAll().map((h) => h.id));
+    const activeAssetTags: string[] = [];
+    // Skill family: SkillInjector emits <available_skills>, SkillToolsInjector emits <skill_tools>;
+    // the two injectors are enabled together (see `if (injectors.includes("skill"))` above); the presence of either counts as a skill asset hit.
+    if (registeredIds.has("skill-injector") || registeredIds.has("skill-tools-injector")) {
+      activeAssetTags.push("skill_tools");
+      activeAssetTags.push("available_skills");
+    }
+    if (registeredIds.has("wamf-memory-tools-injector")) {
+      activeAssetTags.push("wamf_memory_tools");
+    }
+    if (registeredIds.has("knowledge-tools-injector")) {
+      activeAssetTags.push("knowledge_tools");
+    }
+    if (activeAssetTags.length > 0) {
+      registry.register(new AssetReflectionInjector({ activeAssetTags }));
+      console.log(`[injection] asset-reflection registered, tags=[${activeAssetTags.join(",")}]`);
+    } else {
+      console.log(`[injection] asset-reflection markerOptIn=true but this node has no asset injector; skipping register`);
+    }
+  }
+
+  // Activate storage backend if configured (before loading repos).
+  // ProxyStorage (SQLite/FS/Memory) takes precedence when storage.enabled;
+  // otherwise fall back to the original Redis path.
+  if (!tryActivateStorage(config)) {
+    tryActivateRedis(config);
+  }
+
+  // The session binding must always be persisted - there is no pure in-memory mode.
+  // If neither storage nor redis is active, use fs as the bindingRepo fallback.
+  ensureBindingRepoPersistent(config);
+
+  const hookCacheRepo = tryLoadHookCacheRepo();
+
+  // Observer: prefer Langfuse (injection spans under LLM trace) when enabled;
+  // fall back to structured logging when log level ≤ info; else noop.
+  const observer = config.langfuse?.enabled
+    ? new LangfuseInjectionObserver()
+    : (config.log?.level === "debug" || config.log?.level === "info")
+      ? new LoggingInjectionObserver()
+      : new NoopInjectionObserver();
+
+  const pipeline = new InjectionPipeline(registry, adapters, {
+    hookCacheRepo,
+    // Agent profile registry — lookup by URL path prefix (agentSource).
+    // Adding a new agent only adds a line here. The legacy detectAgent
+    // (content-scanning) is kept as fallback for un-prefixed paths.
+    agentProfiles: new Map<string, AgentProfile>([
+      ["codebuddy", new CodeBuddyProfile()],
+      ["claude-code", new ClaudeCodeProfile()],
+      ["workbuddy", new WorkbuddyProfile()],
+      ["pi", new PiProfile()],
+      // ["cursor", new CursorProfile()],
+    ]),
+    // Legacy fallback: scan system prompt content (for backward compat).
+    detectAgent: (() => {
+      const agentProfiles: AgentProfile[] = [
+        new CodeBuddyProfile(),
+        new ClaudeCodeProfile(),
+        new WorkbuddyProfile(),
+      ];
+      return (systemText: string) =>
+        agentProfiles.find((p) => p.detect(systemText)) ?? null;
+    })(),
+  }, observer);
+
+  return { pipeline, registry, hookCacheRepo };
+}
+
+function getOrBuildBundle(config: ProxyConfig): PipelineBundle {
+  const configHash = JSON.stringify({
+    injection: config.injection,
+    wamf: config.wamf,
+    coreSkill: config.coreSkill,
+    knowledge: config.knowledge,
+    server: config.server,
+  });
+  if (cachedBundle && cachedConfigHash === configHash) {
+    return cachedBundle;
+  }
+  cachedBundle = buildPipelineBundle(config);
+  cachedConfigHash = configHash;
+  return cachedBundle;
+}
+
+/**
+ * Get or create an InjectionPipeline configured from ProxyConfig.
+ * The pipeline is cached and reused for the lifetime of the config.
+ */
+export function getInjectionPipeline(config: ProxyConfig): InjectionPipeline {
+  return getOrBuildBundle(config).pipeline;
+}
+
+/**
+ * Drive `prewarmAll` against the same HookRegistry / HookCacheRepo used by
+ * the live pipeline. Intended for the session_init hot path: call this once
+ * per session immediately after the control plane returns `sessionInfo`.
+ *
+ * Errors are NEVER thrown — caller can safely `await` without try/catch.
+ */
+export async function prewarmFromConfig(
+  config: ProxyConfig,
+  input: PrewarmInput,
+  opts?: PrewarmOptions,
+): Promise<PrewarmResult> {
+  const bundle = getOrBuildBundle(config);
+  // No persistence layer or no hooks declaring strategy → noop with empty result.
+  if (!bundle.hookCacheRepo) {
+    return { cachedHookIds: [], skipped: [], durationMs: 0 };
+  }
+  try {
+    return await prewarmAll(bundle.registry, bundle.hookCacheRepo, input, opts);
+  } catch (err) {
+    console.warn(
+      "[hook-cache] prewarmFromConfig swallowed error:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return { cachedHookIds: [], skipped: [], durationMs: 0 };
+  }
+}
+
+/**
+ * Pure predicate: should the knowledge-tools injector be registered?
+ * Exposed for unit tests (registry itself is not publicly introspectable).
+ *
+ * Conditions (all must hold):
+ *   1. `injection.injectors` includes "knowledge"
+ *   2. `knowledge.enabled` is true
+ *   3. `knowledge.serviceToken` is non-empty
+ */
+export function shouldRegisterKnowledgeInjector(config: ProxyConfig): boolean {
+  return config.injection.injectors.includes("knowledge")
+    && config.knowledge.enabled
+    && !!config.knowledge.serviceToken;
+}
+
+/** Test-only: drop the cached pipeline so the next call rebuilds from config. */
+export function __resetInjectionPipelineForTests(): void {
+  cachedBundle = null;
+  cachedConfigHash = "";
+}

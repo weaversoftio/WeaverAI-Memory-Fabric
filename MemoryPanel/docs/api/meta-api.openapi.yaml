@@ -1,0 +1,1838 @@
+openapi: 3.0.3
+info:
+  title: Team Memory Control — New Panel Metadata API (stateless)
+  description: |
+    The new panel Control is a **stateless proxy**: `/api/v1/meta/*` transparently forwards to the memory kernel `/v3/meta/*` (v3.1).
+
+    **Authentication (Header, no cookie)**
+    - `X-Wamf-Service-Id`: instance ID (from `GET /meta/instances`, = the kernel `x-wamf-service-id`)
+    - `X-Wamf-User-Key`: user key `sk-mem-…` (except `auth/verify`, where user_key goes only in the body)
+
+    **Response envelope** `{ code, message, request_id, data }`
+    - `code === 0` -> HTTP **200** (request executed successfully)
+    - `code ∈ [400, 599]` -> the HTTP status **equals** code
+    - Soft validation: check `data.valid` for `auth/verify`; check `data.allowed` for `acl/check`
+
+    Design doc: [09-new-panel-control-backend-design.md](../architecture/09-new-panel-control-backend-design.md)
+    Kernel field authority: [08-metadata-v3-api-reference.md](../architecture/08-metadata-v3-api-reference.md)
+  version: 1.3.1
+  contact:
+    name: team-memory-control
+
+servers:
+  - url: http://127.0.0.1:8123
+    description: Local Control (`PANEL_MODE=stateless` or `pnpm dev:panel`)
+  - url: https://{controlHost}
+    description: Deployed environment
+    variables:
+      controlHost:
+        default: control.example.com
+
+tags:
+  - name: Meta · Control
+    description: Control auxiliary endpoints
+  - name: Meta · User
+  - name: Meta · User Key
+  - name: Meta · Team
+  - name: Meta · Team Member
+  - name: Meta · Agent
+  - name: Meta · Task
+  - name: Meta · Task Agent
+  - name: Meta · Asset
+  - name: Meta · Agent Fixed Asset
+  - name: Meta · ACL
+  - name: Meta · Auth
+
+paths:
+  /api/v1/meta/instances:
+    get:
+      tags: [Meta · Control]
+      operationId: meta_instances_list
+      summary: Memory instance list (before login)
+      description: |
+        Returns all memory instances in the config file, **no pagination**.
+        Only exposes `instance_id` and `name` (not gateway_endpoint / api_key).
+        Config: `METADATA_INSTANCES_CONFIG` (default `./config/metadata-instances.json`).
+      security: []
+      responses:
+        '200':
+          description: Public instance list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetadataInstanceListResponse'
+              example:
+                instances:
+                  - instance_id: default
+                    name: Community R&D demo instance
+                  - instance_id: sre-platform
+                    name: SRE platform instance
+
+  /api/v1/meta/user/create:
+    post:
+      tags: ["Meta · User"]
+      operationId: meta_user_create
+      summary: user/create
+      description: "Transparent proxy; the Header `X-Wamf-User-Key` must be a system_admin. Non-admin -> kernel 403."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/user/get:
+    post:
+      tags: ["Meta · User"]
+      operationId: meta_user_get
+      summary: user/get
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/user/delete:
+    post:
+      tags: ["Meta · User"]
+      operationId: meta_user_delete
+      summary: user/delete
+      description: "Transparent proxy; the Header `X-Wamf-User-Key` must be a system_admin. Non-admin -> kernel 403."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/user/list:
+    post:
+      tags: ["Meta · User"]
+      operationId: meta_user_list
+      summary: user/list
+      description: "Transparent proxy; team_id may be omitted only by system_admin (instance-level list). Optional user_ids and username (exact match) filters. The response UserPublic includes username."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/user-key/create:
+    post:
+      tags: ["Meta · User Key"]
+      operationId: meta_user-key_create
+      summary: user-key/create
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/user-key/list:
+    post:
+      tags: ["Meta · User Key"]
+      operationId: meta_user-key_list
+      summary: user-key/list
+      description: "Paginated list; the body accepts optional limit (default 20, max 100) and offset (default 0). Default created_at DESC (v3.1.2+; joined_at DESC for team-member). Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/user-key/get:
+    post:
+      tags: ["Meta · User Key"]
+      operationId: meta_user-key_get
+      summary: user-key/get
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/user-key/revoke:
+    post:
+      tags: ["Meta · User Key"]
+      operationId: meta_user-key_revoke
+      summary: user-key/revoke
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/user-key/update:
+    post:
+      tags: ["Meta · User Key"]
+      operationId: meta_user-key_update
+      summary: user-key/update
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/team/create:
+    post:
+      tags: ["Meta · Team"]
+      operationId: meta_team_create
+      summary: team/create
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/team/get:
+    post:
+      tags: ["Meta · Team"]
+      operationId: meta_team_get
+      summary: team/get
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/team/update:
+    post:
+      tags: ["Meta · Team"]
+      operationId: meta_team_update
+      summary: team/update
+      description: "Transparent proxy; team owner or admin. owner_user_id cannot be changed (silently ignored if passed). See 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/team/delete:
+    post:
+      tags: ["Meta · Team"]
+      operationId: meta_team_delete
+      summary: team/delete
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/team/list:
+    post:
+      tags: ["Meta · Team"]
+      operationId: meta_team_list
+      summary: team/list
+      description: "Paginated list; the body accepts optional limit (default 20, max 100) and offset (default 0). Default created_at DESC (v3.1.2+; joined_at DESC for team-member). Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/team-member/add:
+    post:
+      tags: ["Meta · Team Member"]
+      operationId: meta_team-member_add
+      summary: team-member/add
+      description: "Transparent proxy; team admin. Cannot add yourself, cannot demote the owner. The response TeamMemberEntity **does not include** username (v3.2.2+); call team-member/list after adding to get the display name. v3.2.3+: adding an active member with the same role again -> 409 member_already_exists."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/team-member/remove:
+    post:
+      tags: ["Meta · Team Member"]
+      operationId: meta_team-member_remove
+      summary: team-member/remove
+      description: "Transparent proxy; team admin. Cannot remove the team owner (403 cannot remove team owner). Physically deletes the member row. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/team-member/list:
+    post:
+      tags: ["Meta · Team Member"]
+      operationId: meta_team-member_list
+      summary: team-member/list
+      description: "Paginated list; the body must contain team_id. Response items are TeamMemberEntity (including the username joined at read time, v3.2.2+); callable only by active team members. Default joined_at DESC. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/team-member/get:
+    post:
+      tags: ["Meta · Team Member"]
+      operationId: meta_team-member_get
+      summary: team-member/get
+      description: "Transparent proxy; the response TeamMemberEntity includes username (v3.2.2+, joined at read time). Must be an active team member. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/agent/create:
+    post:
+      tags: ["Meta · Agent"]
+      operationId: meta_agent_create
+      summary: agent/create
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/agent/get:
+    post:
+      tags: ["Meta · Agent"]
+      operationId: meta_agent_get
+      summary: agent/get
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/agent/update:
+    post:
+      tags: ["Meta · Agent"]
+      operationId: meta_agent_update
+      summary: agent/update
+      description: "Transparent proxy; agent owner. owner_user_id cannot be changed (silently ignored if passed). See 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/agent/delete:
+    post:
+      tags: ["Meta · Agent"]
+      operationId: meta_agent_delete
+      summary: agent/delete
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/agent/list:
+    post:
+      tags: ["Meta · Agent"]
+      operationId: meta_agent_list
+      summary: agent/list
+      description: "Paginated list; the body accepts optional limit (default 20, max 100) and offset (default 0). Default created_at DESC (v3.1.2+; joined_at DESC for team-member). Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/agent/archive:
+    post:
+      tags: ["Meta · Agent"]
+      operationId: meta_agent_archive
+      summary: agent/archive
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/task/create:
+    post:
+      tags: ["Meta · Task"]
+      operationId: meta_task_create
+      summary: task/create
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/task/get:
+    post:
+      tags: ["Meta · Task"]
+      operationId: meta_task_get
+      summary: task/get
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/task/update:
+    post:
+      tags: ["Meta · Task"]
+      operationId: meta_task_update
+      summary: task/update
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/task/delete:
+    post:
+      tags: ["Meta · Task"]
+      operationId: meta_task_delete
+      summary: task/delete
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/task/list:
+    post:
+      tags: ["Meta · Task"]
+      operationId: meta_task_list
+      summary: task/list
+      description: "Paginated list; the body accepts optional limit (default 20, max 100) and offset (default 0). Default created_at DESC (v3.1.2+; joined_at DESC for team-member). Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/task/archive:
+    post:
+      tags: ["Meta · Task"]
+      operationId: meta_task_archive
+      summary: task/archive
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/task-agent/link:
+    post:
+      tags: ["Meta · Task Agent"]
+      operationId: meta_task-agent_link
+      summary: task-agent/link
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/task-agent/unlink:
+    post:
+      tags: ["Meta · Task Agent"]
+      operationId: meta_task-agent_unlink
+      summary: task-agent/unlink
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/task-agent/list:
+    post:
+      tags: ["Meta · Task Agent"]
+      operationId: meta_task-agent_list
+      summary: task-agent/list
+      description: "Paginated list; the body accepts optional limit (default 20, max 100) and offset (default 0). Default created_at DESC (v3.1.2+; joined_at DESC for team-member). Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/participation-log/append:
+    post:
+      tags: [Meta]
+      operationId: meta_participation-log_append
+      summary: participation-log/append
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/participation-log/list:
+    post:
+      tags: [Meta]
+      operationId: meta_participation-log_list
+      summary: participation-log/list
+      description: "Paginated list; the body accepts optional limit (default 20, max 100) and offset (default 0). Default created_at DESC (v3.1.2+; joined_at DESC for team-member). Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/asset/create:
+    post:
+      tags: ["Meta · Asset"]
+      operationId: meta_asset_create
+      summary: asset/create
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/asset/get:
+    post:
+      tags: ["Meta · Asset"]
+      operationId: meta_asset_get
+      summary: asset/get
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/asset/update:
+    post:
+      tags: ["Meta · Asset"]
+      operationId: meta_asset_update
+      summary: asset/update
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/asset/delete:
+    post:
+      tags: ["Meta · Asset"]
+      operationId: meta_asset_delete
+      summary: asset/delete
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/asset/list:
+    post:
+      tags: ["Meta · Asset"]
+      operationId: meta_asset_list
+      summary: asset/list
+      description: "Paginated list; the body accepts optional limit (default 20, max 100) and offset (default 0). Default created_at DESC (v3.1.2+; joined_at DESC for team-member). Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/asset/list-accessible:
+    post:
+      tags: ["Meta · Asset"]
+      operationId: meta_asset_list-accessible
+      summary: asset/list-accessible
+      description: "Paginated list; the body accepts optional limit (default 20, max 100) and offset (default 0). Default created_at DESC (v3.1.2+; joined_at DESC for team-member). Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/asset/touch-usage:
+    post:
+      tags: ["Meta · Asset"]
+      operationId: meta_asset_touch-usage
+      summary: asset/touch-usage
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/agent-fixed-asset/set:
+    post:
+      tags: ["Meta · Agent Fixed Asset"]
+      operationId: meta_agent-fixed-asset_set
+      summary: agent-fixed-asset/set
+      description: "In phase one the new panel **does not forward** to the kernel; Control returns HTTP 501, `message=NOT_IN_SCOPE`."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '501':
+          $ref: "#/components/responses/NotInScope"
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/agent-fixed-asset/list:
+    post:
+      tags: ["Meta · Agent Fixed Asset"]
+      operationId: meta_agent-fixed-asset_list
+      summary: agent-fixed-asset/list
+      description: "In phase one the new panel **does not forward** to the kernel; Control returns HTTP 501, `message=NOT_IN_SCOPE`."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '501':
+          $ref: "#/components/responses/NotInScope"
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/agent-fixed-asset/list-with-detail:
+    post:
+      tags: ["Meta · Agent Fixed Asset"]
+      operationId: meta_agent-fixed-asset_list-with-detail
+      summary: agent-fixed-asset/list-with-detail
+      description: "In phase one the new panel **does not forward** to the kernel; Control returns HTTP 501, `message=NOT_IN_SCOPE`."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '501':
+          $ref: "#/components/responses/NotInScope"
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/agent-fixed-asset/summary-by-agents:
+    post:
+      tags: ["Meta · Agent Fixed Asset"]
+      operationId: meta_agent-fixed-asset_summary-by-agents
+      summary: agent-fixed-asset/summary-by-agents
+      description: "In phase one the new panel **does not forward** to the kernel; Control returns HTTP 501, `message=NOT_IN_SCOPE`."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '501':
+          $ref: "#/components/responses/NotInScope"
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/acl/grant:
+    post:
+      tags: ["Meta · ACL"]
+      operationId: meta_acl_grant
+      summary: acl/grant
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/acl/revoke:
+    post:
+      tags: ["Meta · ACL"]
+      operationId: meta_acl_revoke
+      summary: acl/revoke
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/acl/list:
+    post:
+      tags: ["Meta · ACL"]
+      operationId: meta_acl_list
+      summary: acl/list
+      description: "Paginated list; the body accepts optional limit (default 20, max 100) and offset (default 0). Default created_at DESC (v3.1.2+; joined_at DESC for team-member). Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/acl/check:
+    post:
+      tags: ["Meta · ACL"]
+      operationId: meta_acl_check
+      summary: acl/check
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/auth/verify:
+    post:
+      tags: ["Meta · Auth"]
+      operationId: meta_auth_verify
+      summary: auth/verify
+      description: "Login liveness check: the Header is only `X-Wamf-Service-Id`; the body must contain `user_key`. Check `data.valid` for success (soft validation)."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/instance-quota/get:
+    post:
+      tags: [Meta]
+      operationId: meta_instance-quota_get
+      summary: instance-quota/get
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/config/user/get:
+    post:
+      tags: [Meta]
+      operationId: meta_config_user_get
+      summary: config/user/get
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+  /api/v1/meta/config/user/set:
+    post:
+      tags: [Meta]
+      operationId: meta_config_user_set
+      summary: config/user/set
+      description: "Transparent proxy to the kernel; see 08-metadata-v3-api-reference.md for fields. Both Header credentials required."
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WamfServiceId'
+        - $ref: '#/components/parameters/WamfUserKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Kernel-style envelope (check body.code first for business success or failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          $ref: "#/components/responses/ControlBadRequest"
+        '502':
+          $ref: "#/components/responses/KernelUnavailable"
+        '504':
+          $ref: "#/components/responses/KernelTimeout"
+
+components:
+  parameters:
+    WamfServiceId:
+      name: X-Wamf-Service-Id
+      in: header
+      required: true
+      schema:
+        type: string
+      description: Memory instance ID (= registry id = the kernel x-wamf-service-id)
+      example: default
+    WamfUserKey:
+      name: X-Wamf-User-Key
+      in: header
+      required: true
+      schema:
+        type: string
+      description: User API key sk-mem-… (the auth/verify action does not use this Header)
+      example: sk-mem-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+  responses:
+    ControlBadRequest:
+      description: Control validation error (not forwarded to the kernel)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiResponse'
+          example:
+            code: 400
+            message: INVALID_INSTANCE
+            request_id: req-example
+            data: null
+    NotInScope:
+      description: Action domain disabled in phase one of the new panel (asset / agent-fixed-asset)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiResponse'
+          example:
+            code: 501
+            message: NOT_IN_SCOPE
+            request_id: req-example
+            data: null
+    KernelUnavailable:
+      description: Kernel unreachable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiResponse'
+          example:
+            code: 502
+            message: KERNEL_UNAVAILABLE
+            request_id: req-example
+            data: null
+    KernelTimeout:
+      description: Kernel timeout
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiResponse'
+          example:
+            code: 504
+            message: KERNEL_TIMEOUT
+            request_id: req-example
+            data: null
+
+  schemas:
+    PublicMetadataInstance:
+      type: object
+      required: [instance_id, name]
+      properties:
+        instance_id:
+          type: string
+          description: Memory instance ID (corresponds to the kernel x-wamf-service-id)
+          example: default
+        name:
+          type: string
+          description: Display name on the login page
+          example: Community R&D demo instance
+
+    MetadataInstanceListResponse:
+      type: object
+      required: [instances]
+      properties:
+        instances:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicMetadataInstance'
+
+    ApiResponse:
+      type: object
+      required: [code, message, request_id, data]
+      properties:
+        code:
+          type: integer
+          description: |
+            0 = request executed successfully.
+            400-599: the HTTP status code equals code.
+            Check code first for business success or failure; for soft validation check data.valid / data.allowed.
+          example: 0
+        message:
+          type: string
+          example: ok
+        request_id:
+          type: string
+          example: req-a1b2c3d4
+        data:
+          nullable: true
+          description: Success payload; often null on failure
+
+    PaginatedResult:
+      type: object
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        total:
+          type: integer
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        offset:
+          type: integer
+          minimum: 0
+
+    PaginationInput:
+      type: object
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        offset:
+          type: integer
+          minimum: 0
+          default: 0

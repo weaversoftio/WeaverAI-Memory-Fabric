@@ -1,0 +1,54 @@
+/**
+ * SkillsPanel styles.
+ *
+ * The list container / split layout / skeleton / 4-row list item structure are already provided by the shared AssetListPanel
+ * (asset-list-panel.css); only the Skills page's differentiated overrides are kept here:
+ *   1. Page outer flex layout
+ *   2. List item delete button (shown on hover / selection)
+ *   3. Unified font size override for the username badge and timestamp
+ */
+._memory-skills-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ===== Delete button: shown on hover/selected.
+   The list item container was refactored into the shared _alp-item (see AssetListPanel);
+   the old selector _memory-skill-item:hover no longer matches, so the button stayed hidden forever; now attached to _alp-item. */
+._memory-skill-item-delete {
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.15s ease-in-out;
+  padding: 0 !important;
+  min-width: 20px !important;
+  flex-shrink: 0;
+}
+
+._alp-item:hover ._memory-skill-item-delete,
+._alp-item--selected ._memory-skill-item-delete {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* ===== Font unification override for the shared AssetListPanel list items on the Skills page ===== */
+/* Username badge: same font size as the timestamp (overrides the 11px of the shared ._alp-badge) */
+._memory-skills-body ._alp-item-badges ._alp-badge {
+  font-size: 12px;
+}
+
+/* Timestamp: unified with the username (the shared ._alp-item-time already declares 12px; the color is also pinned here as a fallback) */
+._memory-skills-body ._alp-item-badges ._alp-item-time {
+  font-size: 12px;
+  color: var(--tea-color-text-secondary);
+}
+
+/* ===== Version Tag (before the name in the title row) =====
+   Compact display and not squeezed by flex; ellipsis for overlong names is still handled by ._alp-item-name. */
+._memory-skills-body ._alp-item-header ._memory-skill-item-version {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0 5px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}

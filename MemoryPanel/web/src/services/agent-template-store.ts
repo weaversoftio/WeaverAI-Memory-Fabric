@@ -1,0 +1,158 @@
+/**
+ * agent-template-store.ts - Agent creation templates (local localStorage).
+ *
+ * Extracted from the original demoStore.ts (independent responsibility: unrelated to team/agent/task themselves, only serves
+ * the auxiliary feature of "one-click prefill of the form when creating an agent").
+ *
+ * Templates come in two kinds:
+ *   - Built-in templates (builtin=true): shipped with the product, cannot be deleted, cover several common roles.
+ *   - Custom templates (builtin=false): generated when the user clicks "Save as template" in the create dialog,
+ *     stored in localStorage, deletable.
+ *
+ * Once the backend is live, swap this layer for GET/POST/DELETE /agent-templates; the UI needs no change.
+ */
+
+import i18n from '@/i18n';
+import { emitChange, safeParse } from './storage-utils';
+
+const AGENT_TEMPLATES_KEY = 'wamf-memory.agentTemplates.v1';
+
+export interface AgentTemplate {
+  template_id: string;
+  /** Template name (for display, required) */
+  name: string;
+  /** Template description (optional, a one-line note for users) */
+  summary: string;
+  /** Built-in templates cannot be deleted */
+  builtin: boolean;
+  // ===== Fields prefilled into the create form (all agent fields, excluding name - name is filled in by the user) =====
+  description: string;
+  role_prompt: string;
+  rules_prompt: string;
+  skills: string[];
+  code_graphs: string[];
+  llm_wikis: string[];
+  chat_memories: string[];
+  created_at_ms: number;
+}
+
+/** Built-in templates - not persisted; merged with custom templates on every read. */
+function getBuiltinAgentTemplates(): AgentTemplate[] {
+  return [
+    {
+      template_id: 'builtin-pr-reviewer',
+      name: i18n.t('agentTemplate.builtin.prReviewer.name'),
+      summary: i18n.t('agentTemplate.builtin.prReviewer.summary'),
+      builtin: true,
+      description: i18n.t('agentTemplate.builtin.prReviewer.description'),
+      role_prompt: i18n.t('agentTemplate.builtin.prReviewer.rolePrompt'),
+      rules_prompt: i18n.t('agentTemplate.builtin.prReviewer.rulesPrompt'),
+      skills: [],
+      code_graphs: [],
+      llm_wikis: [],
+      chat_memories: [],
+      created_at_ms: 0,
+    },
+    {
+      template_id: 'builtin-bugfix-engineer',
+      name: i18n.t('agentTemplate.builtin.bugfixEngineer.name'),
+      summary: i18n.t('agentTemplate.builtin.bugfixEngineer.summary'),
+      builtin: true,
+      description: i18n.t('agentTemplate.builtin.bugfixEngineer.description'),
+      role_prompt: i18n.t('agentTemplate.builtin.bugfixEngineer.rolePrompt'),
+      rules_prompt: i18n.t('agentTemplate.builtin.bugfixEngineer.rulesPrompt'),
+      skills: [],
+      code_graphs: [],
+      llm_wikis: [],
+      chat_memories: [],
+      created_at_ms: 0,
+    },
+    {
+      template_id: 'builtin-issue-triage',
+      name: i18n.t('agentTemplate.builtin.issueTriage.name'),
+      summary: i18n.t('agentTemplate.builtin.issueTriage.summary'),
+      builtin: true,
+      description: i18n.t('agentTemplate.builtin.issueTriage.description'),
+      role_prompt: i18n.t('agentTemplate.builtin.issueTriage.rolePrompt'),
+      rules_prompt: i18n.t('agentTemplate.builtin.issueTriage.rulesPrompt'),
+      skills: [],
+      code_graphs: [],
+      llm_wikis: [],
+      chat_memories: [],
+      created_at_ms: 0,
+    },
+    {
+      template_id: 'builtin-doc-engineer',
+      name: i18n.t('agentTemplate.builtin.docEngineer.name'),
+      summary: i18n.t('agentTemplate.builtin.docEngineer.summary'),
+      builtin: true,
+      description: i18n.t('agentTemplate.builtin.docEngineer.description'),
+      role_prompt: i18n.t('agentTemplate.builtin.docEngineer.rolePrompt'),
+      rules_prompt: i18n.t('agentTemplate.builtin.docEngineer.rulesPrompt'),
+      skills: [],
+      code_graphs: [],
+      llm_wikis: [],
+      chat_memories: [],
+      created_at_ms: 0,
+    },
+  ];
+}
+
+function readCustomAgentTemplates(): AgentTemplate[] {
+  if (typeof window === 'undefined') return [];
+  return safeParse<AgentTemplate[]>(localStorage.getItem(AGENT_TEMPLATES_KEY), []);
+}
+
+function writeCustomAgentTemplates(templates: AgentTemplate[]): void {
+  try {
+    localStorage.setItem(AGENT_TEMPLATES_KEY, JSON.stringify(templates));
+  } catch {
+    /* ignore */
+  }
+  emitChange();
+}
+
+/** Read all templates (built-in first, custom after, sorted by creation time descending). */
+export function readAgentTemplates(): AgentTemplate[] {
+  const custom = [...readCustomAgentTemplates()].sort((a, b) => b.created_at_ms - a.created_at_ms);
+  return [...getBuiltinAgentTemplates(), ...custom];
+}
+
+/** Save a custom template (builtin is always false). */
+export function createAgentTemplate(input: {
+  name: string;
+  summary?: string;
+  description?: string;
+  role_prompt?: string;
+  rules_prompt?: string;
+  skills?: string[];
+  code_graphs?: string[];
+  llm_wikis?: string[];
+  chat_memories?: string[];
+}): AgentTemplate {
+  const name = input.name.trim();
+  if (!name) throw new Error(i18n.t('agentTemplate.error.nameRequired'));
+  const now = Date.now();
+  const tpl: AgentTemplate = {
+    template_id: `tpl_${now}_${Math.random().toString(36).slice(2, 8)}`,
+    name,
+    summary: (input.summary ?? '').trim(),
+    builtin: false,
+    description: (input.description ?? '').trim(),
+    role_prompt: (input.role_prompt ?? '').trim(),
+    rules_prompt: (input.rules_prompt ?? '').trim(),
+    skills: input.skills ?? [],
+    code_graphs: input.code_graphs ?? [],
+    llm_wikis: input.llm_wikis ?? [],
+    chat_memories: input.chat_memories ?? [],
+    created_at_ms: now,
+  };
+  writeCustomAgentTemplates([...readCustomAgentTemplates(), tpl]);
+  return tpl;
+}
+
+/** Delete a custom template; built-in templates cannot be deleted (silently ignored). */
+export function deleteAgentTemplate(template_id: string): void {
+  if (getBuiltinAgentTemplates().some((t) => t.template_id === template_id)) return;
+  writeCustomAgentTemplates(readCustomAgentTemplates().filter((t) => t.template_id !== template_id));
+}

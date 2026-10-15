@@ -1,0 +1,168 @@
+# ============================================================
+# WAMF Gateway: default configuration (Standalone + Skill)
+# ============================================================
+# Based on standalone single-machine mode, with the Skill module also enabled.
+# The Memory engine and the Skill module share one baseDir without interfering:
+#   - Memory data: {baseDir}/conversations/, records/, scene_blocks/, persona.md ...
+#   - Skill data:  {baseDir}/skills/<name>/SKILL.md + files/
+#   - shared DB:   {baseDir}/vectors.db
+#
+# Start:
+#   export WAMF_LLM_API_KEY="sk-..."           # required
+#   export WAMF_LLM_BASE_URL="https://..."     # optional (overrides the yaml)
+#   export WAMF_LLM_MODEL="gpt-4o-mini"        # optional
+#   node --import tsx src/gateway/server.ts
+#
+# Self-check:
+#   curl -s http://127.0.0.1:8420/health | jq
+#   curl -s -X POST http://127.0.0.1:8420/v3/skill/list \
+#     -H "x-wamf-service-id: default" \
+#     -H "Content-Type: application/json" -d '{"team_id":"smoke-team"}'
+# ============================================================
+
+deployMode: standalone
+stateBackend: "local"
+
+server:
+  port: 8420
+  host: "127.0.0.1"
+  # apiKey: "skill-mvp"   # optional; without it every v2 endpoint is open (local machine only)
+
+data:
+  baseDir: "~/.weaverai-memory-fabric/memory-wamf"
+
+# ── LLM (required) ──
+# provider defaults to "openai", i.e. a direct connection; to go through context_proxy (unified auth/billing/observability),
+# see wamf-gateway.proxy.yaml or docs/llm-via-proxy.md
+llm:
+  baseUrl: "https://api.openai.com/v1"
+  apiKey: "${WAMF_LLM_API_KEY}"
+  model: "gpt-4o-mini"
+  maxTokens: 32000
+  timeoutMs: 300000
+
+# ── Memory engine configuration ──
+memory:
+  promptMode: code
+
+  capture:
+    enabled: true
+
+  extraction:
+    enabled: true
+    enableDedup: true
+    maxMemoriesPerSession: 20
+
+  persona:
+    triggerEveryN: 50
+    maxScenes: 15
+
+  pipeline:
+    everyNConversations: 5
+    enableWarmup: true
+    l1IdleTimeoutSeconds: 600
+    l2DelayAfterL1Seconds: 90
+    l2MinIntervalSeconds: 900
+    l2MaxIntervalSeconds: 3600
+
+  recall:
+    enabled: true
+    maxResults: 5
+    scoreThreshold: 0.3
+    strategy: "hybrid"
+    timeoutMs: 5000
+
+  # ── Storage backend ──
+  storeBackend: "sqlite"
+
+  embedding:
+    provider: "none"               # vector search off by default, BM25 only
+    # Example enabling vector search:
+    # provider: "openai"
+    # baseUrl: "https://api.openai.com/v1"
+    # apiKey: "${WAMF_LLM_API_KEY}"
+    # model: "text-embedding-3-small"
+    # dimensions: 1536
+
+# ── Skill module ──
+# Skill is an extra capability whose data lives under {baseDir}/skills/; it doesn't affect the Memory engine.
+# Set enabled: false or delete this section to turn skills off completely; Memory is unaffected.
+skill:
+  enabled: true
+
+  # [reuse] without storeBackend it inherits memory.storeBackend (sqlite here); sqlite | mongodb.
+  # storeBackend: "sqlite"
+  # contentBackend: "local" is the only supported value (skill files go through the configured storage).
+  # contentBackend: "local"
+
+  routing:
+    mode: "bm25"          # bm25 | embedding | hybrid (the last two need memory.embedding enabled, otherwise they fall back to bm25)
+    searchTopK: 20        # maximum number of skills the listing endpoint injects (name+description)
+    # Reserved fields below: the resolver has defaults but nothing consumes them at runtime yet; keep the defaults.
+    # hybridAlpha: 0.3
+    # charBudgetPercent: 0.01
+    # fastPathMinNameLength: 4
+
+  extraction:
+    enabled: true                 # needs a valid top-level llm config (baseUrl + apiKey)
+    maxIterations: 16             # maximum tool-calling iterations of the Review Agent
+    # model: "deepseek-v3.2"      # [reuse] without it the top-level llm.model is reused
+    # toolCallThreshold: 10       # reserved field, not consumed yet
+    # Note: headChars / tailChars aren't passed through on the per-instance extractor path in service mode,
+    #      so they aren't exposed in yaml; to change them, edit the skill-extractor.ts defaults or pass them through in server.ts.
+    queue:
+      backend: "local"            # standalone uses an in-process queue; service changes this to "redis"
+      keyPrefix: "wamf"           # Redis key prefix (redis backend)
+      resultTtlSeconds: 86400     # TTL of the extraction result hash (seconds)
+      lockTtlMs: 600000           # agent-level lock TTL (milliseconds, 10min)
+      maxRetries: 2               # maximum retries after a failed extraction
+      retryBackoffsMs: [5000, 15000]  # backoff before each retry (milliseconds)
+      # [reuse] service mode reuses the top-level shared redis client; leave redisUrl empty;
+      #        when a shared client is detected it switches to redis even with backend=local.
+      # redisUrl: "redis://:password@host:6379/0"
+
+  resources:
+    maxResourceSizeBytes: 5000000  # ✅ active: maximum size of a single resource file (5MB); larger writes are rejected
+    # These fields were never wired up and have been removed from the active config:
+    #   allowExecutable — meant as a safety switch for executable resources, but never passed to SkillResourceStore, so it blocks nothing
+    #   downloadDir     — meant as a temporary directory for resources on disk, but resources are read into memory; nothing consumes it
+
+  # versionTtlDays: 0             # days until old (non-head) versions expire, 0 = never
+
+# ── Observability configuration (local development) ──
+observability:
+  otel:
+    enabled: false                    # no Zhiyan locally; turn off OTel gRPC
+  clickhouse:
+    enabled: false
+  kafka:
+    enabled: false
+  langfuse:
+    enabled: true
+    # Production endpoints / credentials are injected from env so they aren't committed or baked into the image.
+    # With empty values core skips Langfuse reporting automatically (no failure); export them locally as needed.
+    host: "${LANGFUSE_HOST:-}"
+    publicKey: "${LANGFUSE_PUBLIC_KEY:-}"
+    secretKey: "${LANGFUSE_SECRET_KEY:-}"
+
+# ── Analytics query module (reads the Proxy-side ClickHouse tracking) ──
+# Off by default for local development; turn it on and point it at the proxy CH to debug the analytics endpoints.
+analytics:
+  clickhouse:
+    enabled: false
+    # endpoint: "http://localhost:8123"
+    # database: "context_proxy"
+
+# ── Metadata module (v3 store + password pepper; sensitive ${} values injected from .env) ──
+metadata:
+  maxUsersPerInstance: 500
+  maxTeamsPerInstance: 100
+  store:
+    mongoUri: "${WAMF_METADATA_MONGO_URI}"
+    mongoDbPrefix: "${WAMF_METADATA_MONGO_DB_PREFIX}"
+    mongoTransactions: true
+  systemUser:
+    memory:
+      userId: "${WAMF_MEMORY_SYSTEM_USER_ID}"
+      displayName: "${WAMF_MEMORY_SYSTEM_USER_NAME}"
+      userKey: "${WAMF_MEMORY_SYSTEM_USER_KEY}"

@@ -1,0 +1,163 @@
+{
+  "id": "memory-weaverai",
+  "name": "WeaverAI Memory Fabric",
+  "description": "Reusable agent memory and context recipes — four-layer system that auto-captures, structures, and profiles conversational knowledge",
+  "commandAliases": ["memory-wamf"],
+  "activation": {
+    "onStartup": true
+  },
+  "contracts": {
+    "tools": ["wamf_memory_search", "wamf_conversation_search", "wamf_read_file"]
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": true,
+    "properties": {
+      "mode": {
+        "type": "string",
+        "enum": ["local", "function", "client", "gateway", "remote"],
+        "default": "local",
+        "description": "OpenClaw integration mode: local/function (default; runs in the local process using the OpenClaw function/host LLM runner) or client/gateway/remote (lightweight client mode; connects to an external Memory Gateway)"
+      },
+      "storeBackend": {
+        "type": "string",
+        "enum": ["sqlite", "mongodb"],
+        "default": "sqlite",
+        "description": "Storage backend: sqlite (local SQLite + sqlite-vec) or mongodb (connection from MONGODB_ENDPOINT / MONGODB_DATABASE env). Only effective in local/function mode"
+      },
+      "server": {
+        "type": "object",
+        "description": "External Memory Gateway connection settings for client/gateway/remote mode",
+        "properties": {
+          "url": { "type": "string", "default": "http://127.0.0.1:8420", "description": "Memory Gateway URL" },
+          "apiKey": { "type": "string", "default": "local", "description": "API Key for Gateway authentication" },
+          "instanceId": { "type": "string", "default": "default", "description": "Memory instance id (HTTP header x-wamf-service-id)" }
+        }
+      },
+      "capture": {
+        "type": "object",
+        "description": "Automatic conversation capture settings (L0)",
+        "properties": {
+          "enabled": { "type": "boolean", "default": true, "description": "Whether to enable automatic conversation capture" },
+          "excludeAgents": { "type": "array", "items": { "type": "string" }, "default": [], "description": "List of Agent glob patterns to exclude (e.g. bench-judge-*); matching agents are not captured, recalled, or scheduled in the pipeline" },
+          "l0l1RetentionDays": { "type": "number", "default": 0, "description": "Retention in days for local L0/L1 files. 0 = no cleanup; if non-zero it must be >= 3 by default. If 1 or 2, allowAggressiveCleanup must be enabled explicitly" },
+          "allowAggressiveCleanup": { "type": "boolean", "default": false, "description": "Whether to allow high-risk cleanup settings (l0l1RetentionDays=1 or 2)" },
+          "cleanTime": { "type": "string", "default": "03:00", "description": "Daily cleanup time (HH:mm)" }
+        }
+      },
+      "extraction": {
+        "type": "object",
+        "description": "Memory extraction settings (L1)",
+        "properties": {
+          "enabled": { "type": "boolean", "default": true, "description": "Whether to enable background extraction" },
+          "enableDedup": { "type": "boolean", "default": true, "description": "L1 smart dedup (conflict detection based on vector similarity or keywords)" },
+          "maxMemoriesPerSession": { "type": "number", "default": 20, "description": "Maximum memories per session in a single L1 extraction" },
+          "model": { "type": "string", "description": "Model used for extraction (format: provider/model); uses the openclaw default model if unset" }
+        }
+      },
+      "persona": {
+        "type": "object",
+        "description": "Scene summarization and user persona settings (L2/L3)",
+        "properties": {
+          "triggerEveryN": { "type": "number", "default": 50, "description": "Trigger persona generation every N new memories" },
+          "maxScenes": { "type": "number", "default": 15, "description": "Maximum number of scenes" },
+          "backupCount": { "type": "number", "default": 3, "description": "Number of persona backups to keep" },
+          "sceneBackupCount": { "type": "number", "default": 10, "description": "Number of scene block backups to keep" },
+          "model": { "type": "string", "description": "Model used for persona generation (format: provider/model); uses the openclaw default model if unset" }
+        }
+      },
+      "pipeline": {
+        "type": "object",
+        "description": "L1->L2->L3 pipeline scheduling settings",
+        "properties": {
+          "everyNConversations": { "type": "number", "default": 5, "description": "Trigger L1 batch processing every N conversation turns" },
+          "enableWarmup": { "type": "boolean", "default": true, "description": "Warm-up mode: a new session triggers after 1 turn and doubles after each L1 (1->2->4->...->everyN), speeding up early memory extraction" },
+          "l1IdleTimeoutSeconds": { "type": "number", "default": 600, "description": "L1 idle timeout (seconds): how long after the user stops talking to trigger L1 batch processing" },
+          "l2DelayAfterL1Seconds": { "type": "number", "default": 10, "description": "Delay (seconds) after L1 completes before triggering L2" },
+          "l2MinIntervalSeconds": { "type": "number", "default": 900, "description": "Minimum interval (seconds) between two L2 extractions for the same session" },
+          "l2MaxIntervalSeconds": { "type": "number", "default": 3600, "description": "Maximum L2 polling interval (seconds) for the same active session" },
+          "sessionActiveWindowHours": { "type": "number", "default": 24, "description": "Session active window (hours); sessions inactive longer than this stop L2 polling" }
+        }
+      },
+      "recall": {
+        "type": "object",
+        "description": "Memory recall settings",
+        "properties": {
+          "enabled": { "type": "boolean", "default": true, "description": "Whether to enable automatic recall" },
+          "maxResults": { "type": "number", "default": 5, "description": "Maximum number of recall results" },
+          "maxCharsPerMemory": { "type": "number", "default": 0, "description": "Maximum characters injected per L1 memory; 0 means unlimited" },
+          "maxTotalRecallChars": { "type": "number", "default": 0, "description": "Total character budget for L1 memories injected by auto-recall this turn; 0 means unlimited" },
+          "scoreThreshold": { "type": "number", "default": 0.3, "description": "Minimum score threshold" },
+          "strategy": { "type": "string", "enum": ["embedding", "keyword", "hybrid"], "default": "hybrid", "description": "Search strategy: keyword, embedding (vector), hybrid (mixed RRF fusion, recommended)" },
+          "timeoutMs": { "type": "number", "default": 5000, "description": "Overall recall timeout (ms); on timeout, memory injection is skipped and a warning is logged" }
+        }
+      },
+      "embedding": {
+        "type": "object",
+        "description": "Vector search (Embedding) settings",
+        "properties": {
+          "enabled": { "type": "boolean", "default": true, "description": "Whether to enable vector search (effectively disabled if provider=none)" },
+          "provider": { "type": "string", "default": "none", "description": "Embedding service provider: name of a remote service compatible with the OpenAI API (e.g. openai, deepseek); leave empty or set none to disable vector search" },
+          "proxyUrl": { "type": "string", "description": "Local proxy address (required only when provider=qclaw). When set, embedding requests are forwarded through this proxy, and the original baseUrl is passed as the Remote-URL header" },
+          "baseUrl": { "type": "string", "description": "API Base URL (required): the API address of the corresponding provider" },
+          "apiKey": { "type": "string", "description": "API Key (required)" },
+          "model": { "type": "string", "description": "Model name (required)" },
+          "dimensions": { "type": "number", "description": "Vector dimensions (required; must match the selected model)" },
+          "sendDimensions": { "type": "boolean", "default": true, "description": "Whether to include the dimensions field in the request body. Default true (compatible with Matryoshka truncation of OpenAI text-embedding-3-*). When the target service is a fixed-dimension model such as BGE-M3 that does not support custom dimensions, set this to false, otherwise the server rejects it with HTTP 400 ('does not support matryoshka representation')." },
+          "conflictRecallTopK": { "type": "number", "default": 5, "description": "Top-K count recalled during conflict detection" },
+          "maxInputChars": { "type": "number", "default": 5000, "description": "Maximum characters of Embedding input text; longer input is truncated and a warning is logged (default 5000, fits the token limit of most models)" },
+          "timeoutMs": { "type": "number", "default": 10000, "description": "Timeout (ms) for a single embedding API call; on timeout the request is aborted and not retried" },
+          "recallTimeoutMs": { "type": "number", "description": "Embedding timeout (ms) for the recall path, overrides timeoutMs. The user is waiting, so a shorter value is recommended (e.g. 3000)" },
+          "captureTimeoutMs": { "type": "number", "description": "Embedding timeout (ms) for the capture path, overrides timeoutMs. Runs in the background, so a longer value is fine (e.g. 15000)" }
+        }
+      },
+      "report": {
+        "type": "object",
+        "description": "Metrics reporting settings",
+        "properties": {
+          "enabled": { "type": "boolean", "default": false, "description": "Whether to enable metrics reporting (structured METRIC JSON via Gateway logs)" },
+          "type": { "type": "string", "default": "local", "description": "Reporting method: local emits structured JSON logs via the logger" }
+        }
+      },
+      "llm": {
+        "type": "object",
+        "description": "Standalone LLM settings - when enabled, L1/L2/L3 extraction bypasses OpenClaw's built-in model and calls the specified OpenAI-compatible API directly. Disabled by default (uses the OpenClaw host model).",
+        "properties": {
+          "enabled": { "type": "boolean", "default": false, "description": "Whether to enable standalone LLM mode. When off, the OpenClaw host model is used." },
+          "baseUrl": { "type": "string", "default": "https://api.openai.com/v1", "description": "OpenAI-compatible API address" },
+          "apiKey": { "type": "string", "description": "API Key" },
+          "model": { "type": "string", "default": "gpt-4o", "description": "Model name (e.g. gpt-4o, deepseek-v3, claude-sonnet-4-6)" },
+          "maxTokens": { "type": "number", "default": 4096, "description": "Maximum output tokens" },
+          "timeoutMs": { "type": "number", "default": 120000, "description": "Request timeout (ms)" },
+          "stream": { "type": "boolean", "default": false, "description": "Whether to call the upstream with streaming requests (streamText). Default false (non-streaming). Some OpenAI-compatible upstreams that only accept streaming requests need this set to true. WARNING: only effective when standalone LLM is enabled (llm.enabled=true); otherwise the OpenClaw host runner is used and this switch is ignored." }
+        }
+      },
+      "offload": {
+        "type": "object",
+        "description": "Context Offload settings - multi-layer context compression system (independent switch, off by default). Supports two modes: local (processed by a local LLM) and client (reuses the remote service at server.url)",
+        "properties": {
+          "enabled": { "type": "boolean", "default": false, "description": "Whether to enable Context Offload (off by default; does not affect Memory features)" },
+          "mode": { "type": "string", "enum": ["local", "backend", "client", "collect"], "description": "Offload run mode: local (processed by a local LLM), backend (uses the remote v1 service at backendUrl), client (reuses the remote offload v2 service at server.url), collect (data collection only, no compression). If unset it is inferred automatically: backendUrl present -> backend, server.url present -> client, otherwise -> local" },
+          "model": { "type": "string", "description": "[local mode] LLM model used by Offload (format: provider/model); uses the openclaw default model if unset" },
+          "temperature": { "type": "number", "default": 0.2, "description": "[local mode] LLM temperature" },
+          "stream": { "type": "boolean", "default": false, "description": "[only effective when mode=local] Whether to call the upstream with streaming requests (streamText). Default false (non-streaming). Some OpenAI-compatible upstreams that only accept streaming requests need this set to true. In backend/client/collect modes the remote offload server drives the calls, and this switch is ignored." },
+          "forceTriggerThreshold": { "type": "number", "default": 4, "description": "[local mode] Number of accumulated tool pairs after which L1 is forcibly triggered" },
+          "dataDir": { "type": "string", "description": "[local mode] Custom data directory (absolute path); defaults to ~/.openclaw/context-offload" },
+          "defaultContextWindow": { "type": "number", "default": 200000, "description": "Default context window size" },
+          "maxPairsPerBatch": { "type": "number", "default": 20, "description": "[local mode] Maximum tool pairs per L1 batch" },
+          "l2NullThreshold": { "type": "number", "default": 4, "description": "[local mode] Trigger L2 when the number of node_id=null entries in offload.jsonl reaches this threshold" },
+          "l2TimeoutSeconds": { "type": "number", "default": 300, "description": "[local mode] Trigger L2 when more than this many seconds have passed since the last L2" },
+          "mildOffloadRatio": { "type": "number", "default": 0.5, "description": "Mild compression trigger ratio (of the context window)" },
+          "aggressiveCompressRatio": { "type": "number", "default": 0.85, "description": "Aggressive compression trigger ratio" },
+          "mmdMaxTokenRatio": { "type": "number", "default": 0.2, "description": "[local mode] MMD injection token budget ratio" },
+          "compactionRatio": { "type": "number", "default": 0.5, "description": "[client mode] Trigger compression when context usage exceeds this threshold (0-1); reuses server.url as the backend address" },
+          "ingestTimeoutMs": { "type": "number", "default": 5000, "description": "[client mode] Ingest request timeout (ms)" },
+          "compactionTimeoutMs": { "type": "number", "default": 30000, "description": "[client mode] Compaction request timeout (ms)" },
+          "backendUrl": { "type": "string", "description": "[Deprecated, use mode=client] Backend service URL; when set, L1/L1.5/L2/L4 go through the backend" },
+          "backendApiKey": { "type": "string", "description": "[Deprecated, use mode=client] Backend API auth token" },
+          "backendTimeoutMs": { "type": "number", "default": 10000, "description": "[Deprecated, use mode=client] Backend call timeout (ms)" }
+        }
+      }
+    }
+  }
+}

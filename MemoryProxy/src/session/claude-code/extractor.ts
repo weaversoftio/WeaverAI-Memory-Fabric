@@ -1,0 +1,457 @@
+/**
+ * Claude Code Session Init — Extractor.
+ *
+ * Parses the user's reply to the `AskUserQuestion` form.
+ * Claude Code's user choice is in a `role: "tool"` message, in JSON tool_result format.
+ *
+ * Supported reply formats:
+ *   1. AskUserQuestion tool_result: `{ answers: { "q": "label" } }`
+ *   2. multi_question_result envelope
+ *   3. Plain-text label (the string the CLI returns after the user selects an option)
+ *
+ * Contains no CodeBuddy XML parsing logic.
+ */
+
+import type { SessionInitData, TeamOption } from "../types.js";
+import { SKIP_LABEL, MORE_LABEL, ASSET_CONFIRM_YES, ASSET_CONFIRM_NO } from "./form.js";
+
+// ── Markers ────────────────────────────────────────────────────────────────────
+
+const SKIP_RE = /\bskip\b/i;
+export const BYPASS_MARKER = "__bypass__" as const;
+export const MORE_MARKER = "__more__" as const;
+
+/**
+ * Extract the asset_confirm choice from the user's reply.
+ * Returns true=yes (link assets), false=no (bypass), null=not recognized.
+ *
+ * Format compatibility:
+ *   1. Exact option: "Yes, link team assets" / "No, not this time"
+ *   2. Q&A format: "Your questions have been answered: \"Q?\"=\"A\"."
+ *   3. "Chat about this" / free text -> degrade and return null (bypass)
+ */
+export function extractAssetConfirm(content: string): boolean | null {
+  const answer = extractAnswerFromJson(content);
+  if (!answer) return null;
+
+  // First check whether it is a refusal / skip / free text (Chat about this / declined / rejected)
+  // Non-answer patterns: the user may have typed content unrelated to the question
+  if (/declined to answer|doesn't want to proceed|tool use was rejected|clarify these questions|declined/i.test(answer)) {
+    return null;
+  }
+
+  // The format Claude Code returns may contain the full Q&A context, such as:
+  // "Your questions have been answered: \"Question?\"=\"Answer\"."
+  // Extract the content in the quotes after the last = as the actual answer
+  let answerOnly = answer;
+  const eqMatch = answer.match(/="([^"]+)"[^"]*$/);
+  if (eqMatch) {
+    answerOnly = eqMatch[1];
+  }
+
+  // Safety valve: if the extracted text exceeds 80 chars, it is most likely not a pure user answer but contains the full Q&A text,
+  // in which case the loose regex is refused, to avoid misjudging "whether to link" in the question as "yes"
+  // (only an exact match of ASSET_CONFIRM_YES / ASSET_CONFIRM_NO can pass)
+  const allowLoosePattern = answerOnly.length <= 80;
+
+  // Exact match: the full option text
+  if (answerOnly.includes(ASSET_CONFIRM_YES)) {
+    return true;
+  }
+  if (answerOnly.includes(ASSET_CONFIRM_NO)) {
+    return false;
+  }
+
+  if (allowLoosePattern) {
+    // Loose "yes" match: must start with "yes" or "confirm", to avoid false matches on "whether", "not yes", etc.
+    if (/^(?:yes|confirm)[,\s]/i.test(answerOnly.trim())) {
+      return true;
+    }
+    // Loose "no" match
+    if (/^(?:no[,\s]|skip)/i.test(answerOnly.trim())) {
+      return false;
+    }
+  }
+
+  return null;
+}
+
+// -- JSON parsing helpers ------------------------------------------------------
+
+/**
+ * Extract the answer text from the Claude Code tool_result JSON.
+ * Supported formats:
+ *   - `{ answers: { "q": "label" } }` (AskUserQuestion standard)
+ *   - `{ type: "multi_question_result", questions: [...] }`
+ *   - plain text string (user free input)
+ */
+function extractAnswerFromJson(content: string): string | null {
+  try {
+    const parsed = JSON.parse(content);
+    if (typeof parsed === "string") return parsed.trim() || null;
+    if (typeof parsed !== "object" || parsed === null) return null;
+
+    // AskUserQuestion tool_result: { answers: { "q": "label" } }
+    if (parsed.answers && typeof parsed.answers === "object") {
+      const answers = parsed.answers as Record<string, string>;
+      for (const val of Object.values(answers)) {
+        if (typeof val === "string" && val.trim()) {
+          return val.trim();
+        }
+      }
+    }
+
+    // multi_question_result envelope
+    const mqr = (parsed.result ?? parsed) as Record<string, unknown> | undefined;
+    if (mqr && mqr.type === "multi_question_result" && Array.isArray(mqr.questions)) {
+      for (const q of mqr.questions) {
+        if (!q || typeof q !== "object") continue;
+        const qo = q as Record<string, unknown>;
+        const cand = qo.answer ?? qo.answers ?? qo.selected ?? qo.selectedOption ?? qo.value;
+        if (typeof cand === "string" && cand.trim()) return cand.trim();
+        if (Array.isArray(cand)) {
+          const f = cand.find((x) => typeof x === "string" && x.trim());
+          if (typeof f === "string") return f.trim();
+        }
+      }
+    }
+
+    return null;
+  } catch {
+    // Not JSON -- Claude Code tool_result is often a concatenated-string format:
+    //   Your questions have been answered: "<question>"="<answer>".
+    // Take only the answer inside ="..."; this way words like "skip / skippable"
+    // in the question wording do not pollute downstream SKIP_RE matching (regression session1.json Bug).
+    const eq = content.match(/="([^"]+)"[^"]*$/);
+    if (eq) return eq[1].trim() || null;
+    return content.trim() || null;
+  }
+}
+
+/**
+ * Extract the agent and task answers from JSON (round-2 multi-question scenario).
+ */
+function extractAgentTaskFromJson(content: string): { agentText: string | null; taskText: string | null } {
+  let agentText: string | null = null;
+  let taskText: string | null = null;
+
+  try {
+    const parsed = JSON.parse(content);
+    if (typeof parsed !== "object" || parsed === null) {
+      const raw = content.trim();
+      const eq = raw.match(/="([^"]+)"[^"]*$/);
+      return { agentText: (eq ? eq[1].trim() : raw) || null, taskText: null };
+    }
+
+    // AskUserQuestion: { answers: { "q": "label" } }
+    if (parsed.answers && typeof parsed.answers === "object") {
+      const answers = parsed.answers as Record<string, string>;
+      for (const val of Object.values(answers)) {
+        if (typeof val === "string" && val.trim()) {
+          // The CC form round 2 has only 1 question (agent); the first non-empty answer is the agent
+          if (!agentText) agentText = val.trim();
+          break;
+        }
+      }
+    }
+
+    // multi_question_result envelope
+    if (!agentText && !taskText) {
+      const mqr = (parsed.result ?? parsed) as Record<string, unknown> | undefined;
+      if (mqr && mqr.type === "multi_question_result" && Array.isArray(mqr.questions)) {
+        for (const q of mqr.questions) {
+          if (!q || typeof q !== "object") continue;
+          const qo = q as Record<string, unknown>;
+          const id = typeof qo.id === "string" ? qo.id.toLowerCase() : "";
+          const cand = qo.answer ?? qo.answers ?? qo.selected ?? qo.selectedOption ?? qo.value;
+          let val: string | null = null;
+          if (typeof cand === "string") val = cand.trim() || null;
+          else if (Array.isArray(cand)) {
+            const f = cand.find((x) => typeof x === "string" && x.trim());
+            if (typeof f === "string") val = f.trim();
+          }
+          if (!val) continue;
+          if (id === "agent" && !agentText) agentText = val;
+          else if (id === "task" && !taskText) taskText = val;
+        }
+      }
+    }
+  } catch {
+    // Not JSON -- compatible with the Claude Code concatenated-string format `..."question"="answer".`
+    const raw = content.trim();
+    const eq = raw.match(/="([^"]+)"[^"]*$/);
+    agentText = (eq ? eq[1].trim() : raw) || null;
+  }
+
+  return { agentText, taskText };
+}
+
+// -- Team matching -------------------------------------------------------------
+
+/**
+ * Round-1 extraction: identify the selected team_id from the user's reply.
+ * Claude Code: the user's choice is in a `role: "tool"` message, going through JSON parsing.
+ *
+ * Return values (aligned with the three-tier stance of extractTaskFromOptionText):
+ *   - team_id string: hit a real team
+ *   - MORE_MARKER: the user clicked "More ->", the caller flips the page (team pagination added 2026-09-03)
+ *   - BYPASS_MARKER: the user chose SKIP / declined
+ *   - null: not recognized
+ */
+export function extractTeamFromOptionText(
+  content: string,
+  cachedTeams: TeamOption[],
+): string | typeof MORE_MARKER | typeof BYPASS_MARKER | null {
+  if (cachedTeams.length === 0) return null;
+
+  // First check whether it is a refusal / skip (Chat about this / declined)
+  if (/declined to answer|doesn't want to proceed|tool use was rejected|clarify these questions/i.test(content)) {
+    return null;
+  }
+
+  const teamText = extractAnswerFromJson(content);
+
+  // Detect "Do not link this time" -> bypass
+  if (teamText && (teamText.includes(SKIP_LABEL) || SKIP_RE.test(teamText.trim()))) {
+    return BYPASS_MARKER;
+  }
+
+  // Detect "More ->" -> flip the page (consistent with extractFromOptionText / extractTaskFromOptionText)
+  if (teamText && teamText.includes(MORE_LABEL)) {
+    return MORE_MARKER;
+  }
+
+  // Matching strategy
+  const hay = teamText ?? content;
+  const trimmed = hay.trim();
+
+  const exactFull = cachedTeams.find(
+    (t) => `${t.team_name} (${t.team_id.slice(-8)})` === trimmed,
+  );
+  if (exactFull) return exactFull.team_id;
+
+  const exactName = cachedTeams.find((t) => t.team_name === trimmed);
+  if (exactName) return exactName.team_id;
+
+  const suffixMatch = trimmed.match(/\((\w{8})\)$/);
+  if (suffixMatch) {
+    const exactSuffix = cachedTeams.find((t) => t.team_id.slice(-8) === suffixMatch[1]);
+    if (exactSuffix) return exactSuffix.team_id;
+  }
+
+  const sorted = [...cachedTeams].sort((a, b) => b.team_name.length - a.team_name.length);
+  for (const t of sorted) {
+    if (hay.includes(t.team_name)) return t.team_id;
+  }
+  for (const t of cachedTeams) {
+    if (hay.includes(t.team_id.slice(-8))) return t.team_id;
+  }
+  return null;
+}
+
+// -- Agent / Task matching -----------------------------------------------------
+
+function matchAgentInTeam(text: string, team: TeamOption): string | null {
+  const trimmed = text.trim();
+
+  const exactFull = team.agents.find(
+    (a) => `${a.agent_name} (${a.agent_id.slice(-8)})` === trimmed,
+  );
+  if (exactFull) return exactFull.agent_id;
+
+  const exactName = team.agents.find((a) => a.agent_name === trimmed);
+  if (exactName) return exactName.agent_id;
+
+  const suffixMatch = trimmed.match(/\((\w{8})\)$/);
+  if (suffixMatch) {
+    const exactSuffix = team.agents.find((a) => a.agent_id.slice(-8) === suffixMatch[1]);
+    if (exactSuffix) return exactSuffix.agent_id;
+  }
+
+  const sorted = [...team.agents].sort((a, b) => b.agent_name.length - a.agent_name.length);
+  for (const a of sorted) {
+    if (text.includes(a.agent_name)) return a.agent_id;
+  }
+  for (const a of team.agents) {
+    if (text.includes(a.agent_id.slice(-8))) return a.agent_id;
+  }
+  return null;
+}
+
+function matchTaskInTeam(text: string, team: TeamOption): string | undefined {
+  if (!text) return undefined;
+  const trimmed = text.trim();
+
+  const exactFull = team.tasks.find((t) => `${t.task_name} (${t.task_id.slice(-8)})` === trimmed);
+  if (exactFull) return exactFull.task_id;
+
+  const exactName = team.tasks.find((t) => t.task_name === trimmed);
+  if (exactName) return exactName.task_id;
+
+  const suffixMatch = trimmed.match(/\((\w{8})\)$/);
+  if (suffixMatch) {
+    const exactSuffix = team.tasks.find((t) => t.task_id.slice(-8) === suffixMatch[1]);
+    if (exactSuffix) return exactSuffix.task_id;
+  }
+
+  const sorted = [...team.tasks].sort((a, b) => b.task_name.length - a.task_name.length);
+  for (const t of sorted) {
+    if (trimmed.includes(t.task_name)) return t.task_id;
+  }
+  for (const t of team.tasks) {
+    if (trimmed.includes(t.task_id.slice(-8))) return t.task_id;
+  }
+  return undefined;
+}
+
+/**
+ * task_select stage extraction: parse only the labels in answers rather than the full tool_result text.
+ * The old path of extractFromOptionText is no longer reused here -- that path passed the raw tool_result text
+ * as the fallback to matchTaskInTeam, and because the question wording ("...(skippable):") contains
+ * "skip", it misjudged the task the user explicitly chose as bypass (a historical Bug).
+ *
+ * Return values:
+ *   - task_id string: hit;
+ *   - MORE_MARKER: the user clicked "More ->", the caller flips the page;
+ *   - BYPASS_MARKER: declined / empty reply / explicit skip compatible with the old form;
+ *   - null: an answer was identified but cannot be matched to team.tasks (the caller treats it as not recognized -> bypass).
+ *
+ * The defaultTaskId fallback association is implemented via injection at the head by fetchTeamsAndAgents -- when the user picks the "Do
+ * not link a task this time" label, matchTaskInTeam hits the virtual entry and returns defaultTaskId, so no
+ * separate branch is needed here.
+ */
+export function extractTaskFromOptionText(
+  content: string,
+  team: import("../types.js").TeamOption | undefined,
+): string | typeof MORE_MARKER | typeof BYPASS_MARKER | null {
+  // declined / rejected -> bypass (consistent with the other stages)
+  if (/declined to answer|doesn't want to proceed|tool use was rejected|clarify these questions/i.test(content)) {
+    return BYPASS_MARKER;
+  }
+  if (!team) return BYPASS_MARKER;
+
+  const answer = extractAnswerFromJson(content);
+  if (!answer) return BYPASS_MARKER;
+
+  // Page flip
+  if (answer.includes(MORE_LABEL)) return MORE_MARKER;
+
+  // Compatible with the old form: the user hand-types "skip / do not link" -> explicit bypass. Note: the label of the defaultTaskId
+  // virtual entry is "Skip for now", and SKIP_RE will hit it, so try the normal match first
+  // and only then go to bypass.
+  const taskId = matchTaskInTeam(answer, team);
+  if (taskId) return taskId;
+
+  if (SKIP_RE.test(answer.trim())) {
+    return BYPASS_MARKER;
+  }
+
+  return null;
+}
+
+/**
+ * Round-2 extraction: identify agent + task from the user's reply.
+ * Claude Code: goes through JSON parsing. Matches only within the selected team.
+ */
+export function extractFromOptionText(
+  content: string,
+  cachedTeams: TeamOption[],
+  selectedTeamId?: string,
+): SessionInitData | null {
+  // First check whether it is a refusal / skip (Chat about this / declined)
+  if (/declined to answer|doesn't want to proceed|tool use was rejected|clarify these questions/i.test(content)) {
+    return null;
+  }
+
+  const team = selectedTeamId
+    ? cachedTeams.find((t) => t.team_id === selectedTeamId)
+    : cachedTeams.length === 1
+      ? cachedTeams[0]
+      : null;
+  if (!team) return null;
+
+  const { agentText, taskText } = extractAgentTaskFromJson(content);
+
+  // Detect "More ->" -> flip the page
+  if (agentText && agentText.includes(MORE_LABEL)) {
+    return { agent_id: MORE_MARKER };
+  }
+
+  // Detect "Do not link this time" -> bypass
+  if (agentText && (agentText.includes(SKIP_LABEL) || SKIP_RE.test(agentText.trim()))) {
+    return { agent_id: BYPASS_MARKER };
+  }
+
+  // Resolve agent
+  let agentId: string | null = null;
+  if (agentText) agentId = matchAgentInTeam(agentText, team);
+  if (!agentId) agentId = matchAgentInTeam(content, team);
+  if (!agentId) return null;
+
+  // Resolve task
+  let taskId: string | undefined;
+  const taskHay = taskText ?? content;
+  if (!SKIP_RE.test(taskHay)) {
+    taskId = matchTaskInTeam(taskHay, team);
+  }
+
+  return { agent_id: agentId, task_id: taskId };
+}
+
+// ── Structured / LLM fallback ──────────────────────────────────────────────────
+
+export function extractStructured(content: string): SessionInitData | null {
+  const agentMatch = content.match(/agent\s*[:=]\s*(\S+)/i);
+  if (!agentMatch) return null;
+  const agent_id = agentMatch[1].trim();
+  if (!agent_id) return null;
+
+  let task_id: string | undefined;
+  const taskMatch = content.match(/task\s*[:=]\s*(\S+)/i);
+  if (taskMatch && taskMatch[1] !== "0" && taskMatch[1].toLowerCase() !== "skip") {
+    task_id = taskMatch[1].trim();
+  }
+  return { agent_id, task_id };
+}
+
+// ── Resolvers ──────────────────────────────────────────────────────────────────
+
+export function resolveAgent(
+  rawAgentId: string,
+  cachedTeams: TeamOption[],
+  selectedTeamId?: string,
+): string {
+  const team = selectedTeamId
+    ? cachedTeams.find((t) => t.team_id === selectedTeamId)
+    : cachedTeams.length === 1
+      ? cachedTeams[0]
+      : null;
+  if (team && /^\d+$/.test(rawAgentId)) {
+    const num = parseInt(rawAgentId, 10);
+    if (num > 0 && num <= team.agents.length) {
+      return team.agents[num - 1].agent_id;
+    }
+  }
+  return rawAgentId;
+}
+
+export function resolveTask(
+  rawTaskId: string | undefined,
+  cachedTeams: TeamOption[],
+  agentHintId?: string,
+  selectedTeamId?: string,
+): string | undefined {
+  if (!rawTaskId) return undefined;
+  const team = selectedTeamId
+    ? cachedTeams.find((t) => t.team_id === selectedTeamId)
+    : cachedTeams.length === 1
+      ? cachedTeams[0]
+      : null;
+  if (team && /^\d+$/.test(rawTaskId)) {
+    const num = parseInt(rawTaskId, 10);
+    if (num > 0 && num <= team.tasks.length) {
+      return team.tasks[num - 1].task_id;
+    }
+  }
+  return rawTaskId;
+}

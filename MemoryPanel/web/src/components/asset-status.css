@@ -1,0 +1,32 @@
+/**
+ * Generic asset display widget styles (StatusTag / OwnerLabel).
+ *
+ * The original code-ui _codedetail-status / _codedetail-status-hint (see
+ * code-sources-panel.css) are consolidated here, shared by asset pages such as Wiki / Code.
+ */
+._asset-status {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  min-width: 0;
+}
+
+._asset-status .tea-tag {
+  flex-shrink: 0;
+}
+
+._asset-status-hint {
+  font-size: 12px;
+  color: var(--tea-color-text-secondary);
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+/* Default "You" marker of OwnerLabel (callers can also inject their own class) */
+._owner-label-you {
+  margin-inline-start: 4px;
+  font-size: 12px;
+  color: var(--tea-color-text-brand-default);
+}

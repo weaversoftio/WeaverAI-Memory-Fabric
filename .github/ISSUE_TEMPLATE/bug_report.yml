@@ -1,0 +1,84 @@
+name: 🐛 Bug Report
+description: Report an issue with the plugin
+title: "[Bug] "
+labels: ["bug"]
+assignees: []
+body:
+  - type: input
+    id: openclaw-version
+    attributes:
+      label: OpenClaw Version
+      placeholder: e.g. 2026.3.13
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin Version
+      description: WeaverAI Memory Fabric
+      placeholder: e.g. 0.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      placeholder: e.g. Linux / Ubuntu 22.04 / macOS 14 / Windows 11 / CentOS 7
+    validations:
+      required: true
+
+  - type: input
+    id: system-spec
+    attributes:
+      label: System Specification
+      description: Optional, e.g. CPU model, memory size
+      placeholder: Intel i7 16GB RAM / 8C16G
+    validations:
+      required: false
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of the problem
+      placeholder: Please describe the issue in detail
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: To Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Go to / Call API
+        2. Set parameters
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Logs / Screenshots
+      description: Please attach full logs or screenshots
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Any other relevant information
+    validations:
+      required: false

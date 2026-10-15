@@ -1,0 +1,19 @@
+/**
+ * MarkdownView styles - colors/fonts all use the Tea Design Token.
+ * A Markdown display box shared by pages (Skill / Memory details, etc.).
+ */
+
+._md-view {
+  padding: 12px;
+  border: 1px solid var(--tea-color-border-primary-default);
+  background-color: var(--tea-color-bg-primary-default);
+  font-size: 13px;
+  color: var(--tea-color-text-primary);
+}
+
+/* bare: used embedded inside a card; removes the shell and lets the outer card carry the border/background */
+._md-view--bare {
+  padding: 0;
+  border: none;
+  background-color: transparent;
+}

@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MongoDB L0 100M-Message Benchmark Report</title>
+<style>
+  :root {
+    --bg: #131313;
+    --panel: #191919;
+    --line: #2a2a2a;
+    --line2: #383838;
+    --fg: #e8e8e8;
+    --fg2: #a8a8a8;
+    --fg3: #767676;
+    --accent: #4a9eff;
+    --ok: #3fb950;
+    --warn: #d29922;
+    --bad: #f85149;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 14px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 36px 28px 96px; }
+  h1 { font-size: 26px; font-weight: 600; margin: 0 0 10px; letter-spacing: -0.01em; }
+  h2 {
+    font-size: 18px; font-weight: 600; margin: 0 0 6px;
+    padding-top: 8px; letter-spacing: -0.005em;
+  }
+  h3 { font-size: 14px; font-weight: 600; margin: 22px 0 8px; color: var(--fg); }
+  p { margin: 0 0 10px; }
+  section { margin-top: 44px; }
+  .sub { color: var(--fg2); margin-bottom: 18px; }
+  code {
+    font-family: var(--mono); font-size: 0.9em;
+    background: #232323; border: 1px solid var(--line); border-radius: 4px;
+    padding: 1px 5px; color: #d6d6d6;
+  }
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 0; }
+  .pill {
+    font-size: 12px; padding: 3px 10px; border-radius: 999px;
+    border: 1px solid var(--line2); color: var(--fg2);
+  }
+  .pill.on { background: var(--accent); border-color: var(--accent); color: #0b0b0b; font-weight: 600; }
+  .verdict {
+    border-left: 2px solid var(--accent); padding: 2px 0 2px 14px; margin: 22px 0 0;
+  }
+  .verdict b { color: var(--fg); }
+  .stats { display: flex; gap: 34px; flex-wrap: wrap; align-items: flex-end; margin: 4px 0 22px; }
+  .stat .v { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; }
+  .stat .l { font-size: 12px; color: var(--fg3); margin-top: 3px; }
+  .stat .v.ok { color: var(--ok); }
+  .stat .v.bad { color: var(--bad); }
+  .stat .v.info { color: var(--accent); }
+  .arrow { font-size: 20px; color: var(--fg3); padding-bottom: 12px; }
+  figure { margin: 0 0 6px; }
+  figcaption { font-size: 12px; color: var(--fg3); margin-top: 8px; line-height: 1.6; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0 6px; font-size: 13px; }
+  th, td { padding: 7px 12px; border-bottom: 1px solid var(--line); text-align: left; }
+  th { color: var(--fg3); font-weight: 500; font-size: 12px; white-space: nowrap;
+       border-bottom: 1px solid var(--line2); }
+  td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  th.n { font-family: inherit; }
+  tbody tr:hover { background: #1c1c1c; }
+  tr.hi td { background: rgba(63,185,80,0.07); }
+  tr.hi td:first-child { box-shadow: inset 2px 0 0 var(--ok); }
+  tr.warn td { background: rgba(210,153,34,0.07); }
+  tr.warn td:first-child { box-shadow: inset 2px 0 0 var(--warn); }
+  tr.bad td { background: rgba(248,81,73,0.07); }
+  tr.bad td:first-child { box-shadow: inset 2px 0 0 var(--bad); }
+  .note {
+    border: 1px solid var(--line2); border-radius: 6px; padding: 13px 15px; margin: 18px 0 0;
+    background: var(--panel);
+  }
+  .note .t { font-weight: 600; margin-bottom: 5px; }
+  .note.info { border-left: 2px solid var(--accent); }
+  .note.ok { border-left: 2px solid var(--ok); }
+  .note.warn { border-left: 2px solid var(--warn); }
+  .note.bad { border-left: 2px solid var(--bad); }
+  .note p:last-child { margin-bottom: 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 20px; }
+  .card { border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+  .card .hd {
+    font-size: 12px; padding: 8px 14px; border-bottom: 1px solid var(--line);
+    display: flex; justify-content: space-between; align-items: center; color: var(--fg2);
+  }
+  .card .hd b { color: var(--fg); font-weight: 600; }
+  .card .bd { padding: 13px 14px; font-size: 13px; color: var(--fg2); }
+  .card .bd table { margin: 10px 0 0; font-size: 12px; }
+  .card .bd th, .card .bd td { padding: 5px 8px; }
+  .tag { font-size: 11px; border: 1px solid var(--line2); border-radius: 999px; padding: 1px 8px; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin: 2px 0 0; font-size: 12px; color: var(--fg2); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px;
+              vertical-align: -1px; }
+  .meta { color: var(--fg3); font-size: 12px; margin-top: 40px; padding-top: 16px;
+          border-top: 1px solid var(--line); }
+  a { color: var(--accent); }
+  @media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>MongoDB L0 100M-Message Benchmark Report</h1>
+<p class="sub">
+  Instance <code>28.79.181.33:7026</code> (cross-region, RTT 39ms) · collection <code>l0_bench_prod2_s100m</code>
+  · written 2026-08-26 -> 08-28
+</p>
+<div class="pills">
+  <span class="pill on">100,000,000 docs written</span>
+  <span class="pill">0 write errors</span>
+  <span class="pill">$search index READY</span>
+  <span class="pill">Data 48.79G / index 12.20G</span>
+</div>
+
+<div class="verdict">
+  <p><b>Conclusion: all serial numbers are dominated by the 39ms cross-region RTT and do not represent database capability.</b></p>
+  <p style="color:var(--fg2)">
+    Serial single-document inserts reach only 23.6/s, yet the server actually spends only 1.9ms -- the other 39ms is network round trip. Once concurrency is raised to amortize the RTT,
+    single-document inserts can reach <b>2,184/s</b> (92x) and queries <b>940/s</b> (40x).
+    There are only two real bottlenecks: index maintenance cost at the 100M scale (writes), and the concurrency of mongot (BM25 queries).
+  </p>
+</div>
+
+<!-- 1. Concurrency ceiling of single-document inserts -->
+<section>
+  <h2>1. Concurrency ceiling of single-document inserts</h2>
+  <p class="sub">
+    Insert only 1 document at a time (<code>batch=1</code>) into an empty collection, sweeping concurrency from 1 to 256.
+    This is a direct answer to "how high can a single hop go".
+  </p>
+
+  <div class="stats">
+    <div class="stat"><div class="v">23.62/s</div><div class="l">Serial (concurrency=1)</div></div>
+    <div class="arrow">&rarr;</div>
+    <div class="stat"><div class="v ok">2,184</div><div class="l">Peak at concurrency 256 (docs/s)</div></div>
+    <div class="stat"><div class="v info">92&times;</div><div class="l">Gain from concurrency</div></div>
+    <div class="stat"><div class="v">39ms</div><div class="l">Fixed RTT per operation</div></div>
+  </div>
+
+  <figure><div id="c-write-sweep"></div>
+    <figcaption>
+      Chart: single-document insert throughput vs client concurrency. X axis = concurrency (in-flight requests), Y axis = write throughput (docs/s).
+      Source: measured by probe-ceiling, empty collection, 8000 docs per level, maxPoolSize=300.
+    </figcaption>
+  </figure>
+
+  <table id="t-write-sweep"></table>
+
+  <div class="note info">
+    <div class="t">Why latency barely changes until concurrency reaches 32</div>
+    <p>
+      From concurrency 1 to 32, p50 stays around 42ms (RTT + 1.9ms server time) while throughput grows linearly by 28x --
+      meaning this stretch is simply filling the pipe and putting the idle RTT to use; the server is not under load at all.
+      Only beyond 64 does p50 start climbing (50 -> 100ms), which is when the server really starts queueing.
+      In other words: <b>cross-region only adds a fixed latency to each operation; it does not cap total throughput.</b>
+    </p>
+  </div>
+</section>
+
+<!-- 2. Effect of batch size -->
+<section>
+  <h2>2. Effect of batch size</h2>
+  <p class="sub">
+    Concurrency is fixed at 8 and only the <code>insertMany</code> batch size changes. This explains why production code goes through
+    <code>insertL0Batch</code> rather than upserting one by one.
+  </p>
+
+  <figure><div id="c-batch"></div>
+    <figcaption>
+      Chart: write throughput vs batch size. X axis = documents per insertMany, Y axis = write throughput (docs/s).
+      Source: Phase A measurements (2026-08-25), concurrency 8, empty collection.
+    </figcaption>
+  </figure>
+
+  <table id="t-batch"></table>
+
+  <div class="note warn">
+    <div class="t">batch=1000 has the highest throughput, but a large tail-latency cost</div>
+    <p>
+      Going from batch 100 to 1000, throughput rises only 34% (14.7k -> 19.8k) while per-batch p99 rises from 148ms to 889ms.
+      For online write paths batch=100 is the better trade-off; batch=1000 only suits offline bulk loading.
+    </p>
+  </div>
+</section>
+
+<!-- 3. 100M curve -->
+<section>
+  <h2>3. Sustained write curve for 100M documents</h2>
+  <p class="sub">
+    <code>batch=1000</code>, concurrency 8, continuously writing up to 100M documents. Total write time 21.3 hours, 0 errors.
+  </p>
+
+  <div class="stats">
+    <div class="stat"><div class="v">21.3h</div><div class="l">Total write time</div></div>
+    <div class="stat"><div class="v ok">24,245</div><div class="l">Peak instantaneous (docs/s)</div></div>
+    <div class="stat"><div class="v">1,305</div><div class="l">Overall average (docs/s)</div></div>
+    <div class="stat"><div class="v bad">~930</div><div class="l">Final-phase instantaneous (docs/s)</div></div>
+  </div>
+
+  <figure><div id="c-curve"></div>
+    <figcaption>
+      Chart: throughput decay while writing 100M documents. X axis = cumulative write time (hours), Y axis = write throughput (docs/s).
+      The two curves are the per-minute instantaneous rate and the cumulative average since start. 1276 samples are downsampled to 48 points (bucket means).
+      Source: <a href="reports/l0-bench-100M-FULL-merged.json">l0-bench-100M-FULL-merged.json</a>.
+    </figcaption>
+  </figure>
+
+  <h3>First 20 minutes (per minute)</h3>
+  <figure><div id="c-first20"></div>
+    <figcaption>
+      Chart: throughput collapse in the initial phase. X axis = minutes since writing started, Y axis = instantaneous write throughput (docs/s).
+      Minute 1 is 24,245/s (empty collection); by minute 20 (about 8.4M docs) it has dropped to 4,750/s.
+    </figcaption>
+  </figure>
+
+  <div class="note bad">
+    <div class="t">The decay comes from index maintenance, not the network</div>
+    <p>
+      Throughput fell from 24,245/s all the way to ~930/s, a 25x decay, while the RTT stayed constant throughout.
+      At 95M documents a single batch (1000 docs) had p50 latency of 8,295ms and p99 of 12,175ms -- each batch takes over 8 seconds.
+      At the same moment <code>currentOp</code> on the server shows 8 insertMany operations running in parallel, so client concurrency is saturated;
+      the slow part is the server: maintenance cost of the B-tree + mongot inverted index at the 100M-document scale.
+    </p>
+  </div>
+</section>
+
+<!-- 4. Queries -->
+<section>
+  <h2>4. Query performance: serial vs concurrent</h2>
+  <p class="sub">
+    All run on the collection filled with 100M documents, driving the same <code>MongoMemoryStore</code> methods used in production code.
+    The serial column holds the numbers from the earlier report; the concurrent column is the measured peak after sweeping concurrency from 1 to 384.
+  </p>
+
+  <figure><div id="c-query"></div>
+    <figcaption>
+      Chart: serial QPS vs peak concurrent QPS for each business query. X axis = query type, Y axis = throughput (QPS).
+      Source: measured by probe-query-ceiling, 100M-document collection, 300-400 iterations per level.
+    </figcaption>
+  </figure>
+
+  <table id="t-query"></table>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="hd"><b>searchL0Fts - BM25 is the only read path that cannot be pushed higher</b><span class="tag">Capped at concurrency 32</span></div>
+      <div class="bd">
+        It already reaches 207/s at concurrency 16; adding more concurrency no longer increases throughput while latency degrades linearly (p50 63 -> 399ms).
+        This is a typical server saturation signal: mongot can only take about 215 QPS on 100M documents.
+        <table id="t-fts"></table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="hd"><b>paginated - the only query that needs changing</b><span class="tag">Worst</span></div>
+      <div class="bd">
+        <p>
+          It peaks at concurrency 8 (52 QPS); adding concurrency makes throughput drop and latency explode (p50 already 3,093ms at concurrency 128).
+          The reason is that besides paging it also runs a <code>countDocuments</code>, which is a heavy scan over the tenant dimension at 100M documents.
+        </p>
+        <p style="color:var(--fg);font-weight:600;margin-top:12px">Recommendation</p>
+        <p>
+          Split the total out: use an estimate, cache the count, or switch the frontend to "load more" without showing the total page count.
+          This alone can lift paging from 52 QPS to the same order of magnitude as sessionReplay (~650 QPS).
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. Storage -->
+<section>
+  <h2>5. Storage footprint</h2>
+  <div class="stats" style="margin-top:14px">
+    <div class="stat"><div class="v">48.79G</div><div class="l">dataSize (logical)</div></div>
+    <div class="stat"><div class="v ok">20.20G</div><div class="l">storageSize (compressed)</div></div>
+    <div class="stat"><div class="v">12.20G</div><div class="l">indexSize</div></div>
+    <div class="stat"><div class="v">523 B</div><div class="l">Average document size</div></div>
+    <div class="stat"><div class="v info">2.4&times;</div><div class="l">Compression ratio</div></div>
+  </div>
+  <p style="color:var(--fg3);font-size:12px">
+    Source: <code>db.stats()</code> after the 100M documents were written. Indexes include B-tree indexes and the mongot <code>$search</code> index.
+  </p>
+  <p style="color:var(--fg2)">
+    By linear extrapolation, 50M conversations (100M messages) take about <b>32.4G</b> on disk (20.2G data + 12.2G indexes), well within control.
+  </p>
+</section>
+
+<!-- 6. Conclusions -->
+<section>
+  <h2>6. Conclusions and caveats</h2>
+
+  <div class="note ok">
+    <div class="t">Holds up</div>
+    <p>
+      100M messages written with 0 errors, the $search index is usable, and business queries reach hundreds of QPS under concurrency. The stored volume itself is not a problem.
+    </p>
+  </div>
+
+  <h3>Answering "how high can a single hop go"</h3>
+  <p style="color:var(--fg2)">
+    Single-document inserts (batch=1) on an empty collection reach <b>2,184 docs/s</b> at concurrency 256, 92 times the serial 23.6/s.
+    The serial number is so low purely because every operation waits for a 39ms round trip while the server only spends 1.9ms.
+    As long as the client is willing to use concurrency, cross-region has almost no effect on total throughput.
+  </p>
+
+  <h3>The two real limits</h3>
+  <p style="color:var(--fg2)">
+    Write side: index maintenance cost that decays as the collection grows (24k/s -> 930/s). When loading historical data, consider creating the collection first and
+    building the <code>$search</code> index afterwards, to avoid maintaining the inverted index while writing.<br />
+    Read side: mongot BM25 queries cap at 215 QPS, the lowest of all read paths; capacity planning should use this number.
+  </p>
+
+  <h3>Notes on methodology</h3>
+  <table id="t-caveats"></table>
+</section>
+
+<div class="meta">
+  Raw data: <a href="reports/index.json">reports/index.json</a> ·
+  Interactive JSON viewer: <a href="view-report.html">view-report.html</a><br />
+  All numbers are measured, none estimated. Benchmark scripts: <code>MemoryCore/scripts/bench-l0-mongo/</code>
+</div>
+
+</div>
+
+<script>
+// -- Data (same source as the canvas report) ------------------------------------
+const WRITE_SWEEP = [
+  { conc: 1, qps: 23.62, p50: 40.9, p99: 51.15 },
+  { conc: 4, qps: 90.75, p50: 42.42, p99: 65.75 },
+  { conc: 8, qps: 179.15, p50: 42.52, p99: 75.91 },
+  { conc: 16, qps: 362.52, p50: 42.13, p99: 72.98 },
+  { conc: 32, qps: 662.37, p50: 43.04, p99: 94.25 },
+  { conc: 64, qps: 1105.5, p50: 50.85, p99: 179.35 },
+  { conc: 128, qps: 1686.18, p50: 65.07, p99: 206.03 },
+  { conc: 256, qps: 2183.58, p50: 100.72, p99: 228.71 },
+];
+const BATCH_SWEEP = [
+  { batch: 1, docs: 100000, qps: 170.23, p50: 44.64, p99: 79.8, wallS: 587.4 },
+  { batch: 100, docs: 1000000, qps: 14738.29, p50: 49.01, p99: 147.96, wallS: 67.8 },
+  { batch: 1000, docs: 1000000, qps: 19759.48, p50: 385.37, p99: 889.09, wallS: 50.6 },
+];
+const CURVE = [[0.45,6511,6511],[0.9,4329,5420],[1.35,2202,4348],[1.8,1362,3601],[2.25,1571,3195],[2.7,1363,2890],[3.15,1462,2686],[3.6,1446,2531],[4.05,1383,2403],[4.5,1257,2289],[4.95,1209,2191],[5.4,1220,2110],[5.85,1212,2041],[6.3,1166,1978],[6.75,1151,1923],[7.2,1156,1875],[7.65,1130,1831],[8.1,1106,1791],[8.55,1096,1754],[9,1096,1721],[9.45,1091,1691],[9.9,1067,1663],[10.35,1048,1636],[10.8,1065,1612],[11.25,1047,1590],[11.7,1029,1568],[12.15,1020,1548],[12.6,1024,1529],[13.05,1032,1512],[13.5,1010,1495],[13.95,998,1479],[14.4,994,1464],[14.85,1005,1450],[15.3,1001,1437],[15.75,981,1424],[16.2,981,1412],[16.65,972,1400],[17.1,980,1389],[17.55,968,1378],[18,971,1368],[18.45,962,1358],[18.9,956,1348],[19.35,953,1340],[19.8,980,1331],[20.25,964,1323],[20.7,951,1315],[21.15,952,1307],[21.27,931,1305]];
+const FIRST20 = [24245,12200,9600,5600,4033,5233,7050,6878,6300,5583,6700,5700,5383,5133,5317,5333,5517,5183,4983,4750];
+const QUERY = [
+  { name: "queryL0ForL1", desc: "L1 extraction: session_key + time order, limit 50", serial: 23.8, peak: 939.84, conc: 128, p50: 73.94, p99: 214.16 },
+  { name: "searchL0FtsEmpty", desc: "BM25 no-hit path", serial: 21.54, peak: 732.56, conc: 64, p50: 48.15, p99: 71.05 },
+  { name: "sessionReplay", desc: "Session replay: paginate by session_id", serial: 10.99, peak: 650.04, conc: 384, p50: 357.11, p99: 480.26 },
+  { name: "countL0", desc: "Count per tenant", serial: 17.91, peak: 291.69, conc: 16, p50: 49.5, p99: 99.98 },
+  { name: "searchL0Fts", desc: "BM25 hit (mongot), limit 5", serial: 15.13, peak: 215.27, conc: 32, p50: 116.21, p99: 340.14 },
+  { name: "paginated", desc: "Tenant paging + countDocuments", serial: 6.62, peak: 52.2, conc: 8, p50: 138.56, p99: 283.83 },
+];
+const FTS_SWEEP = [
+  { conc: 1, qps: 15.13, p50: 62.44, p99: 115.82 },
+  { conc: 4, qps: 63.75, p50: 61.52, p99: 74.29 },
+  { conc: 8, qps: 115.64, p50: 61.63, p99: 221.95 },
+  { conc: 16, qps: 207.32, p50: 63.53, p99: 273.97 },
+  { conc: 32, qps: 215.27, p50: 116.21, p99: 340.14 },
+  { conc: 64, qps: 181.52, p50: 221.13, p99: 593.26 },
+  { conc: 128, qps: 205.46, p50: 398.91, p99: 945.32 },
+];
+const CAVEATS = [
+  ["Collection state for the single-insert sweep", "Empty collection (l0_bench_ceiling), so 2,184/s is the ceiling on a clean collection and excludes index maintenance at the 100M scale"],
+  ["Collection state for the batch comparison", "Also an empty collection, concurrency fixed at 8, no concurrency sweep, so 19.8k/s is not the absolute ceiling of batch=1000"],
+  ["Two-segment stitching of the 100M curve", "The first segment 0->92.3M was interrupted by a session recycle, and the second segment resumed with --resume 92.3M->100M; the X axis is cumulative write time, idle time between the segments is excluded"],
+  ["Batch latency p50/p99", "Taken from the second segment (about the 92M-100M range), representing write latency at full scale, not the overall average"],
+  ["Peak query concurrency", "Measured from a single client process; whether the server has headroom left is unverified (a multi-process client could confirm further)"],
+  ["Corpus diversity", "Message text is generated cyclically from 100 templates, so the BM25 term cardinality is lower than real traffic and actual search latency may be higher"],
+];
+
+// -- Charts (hand-written SVG, no external dependencies) --------------------------------
+const C = { accent: "#4a9eff", ok: "#3fb950", warn: "#d29922", bad: "#f85149", mute: "#6e7681" };
+const fmt = (n) => Math.round(n).toLocaleString("en-US");
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+
+/** Pick a "nice" axis upper bound. */
+function niceMax(v) {
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  const n = v / p;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
+}
+function yAxis(m, innerW, innerH, yMax, W) {
+  let s = "";
+  for (let i = 0; i <= 4; i++) {
+    const v = (yMax / 4) * i;
+    const y = m.t + innerH - (v / yMax) * innerH;
+    s += `<line x1="${m.l}" y1="${y}" x2="${W - m.r}" y2="${y}" stroke="#2a2a2a"/>`;
+    s += `<text x="${m.l - 9}" y="${y + 4}" text-anchor="end" fill="#767676" font-size="11">${fmt(v)}</text>`;
+  }
+  return s;
+}
+
+/** Grouped bar chart. series: [{name, data, color}] */
+function barChart(el, { categories, series, height = 250, suffix = "", showValues = true }) {
+  const W = 1080, H = height, m = { l: 66, r: 18, t: 14, b: series.length > 1 ? 50 : 38 };
+  const innerW = W - m.l - m.r, innerH = H - m.t - m.b;
+  const yMax = niceMax(Math.max(...series.flatMap((s) => s.data)));
+  const groupW = innerW / categories.length;
+  const barW = Math.min(48, (groupW * 0.62) / series.length);
+  let bars = "";
+  categories.forEach((_, ci) => {
+    const cx = m.l + groupW * ci + groupW / 2;
+    const total = barW * series.length;
+    series.forEach((s, si) => {
+      const v = s.data[ci];
+      const h = (v / yMax) * innerH;
+      const x = cx - total / 2 + barW * si;
+      const y = m.t + innerH - h;
+      bars += `<rect x="${x}" y="${y}" width="${barW - 3}" height="${Math.max(h, 1)}" fill="${s.color}" rx="2"><title>${esc(s.name)} · ${esc(categories[ci])}: ${fmt(v)}${suffix}</title></rect>`;
+      if (showValues)
+        bars += `<text x="${x + (barW - 3) / 2}" y="${y - 5}" text-anchor="middle" fill="#a8a8a8" font-size="10.5" font-family="ui-monospace,monospace">${fmt(v)}</text>`;
+    });
+    bars += `<text x="${cx}" y="${H - m.b + 17}" text-anchor="middle" fill="#a8a8a8" font-size="11.5">${esc(categories[ci])}</text>`;
+  });
+  const legend =
+    series.length > 1
+      ? `<div class="legend">${series.map((s) => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join("")}</div>`
+      : "";
+  el.innerHTML =
+    `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" style="display:block">
+       ${yAxis(m, innerW, innerH, yMax, W)}${bars}
+     </svg>` + legend;
+}
+
+/** Line/area chart. series: [{name, data, color, fill}] */
+function lineChart(el, { categories, series, height = 280, xEvery = 1, xLabel = (s) => s }) {
+  const W = 1080, H = height, m = { l: 66, r: 18, t: 14, b: 48 };
+  const innerW = W - m.l - m.r, innerH = H - m.t - m.b;
+  const yMax = niceMax(Math.max(...series.flatMap((s) => s.data)));
+  const n = categories.length;
+  const sx = (i) => m.l + (n === 1 ? innerW / 2 : (i / (n - 1)) * innerW);
+  const sy = (v) => m.t + innerH - (v / yMax) * innerH;
+  let paths = "";
+  series.forEach((s) => {
+    const pts = s.data.map((v, i) => `${sx(i).toFixed(1)},${sy(v).toFixed(1)}`).join(" ");
+    if (s.fill) {
+      paths += `<path d="M ${sx(0)},${sy(0)} L ${s.data.map((v, i) => `${sx(i).toFixed(1)},${sy(v).toFixed(1)}`).join(" L ")} L ${sx(n - 1)},${sy(0)} Z" fill="${s.color}" fill-opacity="0.13"/>`;
+    }
+    paths += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="1.8" stroke-linejoin="round"${s.dash ? ' stroke-dasharray="5 4"' : ""}/>`;
+    s.data.forEach((v, i) => {
+      paths += `<circle cx="${sx(i).toFixed(1)}" cy="${sy(v).toFixed(1)}" r="2.6" fill="${s.color}"><title>${esc(s.name)} · ${esc(categories[i])}: ${fmt(v)}</title></circle>`;
+    });
+  });
+  let xl = "";
+  categories.forEach((c, i) => {
+    if (i % xEvery !== 0 && i !== n - 1) return;
+    xl += `<text x="${sx(i).toFixed(1)}" y="${H - m.b + 18}" text-anchor="middle" fill="#a8a8a8" font-size="11">${esc(xLabel(c))}</text>`;
+  });
+  const legend =
+    series.length > 1
+      ? `<div class="legend">${series.map((s) => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join("")}</div>`
+      : "";
+  el.innerHTML =
+    `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" style="display:block">
+       ${yAxis(m, innerW, innerH, yMax, W)}${paths}${xl}
+     </svg>` + legend;
+}
+
+function table(el, headers, rows, numCols = [], rowCls = []) {
+  el.innerHTML =
+    `<thead><tr>${headers.map((h, i) => `<th class="${numCols.includes(i) ? "n" : ""}">${h}</th>`).join("")}</tr></thead>` +
+    `<tbody>${rows
+      .map(
+        (r, ri) =>
+          `<tr class="${rowCls[ri] || ""}">${r
+            .map((c, i) => `<td class="${numCols.includes(i) ? "n" : ""}">${c}</td>`)
+            .join("")}</tr>`,
+      )
+      .join("")}</tbody>`;
+}
+
+// -- Rendering ------------------------------------------------
+barChart(document.getElementById("c-write-sweep"), {
+  categories: WRITE_SWEEP.map((s) => String(s.conc)),
+  series: [{ name: "Write throughput (docs/s)", data: WRITE_SWEEP.map((s) => s.qps), color: C.ok }],
+  suffix: " /s",
+});
+table(
+  document.getElementById("t-write-sweep"),
+  ["Concurrency", "Throughput (docs/s)", "p50 (ms)", "p99 (ms)", "vs serial"],
+  WRITE_SWEEP.map((s) => [
+    s.conc, fmt(s.qps), s.p50, s.p99, (s.qps / WRITE_SWEEP[0].qps).toFixed(1) + "×",
+  ]),
+  [0, 1, 2, 3, 4],
+  WRITE_SWEEP.map((s) => (s.conc === 256 ? "hi" : "")),
+);
+
+barChart(document.getElementById("c-batch"), {
+  categories: BATCH_SWEEP.map((b) => "batch=" + b.batch),
+  series: [{ name: "Write throughput (docs/s)", data: BATCH_SWEEP.map((b) => b.qps), color: C.accent }],
+  suffix: " /s",
+  height: 230,
+});
+table(
+  document.getElementById("t-batch"),
+  ["Batch size", "Docs", "Throughput (docs/s)", "Batch latency p50", "Batch latency p99", "Elapsed"],
+  BATCH_SWEEP.map((b) => [
+    b.batch, b.docs.toLocaleString("en-US"), fmt(b.qps), b.p50 + "ms", b.p99 + "ms", b.wallS + "s",
+  ]),
+  [0, 1, 2, 3, 4, 5],
+  ["", "", "hi"],
+);
+
+lineChart(document.getElementById("c-curve"), {
+  categories: CURVE.map((p) => p[0] + "h"),
+  series: [
+    { name: "Instantaneous throughput (docs/s)", data: CURVE.map((p) => p[1]), color: C.accent, fill: true },
+    { name: "Cumulative average (docs/s)", data: CURVE.map((p) => p[2]), color: C.mute, dash: true },
+  ],
+  xEvery: 4,
+});
+lineChart(document.getElementById("c-first20"), {
+  categories: FIRST20.map((_, i) => i + 1 + "m"),
+  series: [{ name: "Instantaneous throughput (docs/s)", data: FIRST20, color: C.accent, fill: true }],
+  height: 210,
+  xEvery: 2,
+});
+
+barChart(document.getElementById("c-query"), {
+  categories: QUERY.map((q) => q.name),
+  series: [
+    { name: "Serial QPS (concurrency=1)", data: QUERY.map((q) => q.serial), color: C.mute },
+    { name: "Peak concurrent QPS", data: QUERY.map((q) => q.peak), color: C.ok },
+  ],
+  height: 290,
+  suffix: " /s",
+});
+table(
+  document.getElementById("t-query"),
+  ["Query", "Meaning", "Serial QPS", "Peak concurrent QPS", "Best concurrency", "Gain", "Peak p50", "Peak p99"],
+  QUERY.map((q) => [
+    `<code>${q.name}</code>`, q.desc, q.serial, fmt(q.peak), q.conc,
+    (q.peak / q.serial).toFixed(1) + "×", q.p50 + "ms", q.p99 + "ms",
+  ]),
+  [2, 3, 4, 5, 6, 7],
+  QUERY.map((q) => (q.name === "paginated" ? "bad" : q.name === "searchL0Fts" ? "warn" : "")),
+);
+
+table(
+  document.getElementById("t-fts"),
+  ["Concurrency", "QPS", "p50", "p99"],
+  FTS_SWEEP.map((s) => [s.conc, s.qps, s.p50 + "ms", s.p99 + "ms"]),
+  [0, 1, 2, 3],
+  FTS_SWEEP.map((s) => (s.conc === 32 ? "warn" : "")),
+);
+
+table(document.getElementById("t-caveats"), ["Item", "Notes"], CAVEATS);
+</script>
+</body>
+</html>

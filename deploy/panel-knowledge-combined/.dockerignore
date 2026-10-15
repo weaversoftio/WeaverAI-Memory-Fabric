@@ -1,0 +1,49 @@
+# Context ignore list for the panel-knowledge-combined image
+#
+# build.sh rsyncs panel/ (team-memory-control) + knowledge/ (services/knowledge)
+# into a temporary context directory, and this file applies in that context.
+# Purpose: keep secrets / internal network information / large files out of the image.
+
+# ── Real config: must be mounted at runtime, never in the image ──
+# metadata-instances.json contains the wamf kernel Bearer token; see the deployment section of the panel README.
+panel/config/metadata-instances.json
+panel/config/*.yaml
+panel/config/*.yml
+panel/.env
+panel/.env.*
+knowledge/.env
+knowledge/.env.*
+
+# ── Docs: not needed at runtime, and contain internal path references ──
+# Both docs/ levels are excluded. The only spec needed at runtime is knowledge/openapi.yaml (at the package root,
+# read by src/server.ts for Swagger UI), which isn't under docs/ and so is unaffected.
+panel/docs/
+knowledge/docs/
+
+# ── Test scripts: contain hard-coded internal environment paths, not needed at runtime ──
+panel/tests/
+panel/e2e-*.sh
+knowledge/__tests__/
+knowledge/bin/e2e-*.sh
+
+# ── dependencies / build output ──
+**/node_modules
+**/dist
+**/build
+**/.git
+**/logs
+**/*.log
+**/data/
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/*.sqlite
+
+# ── editor/OS clutter ──
+**/.DS_Store
+**/.idea/
+**/.vscode/
+**/*.swp
+**/*.swo
+**/.iwiki
+**/.codebuddy

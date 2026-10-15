@@ -1,0 +1,48 @@
+# dependencies and build output
+node_modules
+dist
+
+# directories kept out of the image
+dashboard
+gateway
+docs
+logs
+
+# runtime output
+*.log
+*.jsonl
+nohup.out
+context-proxy.pid
+
+# config files (mounted at runtime at /data/config.yaml)
+config.yaml
+config-a.yaml
+config-example.yaml
+config.yaml.bak.*
+config.*.local.yaml
+**/.env
+**/.env.*
+
+# version control and editors
+.git
+.gitignore
+.gitmodules
+.vscode
+.idea
+.codebuddy
+.claude
+
+# internal CI / internal build tools (would expose the internal topology if baked into the image)
+.coding-ci.yaml
+
+# E2E / verify / smoke scripts: not needed in the runtime image
+scripts/e2e-*
+scripts/verify-*
+scripts/warm-*
+scripts/inspect-*
+scripts/smoke-*
+e2e/
+
+# the container files themselves
+Dockerfile
+.dockerignore

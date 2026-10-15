@@ -1,0 +1,645 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Context Proxy: full configuration reference
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Every field has a default; anything not configured falls back to it. Each setting's meaning and use is listed below.
+#
+# Request flow:
+#   client request → auth → sessionInit (session initialisation: form to pick team/agent/task)
+#   → injection (context injection: skill/memory/wiki/knowledge into the system prompt)
+#   → forward to the upstream LLM → usage/reporting → back to the client
+#
+# Module dependencies:
+#   sessionInit depends on coreSkill (fetches the team/agent/task lists from the kernel on 8420) + the state store
+#   injection  depends on coreSkill (skill RAG injection) + wamf (memory L1/L2/L3)
+#   auth       is independent; it calls the kernel's POST /v3/meta/auth/verify to check apiKey → user_id
+#
+# State storage backend:
+#   injection/skill data (inj:*/sk:*/vpin:*) goes to Redis by default; with storage.enabled=true
+#   it switches to ProxyStorage (SQLite/FS/Memory). See the storage: section.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+# ── Listener ─────────────────────────────────────────────────────────────────
+server:
+  host: 0.0.0.0           # listen address; 0.0.0.0 means all interfaces
+  port: 8096               # listen port
+  forwardTimeoutMs: 600000 # upstream forwarding timeout (ms), default 600000 (10 minutes); 0 = no timeout
+
+
+# ── Upstream LLM service (the default fallback) ──────────────────────────────────────────────────
+upstream:
+  # upstream OpenAI-compatible API address (the proxy appends /v1/chat/completions)
+  # a full path also works, e.g. https://llm-upstream.example.com/v2/
+  url: https://tokenhub.example.com/v1
+  # If set, replaces Authorization: Bearer <apiKey> on every forwarded request.
+  # Empty passes the client's own API key through.
+  apiKey: "<YOUR_TOKENHUB_API_KEY>"
+
+  # ── Per-agent overrides ─────────────────────────────────────────────────────────
+  # Overrides url + apiKey per agent name (the URL path prefix /{agent}/...).
+  # The Anthropic and OpenAI protocols share the same table.
+  #
+  # Fallback rule (important): only an agent that is "not configured here" falls back to the outer upstream:
+  #
+  #   ┌─────────────────────────┬──────────────┬────────────────────────────┐
+  #   │ This agent's config     │ url used     │ apiKey used                │
+  #   ├─────────────────────────┼──────────────┼────────────────────────────┤
+  #   │ not in agents           │ upstream.url │ upstream.apiKey (fallback) │
+  #   │ in agents, url only     │ agent.url    │ the key the client sent    │
+  #   │ in agents, url + apiKey │ agent.url    │ agent.apiKey               │
+  #   └─────────────────────────┴──────────────┴────────────────────────────┘
+  #
+  # The middle row is a deliberate gap: once an agent appears in this table, the fallback to the outer
+  # upstream.apiKey is cut off, so operators can have some agents in the same proxy use a server-side key
+  # and others pass the client's own key through.
+  #
+  # Full precedence (high → low):
+  #   1. credentials built into costGuard's internal routing (cheap-model fallback)
+  #   2. upstream.agents[agent].url + upstream.agents[agent].apiKey
+  #   3. costGuard.anthropicUpstream.url (Anthropic protocol only)
+  #   4. upstream.url + upstream.apiKey (default when no agent matches)
+  agents: {}
+    # claude-code:                                        # server-side key mode
+    #   url: "https://claude-upstream.example.com/v1"
+    #   apiKey: "sk-ant-agent-key"
+    # codex:                                              # client key pass-through mode
+    #   url: "https://codex-upstream.example.com/v1"
+    #   #   # no apiKey → passes the key the client sent through, no outer fallback
+    # Note: clients such as workbuddy / codebuddy / claude-code don't need a per-agent override;
+    # their requests naturally use the outer upstream.url + the user_key from auth, and the proxy fetches the
+    # matching team/agent/task context from the kernel by user_id (no resources to create by hand).
+    # Create user assets (Team / Agent / Task / user grants) in the MemoryPanel web panel.
+
+
+# ──── Multiple clients (workbuddy / codebuddy / claude-code, etc.) ───────────────────
+# MemoryProxy doesn't manage user assets. Team / Agent / Task / user grants are all created in the MemoryPanel web
+# panel (port 8123). Client connection flow:
+#
+#   1. The admin, in MemoryPanel:
+#      - creates a User and gets a user_key of the form sk-mem-xxx
+#      - creates a Team and adds the user as a member
+#      - creates an Agent and a Task under the Team
+#   2. Client config (baseUrl only goes up to {agent}/{spaceId}; the client SDK appends the API path):
+#      - Base URL: http://<proxy-host>:8096/{agent}/{spaceId}
+#        e.g. http://proxy.example.com:8096/workbuddy/mem-demo
+#              http://proxy.example.com:8080/codebuddy/default
+#      - API Key:  the user_key from step 1 (sk-mem-* form)
+#      - Model:    a model name the upstream supports
+#   3. The client sends its first message → the proxy intercepts → verifyUserKey → listTeams → listAgents
+#      → listTasks → interactive form to pick team/agent/task → session registered → every turn automatically injects
+#      L2 (agent) + L3 (team) memory into the system prompt → forwarded to the upstream LLM.
+#
+# Users are isolated naturally: listTeams(userId) only returns the user's teams, listAgents
+# filters again by user, and different session_ids have independent session state machines.
+#
+# To skip the form for integration testing: enable debugForceIdentity / debugForceUserId below (local/E2E only).
+# Without them the full form interaction runs: the standard production path for multiple users.
+
+# ── Logging ─────────────────────────────────────────────────────────────────────
+log:
+  file: logs               # log directory; usage JSONL + the structured proxy.log are created per date
+                           #   empty "" writes no files, console only
+  verbose: false           # true = extra debug output to stderr
+  level: info              # info | debug — debug adds routing/analysis details
+  backend: console         # noop | console — structured logs to stderr (console) or off (noop)
+  rotate:
+    maxSizeBytes: 104857600  # maximum bytes per proxy.log file before rotating (default 100MB)
+    backupLimit: 10          # maximum number of rotated backups kept
+
+
+# ── Redis (the historical backend for the injection / skill layers) ────────────────────────────────────────
+# Injection / skill layer data (inj:*, sk:*, skill:vpin:*) goes to Redis by default (historical behaviour).
+# With storage.enabled=true below, that data goes to ProxyStorage
+# (SQLite/FS/Memory) instead. See the storage: section.
+redis:
+  enabled: true            # whether Redis is enabled; whether injection/skill data uses Redis is decided by storage.enabled.
+  # url: "redis://:password@host:port/db"   # full Redis URL; overrides host/port/password/db below when set
+  host: "127.0.0.1"        # Redis host
+  port: 6379               # Redis port
+  password: ""             # Redis password
+  db: 0                    # Redis database number
+  ttlSeconds: 1800         # injection and skill cache TTL (seconds), default 1800 (30 minutes)
+  # injectionTtlSeconds: 3600  # injection hook cache TTL (seconds), defaults to ttlSeconds
+  # CostGuard session state (cg:sess:* / arch: / judge-*) uses this Redis too.
+  # Required for multi-instance deployments, otherwise task archive / judge latch can't be shared across processes.
+
+
+# ── Cost Guard (optional private routing extension; without the submodule the whole section passes through unnoticed) ────────
+# The host only parses enabled / markerOptIn / agentProfile / anthropicUpstream.
+# Every other field goes into options unchanged, for @context-proxy/cost-guard.
+#
+# options the extension currently uses (behaviour when omitted):
+#   taskArchiveEnabled  omitted = true. One extra synchronous gate LLM call per new user turn.
+#   judge.enabled       omitted = false. When on it needs baseUrl; the host makes the HTTP call.
+#   compress* / gate*   fall back to the analyze model when omitted.
+#   requestPrepare      CCR compression facade, independent of the routing switch.
+costGuard:
+  enabled: false
+  markerOptIn: false       # true = only /{agent}/{spaceId}/cost-guard/... goes through routing
+  agentProfile: auto
+  # anthropicUpstream:
+  #   url: "https://anthropic-upstream.example.com"
+  # analyzeModel: "deepseek-v4-flash"
+  # analyzeUrl: "https://analyzer.example.com/v1/chat/completions"
+  # analyzeApiKey: ""
+  # analyzeProtocol: openai
+  # analyzeTimeout: 30000
+  # cheapModel: "deepseek-v4-pro"
+  # cheapUrl: ""
+  # cheapApiKey: ""
+  # cheapProtocol: openai
+  # toolLoopDegradeStrategy: none
+  # agents:                  # overrides the cheap config by the agentName in the first URL segment
+  #   claude-code:
+  #     cheapModel: "claude-haiku"
+  #     cheapUrl: "https://cheap.example.com"
+  # taskArchiveEnabled: true
+  # compressModel: "deepseek-v4-flash"  # selector + merge; falls back to analyze* when omitted
+  # compressUrl: "https://analyzer.example.com/v1/chat/completions"
+  # compressApiKey: ""
+  # compressProtocol: openai
+  # compressTimeout: 30000
+  # gateModel: "deepseek-v4-flash"      # synchronous critical path; falls back to compress* when omitted
+  # gateUrl: "https://analyzer.example.com/v1/chat/completions"
+  # gateTimeout: 8000
+  # judge:
+  #   enabled: false
+  #   baseUrl: "http://judge.example.com"
+  #   userTurnTimeoutMs: 25000
+  #   agentTurnTimeoutMs: 10000
+  #   everyNToolTurns: 5
+  #   latchTtlSeconds: 0
+  #   latchMaxTurns: 0
+  # controlPlane:            # this block being present enables it; omit the whole block to turn it off
+  #   port: 18097
+  # requestPrepare:
+  #   enabled: false
+
+
+# ── Memory instance × actual model input TPM / QPM rate limiting ──────────────────────────────
+# Applies to every main model call with a spaceId in the URL.
+# Pods count atomically through the shared Redis above. When Redis is unavailable it fails open and logs a warning.
+# Per-instance/model overrides are managed through /v3/admin/rate-limits and take effect on the next request.
+rateLimit:
+  tpm: 1000000             # actual input tokens / last 60 seconds
+  qpm: 100                 # requests / last 60 seconds; same dimensions as TPM
+
+
+# ── Storage (unified storage abstraction for the injection + skill layers, replacing Redis for inj:*/sk:*/vpin:*) ─
+#
+# [Master switch] storage.enabled=false (default) → the original Redis path only; the migration code isn't loaded,
+#           and behaviour is **exactly the same** as before the migration.
+# [Switching] storage.enabled=true → ProxyStorage replaces the inj:*/sk:*/vpin:*
+#           Redis repos.
+#
+# [Recommendations]
+#   - single instance, local/internal: backend=sqlite (default; uses ~/.wamf-memory-proxy/proxy.db)
+#   - offline/private deployment:      backend=fs
+#   - fallback / tests:                backend=memory
+#   All backends are process-local; for multiple proxy nodes keep storage.enabled=false and use Redis.
+#
+# [Fallback chain] sqlite → fs → memory; if a backend fails to init it falls back automatically,
+#          and /health exposes storage.effective / storage.degraded.
+#          Any other backend value is rejected at startup.
+#
+# [Rollback] switching to enabled=false at any stage returns to the Redis path without a restart.
+#
+# Field quick reference ([req] = required / [opt] = optional with a default / [unused] = not read by this backend)
+#   enabled        [req]
+#   backend        [req]   sqlite | fs | memory
+#   ttlDays        sqlite=[opt, default 7] fs/memory=[unused]
+#   sqlite.dbPath  sqlite=[opt, default empty] others=[unused]
+#   fs.fsRoot      fs=[req] others=[unused]
+storage:
+  # [req] master switch: false = the old Redis path only (default)
+  enabled: false
+
+  # [req] preferred backend: sqlite | fs | memory
+  #   - sqlite: single-instance local development / CI; a sweeper cleans the ttl bucket
+  #   - fs:     offline / docker fallback; no sweeper
+  #   - memory: fallback / tests; cleared on process restart
+  backend: sqlite
+
+
+  # ── TTL / NoTTL prefix tiers (business code picks the bucket by key prefix) ─────
+  # `ttl/`   — hot cache: inj-sess (session init state) / inj-hook (prewarmed injection).
+  #             Losing it is recoverable (binding fallback / rerunning the hook), invisible to the business.
+  # `nottl/` — business state: binding / sk-extract / skill-vpin. **Kept forever**;
+  #             losing it makes the user go through the session_init form again.
+  #
+  # Only the `ttl/` prefix is cleaned (each backend does it differently):
+  #   - SqliteStorage: a built-in sweeper cleans the ttl bucket of the proxy_kv table by ttlDays every 5 minutes
+  #   - FsStorage:     no sweeper (container FS mtime is unreliable); leave it to an external tmpwatch
+  #   - MemoryStorage: cleared on process restart; this TTL has no effect
+  #
+  # [sqlite=opt, default 7 / fs+memory=unused] cleanup window for the `ttl/` prefix (days).
+  ttlDays: 7
+
+  # ── SQLite backend (single-instance local development / CI) ─────────────────────────────────────
+  # The only backend where "changing ttlDays in yaml takes effect immediately": a sweeper cleans the ttl bucket
+  # of the proxy_kv table by the top-level ttlDays every 5 minutes (the nottl bucket is kept forever).
+  # When backend != sqlite the whole section can be deleted.
+  sqlite:
+    # [sqlite=opt, default empty / others=unused] empty = the PROXY_DB_PATH env or ~/.wamf-memory-proxy/proxy.db
+    dbPath: ""
+
+  # ── Local file system (offline / read-only docker fallback) ──────────────────────────────────
+  # No sweeper (fs.stat().mtime is unreliable on container FS); leave it to an external tmpwatch.
+  # When backend != fs the whole section can be deleted.
+  fs:
+    # [fs=req / others=unused] root directory (must be writable)
+    fsRoot: "/var/lib/context-proxy/storage"
+
+
+# ── Opik LLM observability (Comet ML Opik) ─────────────────────────────────────────
+# Request/response traces and spans are reported to Opik automatically.
+opik:
+  enabled: false           # whether Opik reporting is enabled
+  url: "http://127.0.0.1:5173"   # Opik service address
+  apiKey: ""               # Opik API key (if the Opik instance needs auth)
+  # stripRequestLogContent: false  # true = forked request_log traces don't record message content (saves storage)
+
+
+# ── Langfuse LLM observability (reported with the official SDK) ──────────────────────────────────────
+# One trace = one turn (one user input); the tool-loop requests within a turn become several generations
+# under the same trace. Reported: model / latency / token usage / cache hits / cost.
+langfuse:
+  enabled: false           # whether Langfuse reporting is enabled
+  host: ""                 # Langfuse instance base URL, e.g. http://localhost:3000
+                           #   OTLP mode: the OTLP endpoint
+  publicKey: ""            # Langfuse public key (pk-lf-...); OTLP mode: the token
+  secretKey: ""            # Langfuse secret key (sk-lf-...); OTLP mode: leave empty
+
+
+# ── ClickHouse usage reporting ──────────────────────────────────────────────────────
+# Records each user's token usage per turn, queryable by model / user / session.
+# Table columns: timestamp / model_id / key_id (user) / session_key + turn_seq (turn) /
+#           user_input / prompt_tokens / completion_tokens / total_tokens /
+#           cache_hit_tokens / cache_write_tokens.
+# Failed 4xx/5xx requests aren't written.
+clickhouse:
+  enabled: false           # whether ClickHouse usage reporting is enabled
+  url: "http://clickhouse.example.com:8123"   # ClickHouse HTTP endpoint
+  database: context_proxy            # database name
+  table: usage_logs                  # usage table name (TokenHub and other known formats)
+  rawTable: usage_raw                # raw usage trace table (non-TokenHub / unknown formats fall back here)
+  user: default                      # ClickHouse user name
+  password: ""                       # ClickHouse password
+  flushIntervalMs: 5000              # periodic flush interval (ms), default 5 seconds
+  flushThreshold: 50                 # flush immediately after N buffered rows (0 = no batch flush)
+  ttlDays: 30                        # data retention in days (0 = no automatic expiry; applied through CREATE TABLE TTL at startup)
+
+
+# ── Auth (user_key check → user_id resolution) ─────────────────────────────────
+# When enabled, the proxy calls the kernel's POST /v3/meta/auth/verify to check the client API key.
+# Any result other than valid=true returns 401 (including timeouts/network errors).
+# x-wamf-service-id is extracted from the request path /proxy/<spaceId>/... automatically.
+# Once verified, the user_id is written to the ClickHouse key_id column and used as the user identity end to end.
+auth:
+  enabled: true            # whether auth is enabled
+  url: "http://kernel.example.com:8420"   # kernel auth service base URL (/v3/meta/auth/verify is appended)
+  timeoutMs: 5000          # auth request timeout (ms)
+
+
+# ── Admin / ops endpoint auth (service-level shared secret) ─────────────────────────────
+# Scope: only ops endpoints like `/v3/instance/proxy-destroy` (used by the instance control plane to clear the
+# proxy-side storage cache when destroying an instance). Completely separate from the tenant verifyUserKey in auth.* above: that one is the
+# per-tenant x-wamf-user-key check; this one is a shared secret for ops/system services.
+#
+# Behaviour (same semantics as core gateway's server.apiKey, see openclaw-plugin
+# gateway/server.ts:1076-1089):
+#   - empty apiKey (default)      = auth off, ops endpoints publicly reachable; no startup warning
+#                                 (production relies on network isolation + the apigw, just as core's
+#                                 production `WAMF_GATEWAY_API_KEY` isn't enabled either)
+#   - non-empty apiKey            = requests must carry `Authorization: Bearer <apiKey>`
+#                                 compared in constant time (crypto.timingSafeEqual)
+#
+# How to choose the value:
+#   - one fixed string agreed by both sides (proxy + control plane), unrelated to any instance
+#   - usually generated by ops with `openssl rand -hex 32` and handed to both the proxy's
+#     `WAMF_PROXY_ADMIN_API_KEY` env and the control plane's client config
+#   - not the admin user_key of any memory instance (that's the per-instance user concept carried in
+#     `x-wamf-user-key`; the two are unrelated)
+#
+# Precedence: env WAMF_PROXY_ADMIN_API_KEY > yaml admin.apiKey > default ""
+admin:
+  apiKey: ""               # empty = ops endpoints public (same as not configured). In production, inject it through
+                           # env WAMF_PROXY_ADMIN_API_KEY so it never lands in git
+
+
+# ── System users (internal service accounts: a match passes straight through) ─────────────────────────────
+# Matching: first auth/verify with the apiKey to get the user_id → the user_id is in the systemUsers list
+# below → match, short-circuit pass-through. On a match the proxy forwards the request unchanged to
+# config.upstream.url, skipping session init and context injection.
+# usage/credit is still recorded (keyId = userId, spaceId = the memory instance id in the path).
+# Depends on auth.enabled=true: with auth off, verify returns an empty user_id and the short circuit never fires.
+# The userKey field is kept only as an ops reference (it used to be the match key; now it only appears in logs/comments)
+# and can be omitted; userId is required. The array can hold several entries; an empty array disables the feature.
+systemUsers:
+  - name: memory                              # logical name, used only in logs
+    userId: "${WAMF_MEMORY_SYSTEM_USER_ID}"   # match key & billing user_id (required)
+    displayName: "${WAMF_MEMORY_SYSTEM_USER_NAME}"
+    userKey: "${WAMF_MEMORY_SYSTEM_USER_KEY}" # historical sk-mem-xxx, for ops reference only (optional)
+  # - name: wiki
+  #   userId: "${WAMF_WIKI_SYSTEM_USER_ID}"
+  #   displayName: "${WAMF_WIKI_SYSTEM_USER_NAME}"
+  #   userKey: "${WAMF_WIKI_SYSTEM_USER_KEY}"
+
+
+# ── Credit reporting (WAMF MemoryPlus billing) ──────────────────────────────────────
+# After each LLM response completes, this turn's CreditDelta is computed from the creditPricing table
+# and POSTed to the external billing service. Only TokenHub upstreams are priced; other upstreams have CreditDelta=0.
+# Only requests with the /proxy/<spaceId>/ prefix trigger reporting; SpaceId is extracted from the path.
+# Streaming requests are best-effort: a failed report is only logged and doesn't interrupt the stream.
+# For non-streaming requests, a failure reason is recorded in the `x-credit-report-error` response header.
+creditReport:
+  url: "http://gateway.example.com:8000/UpdateMemoryPlusUsage"
+  timeoutMs: 5000          # reporting timeout (ms), 0 = no timeout
+
+
+# ── Credit price list ────────────────────────────────────────────────────────
+# Unit: Credit / 1K tokens.
+# Model matching: usage.model → case-insensitive whole-word match → no match means credit=0
+#   (falls back to the usage_raw table, marked reason='unknown_model').
+# Fields:
+#   name          — model ID (matched against usage.model, case-insensitive whole word)
+#   modelName     — display name (optional, for UI/reports; falls back to name)
+#   input         — standard input tokens (the uncached part)
+#   output        — output tokens
+#   cacheRead     — cache-hit read tokens (prompt_cache_hit_tokens / cache_read_input_tokens)
+#   cacheWrite5m  — cache write with a 5-minute TTL (cache_creation.ephemeral_5m_input_tokens)
+#   cacheWrite1h  — cache write with a 1-hour TTL (the non-ephemeral part of cache_creation_input_tokens)
+creditPricing:
+  models:
+    - name: "your-endpoint-id"         # the endpoint id / model alias the upstream issues, e.g. Claude Sonnet
+      modelName: "Claude Sonnet"
+      input: 5.4935
+      output: 27.4673
+      cacheRead: 0.5493
+      cacheWrite5m: 6.8668
+      cacheWrite1h: 10.9869
+
+    - name: "deepseek-v4-pro"          # DeepSeek V4 Pro
+      modelName: "DeepSeek V4 Pro"
+      input: 0.4500
+      output: 0.9000
+      cacheRead: 0.0038
+      cacheWrite5m: 0.4500
+      cacheWrite1h: 0.4500
+
+    - name: "deepseek-v4-flash"        # DeepSeek V4 Flash
+      modelName: "DeepSeek V4 Flash"
+      input: 0.1500
+      output: 0.3000
+      cacheRead: 0.0030
+      cacheWrite5m: 0.1500
+      cacheWrite1h: 0.1500
+
+
+# ── Context injection (injection pipeline) ─────────────────────────────────────────
+# Injects relevant knowledge/memory/skills into the system prompt of every LLM request.
+# The injection pipeline runs after session init completes.
+# Each injector is an independent hook, run in registration order.
+#
+# Available injectors:
+#   skill       — <cloud_skills> block: relevant skills from the kernel RAG search, injected into the system prompt;
+#                 plus a <skill_tools> block telling the LLM how to call skills with curl.
+#                 Data source = the endpoint of the skill section (the kernel gateway).
+#   knowledge   — <knowledge_tools> block: fetches the team's knowledge resources from the kernel and
+#                 injects the two-step self-discovery tools (depends on skill.serviceToken).
+#   wamf-memory — WAMF L2/L3 memory injection (controlled by wamf.memory.*, see the wamf section).
+injection:
+  enabled: true             # whether context injection is enabled (when off, the injectors list below has no effect)
+  injectors: ["skill", "knowledge", "wamf-memory"]   # injectors to enable
+  # Unified external gateway address: the curl URLs embedded in the <skill_tools> / <wamf_memory_tools>
+  # sections the LLM sees all use this as their base. Gateway domain only, **no port**
+  # (the port the gateway routes to on the proxy pods is configured by ops on the gateway side, unrelated to this).
+  #
+  # ⚠️ Required for multi-node deployments. Without it each pod falls back to its own host:port → the same
+  # shared hook cache is overwritten by the pods in turn → the upstream Anthropic KV cache misses every time (costly + slow).
+  #
+  # The gateway must pass these two prefixes through to the proxy pods unchanged:
+  #   /skill-bridge/**   → proxy /skill-bridge/**
+  #   /memory-bridge/**  → proxy /memory-bridge/**
+  externalGatewayUrl: "https://gateway.example.com"
+
+  # ── Asset reflection mode (for internal effectiveness evaluation; on by default) ─────────────────────────────
+  # Same shape as costGuard.markerOptIn, but with the opposite default:
+  #   markerOptIn=true (default): the AssetReflectionInjector registers. The marker is still
+  #                              opt-in: only requests whose URL has an `/analyse` segment (structured like
+  #                              `/cost-guard`: right after `/{agent}/{spaceId}`, e.g.
+  #                              `/codebuddy/default/analyse/v1/messages`) emit an
+  #                              `<asset_reflection>` block at the end of the system prompt, asking
+  #                              the agent to review "which cloud asset tools this turn called and whether
+  #                              each one helped". Normal requests without the marker are unaffected.
+  #   markerOptIn=false: the AssetReflectionInjector doesn't register, and the gate at the top returns 404 for
+  #                     any request with an `/analyse/` segment, at zero cost. For deployments that are sure
+  #                     they don't need asset reflection and want it explicitly off.
+  # The tag list is decided by the asset injectors actually registered on this node (skill / wamf-memory /
+  # knowledge); with none enabled the injector never emits anything.
+  assetReflection:
+    markerOptIn: true
+
+
+# ── Extraction (write side: feeds each turn's conversation/tool calls back into the kernel) ─────────────────────────────
+# The counterpart of injection: injection decides "what goes into the prompt", extraction decides "what is written back to the kernel".
+#
+# extractors allow-list (anything not listed isn't written back):
+#   skill        — at the end of each human turn, calls /v3/skill/conversation/add; core archives by threshold
+#                  (depends on skill.endpoint + skill.serviceToken)
+#   wamf-memory  — writes each turn's user_query + assistant reply to L0 short-term memory
+#                  (depends on wamf.enabled + wamf.memory.writeL0)
+#
+# Default (without this section): enabled=true, extractors=["skill","wamf-memory"], same as before.
+# For "inject but don't extract": extraction.enabled: false switches it all off.
+extraction:
+  enabled: true
+  extractors: ["skill", "wamf-memory"]
+
+
+# ── Session init ──────────────────────────────────────────────
+# Intercepts the user's first conversation and shows an interactive form to pick team → agent → task;
+# once chosen, the agent/task details are fetched from the kernel and injected into the system prompt.
+#
+# Flow:
+#   1. asset_confirm dialog: asks whether to link team assets
+#   2. pick the team (only shown when there are several teams)
+#   3. pick the agent (paginated)
+#   4. pick the task (optional, paginated / can be skipped)
+#   5. register the session → inject the agent/task context into the system prompt
+#
+# State storage: Redis by default (redis.enabled=true); with storage.enabled=true it uses
+# ProxyStorage (SQLite/FS). With neither, it falls back to single-instance local SQLite storage.
+# The team/agent/task lists come from the kernel MetadataClient (reusing the skill section's config).
+# The user identity is resolved by one auth/verify hop; failed auth/unknown user → session init is bypassed.
+sessionInit:
+  enabled: true             # whether session init is enabled
+  maxRetries: 3             # maximum retries when parsing the form fails; beyond that it bypasses (skips session init)
+  # skipAssetConfirm: true  # skip the "link team assets?" dialog, treating it as "yes" and going straight to team/agent/task
+  # History: there used to be a keepInitArtifacts switch to strip the fake form conversation
+  # after session_init completed; it was removed. Now the user's real conversation (including the session_init
+  # form interaction) is **always kept**; nothing is deleted.
+  # <session_context> injection switches: after session init, every request appends the agent/task
+  # information to the system prompt as a <session_context> block. The two switches below silence each part.
+  # Both off = no <session_context> at all. Both default to true, same as before.
+  # When off, each session warns only once (to avoid flooding long sessions).
+  injectAgentContext: true  # false = don't inject the [Agent] part (id/name/description/prompt)
+  injectTaskContext: true   # false = don't inject the [Task] part (id/name/description/goal)
+  # Header preselection: when the first request already carries identity headers, check they exist in the lists and skip the matching steps.
+  headerAutoSelect:
+    enabled: true            # whether header preselection is enabled
+    teamHeader: "x-team-id"  # name of the header carrying team_id
+    agentHeader: "x-agent-id" # name of the header carrying agent_id
+    taskHeader: "x-task-id"  # name of the header carrying task_id (optional)
+    onMismatch: "form"       # when a header value isn't found: form = fall back to the interactive form (default) | bypass = skip session init
+
+  # ── DEBUG: local development/e2e short circuit ────────────────────────────────────────────────
+  # With debugForceIdentity enabled, sessions with agentSource=workbuddy and agentSource=codebuddy
+  # are registered **directly** with a fixed triple, bypassing all form/header matching;
+  # keep it commented out in production.
+  # debugForceIdentity:
+  #   team_id: team-xxxxxxxxxx
+  #   agent_id: agt-xxxxxxxxxx
+  #   task_id: task-xxxxxxxxxx
+  # WorkBuddy's auth/verify has no human identity → this line hard-binds userId to
+  # a real kernel user_id (use a key of the same user as the x-wamf-user-key in
+  # upstream.agents.workbuddy.apiKey). Keep it commented out in production.
+  # debugForceUserId: usr-xxxxxxxxxx
+  # In debug mode, logs detailed diagnostics (request tools schema, system prompt summary, etc.).
+  # Only for local/E2E integration; keep it false or unset in production. Off by default.
+  # debugVerboseLogging: false
+
+
+# ── WAMF Memory Gateway (core / openclaw-plugin) ────────────────────────────
+# The proxy reads and writes memory through the kernel gateway deployed on the same machine (listening on 8420).
+# Four memory levels:
+#   L0 — short-term conversation memory (the last N turns, written automatically)
+#   L1 — session-level key information extraction (reusable structured memories from the conversation)
+#   L2 — Agent Profile (the agent's long-lived persona/rules/knowledge)
+#   L3 — Team/Global memory (organisation-level knowledge shared across agents)
+#
+# Injection behaviour:
+#   with inject=true, L2+L3 are injected into the system prompt as system-level context;
+#   L0/L1 aren't injected into the prompt (that would break the KV cache); read-only tools are exposed instead for the LLM to query.
+wamf:
+  enabled: true             # whether WAMF Memory is enabled
+  endpoint: "http://127.0.0.1:8420"   # kernel gateway address (usually the same as skill.endpoint)
+  apiKey: "local"           # Authorization: Bearer value (usually the same as skill.serviceToken)
+  serviceId: "default"      # x-wamf-service-id header value
+  memory:
+    enabled: true           # master switch of the Memory submodule
+    inject: true            # master switch for context injection (false = all L0–L3 injection off)
+    writeL0: true           # whether to write L0 (short-term conversation memory)
+    recallL1: true          # whether L1 recall is enabled (searches the conversation for relevant memories)
+    injectL2L3: true        # whether to inject L2 (Agent Profile) + L3 (Team/Global memory) into the system prompt
+    l1Limit: 5              # maximum L1 recall items
+    l2Limit: 3              # maximum L2/L3 injection items
+    timeoutMs: 5000         # timeout per kernel call (ms)
+
+
+# ── Skill / kernel gateway data plane ──────────────────────────────────────────────
+# The proxy talks to the kernel gateway with this config for three things:
+#   1. <cloud_skills> RAG injection: GET /v3/skill/search finds relevant skills
+#   2. skill archive trigger: at the end of each human turn it calls /v3/skill/conversation/add;
+#      core archives at tool_call ≥ 10 or bytes ≥ 40KB and extracts asynchronously.
+#   3. the knowledge injector fetches the team's knowledge resource list
+# The same serviceToken is also injected by the /skill-bridge reverse proxy when forwarding the LLM's curl,
+# so the token never appears in a prompt the LLM can see.
+# sessionInit's team/agent/task lists are fetched through this kernel too (MetadataClient).
+#
+# Section name compatibility: it can also be written `coreSkill:` (the old name, still read); if both exist, `skill:` wins.
+skill:
+  endpoint: "http://127.0.0.1:8420"   # kernel gateway address (usually the same as wamf.endpoint)
+  serviceToken: "local"               # auth credential → Authorization: Bearer <serviceToken>
+                                       #   matches the service allow-list agreed with the kernel; "local" for local development
+  serviceId: "context-proxy"          # tenant/service identifier → x-wamf-service-id
+                                       #   overridden by spaceId when the request path has /proxy/<spaceId>/
+  timeoutMs: 1500                     # timeout per call (ms). RAG is on the session_init hot path, so keep it small
+
+
+# ── Knowledge tools injection (separate gateway config) ───────────────────────────────
+# The proxy uses this config to fetch the team's knowledge resources (code-graph / wiki) from the kernel gateway
+# and renders a <knowledge_tools> block into the system prompt, which the LLM uses to call KS tools/list|call.
+#
+# Independent of the skill section: the endpoint can differ (e.g. skill goes to the kernel's direct IP,
+# knowledge through an API Gateway domain).
+#
+# To turn it off: enabled=false (default); the injector isn't registered and nothing is injected.
+knowledge:
+  enabled: false                        # off by default, same as wamf.enabled
+  endpoint: "http://127.0.0.1:8420"     # kernel gateway address
+  serviceToken: "local"               # Authorization: Bearer
+  serviceId: "context-proxy"          # x-wamf-service-id (overridden by the spaceId in the request path)
+  timeoutMs: 1500                     # timeout per call (ms)
+
+
+# ── Skill runtime ──────────────────────────────────────────────────────────
+#
+# Skill extraction: at the end of each human turn (the agent gives a final reply with no tool_use)
+# the proxy synchronously calls POST /v3/skill/conversation/add with this turn's conversation slice
+# for core. Core keeps its own buffer and, once it reaches tool_call ≥ 10 or bytes ≥ 40KB,
+# archives and triggers a background worker to extract skills. Nothing extra to configure on the proxy.
+#
+# Removed settings: extractToolCallThreshold / maxBucketCount /
+# conversationAddEnabled belonged to the old proxy-side SkillExtractTrigger path, which was retired.
+skillRuntime:
+  allowLlmWrite: false           # whether the main model may create/modify skills (default false)
+                                 #   false: <skill_tools> only injects the read-only tools (search/list/view/files_read)
+                                 #          /skill-bridge rejects write operations with 403
+                                 #   true:  <skill_tools> injects every tool (including the write operations create/update/delete, etc.)
+                                 #          /skill-bridge allows write operations
+
+
+# ── mem: special commands ──────────────────────────────────────────────────────────
+# When the user types a command such as mem:sync / mem:create-skill / mem:help,
+# the proxy intercepts it after session init, runs it and returns a synthesised LLM response directly,
+# without injecting the system prompt (the KV cache is untouched) or forwarding to the upstream model (zero tokens).
+# The recording layers (L0 write / skill extract, etc.) still run, so the conversation timeline has no gaps.
+#
+# The interception is **always on** (no enabled switch, no command allow-list); unknown commands get a hint from the built-in
+# KNOWN_COMMANDS. The optional taskDraft sub-field only configures the LLM draft generator used by mem:create-task /
+# mem:update-task (without it those two commands return a "not configured" error;
+# other commands are unaffected).
+# memCommand:
+#   taskDraft:
+#     enabled: true
+#     model: "..."
+#     url: "..."
+#     apiKey: "..."   # can also be overridden with the WAMF_TASK_DRAFT_API_KEY environment variable
+#     timeoutMs: 20000
+
+# ── CC request routing ────────────────────────────────────────────────────────────
+# Recognises the background helper requests the CC client (Claude Code CLI) sends on its own and handles them differently:
+#   - main (main conversation/tool loop): the full set (session-init + injection + L0 + skill + credit)
+#   - fork (SUGGESTION/RECAP/…): reuses the MAIN cache: skips the session-init form / mem interception /
+#                                L0 / skill; injection is readOnly (no cache self-heal); credit is reported
+#   - sidequery (TITLE/probe/…): a separate small request: skips session-init / mem interception / injection /
+#                                L0 / skill; credit is reported
+#
+# Signals (hard constraints in the source + verified in captures):
+#   1) cache_control marker in messages[n-2] → fork
+#   2) cache_control marker in messages[n-1] or elsewhere → main
+#   3) no marker + tools=[] + thinking.disabled → sidequery
+#   4) anything else → main (the fallback when a 3P provider turns caching off)
+#
+# When off, every request is treated as main, exactly like the old path.
+# See docs/design/2026-07-30-cc-request-routing-plan.md
+ccRequestRouting:
+  enabled: true                    # on by default. When off every request is forced to main, and concurrent title-gen collides with the session-init state, causing a bypass.
+
+
+# ── Per-agent upstream routing ─────────────────────────────────────────────────────
+# See the `upstream.agents` part at the top of the file.
+
+
+# ── Local JSONL trace archive ─────────────────────────────────────────────────────
+# When enabled, each trace + span is appended as a JSONL line to a local file (one file per date),
+# named <hostname>-<YYYY-MM-DD>.jsonl
+# Combine with a crontab script to compress and upload to object/archive storage periodically.
+#
+# This archive path is independent of Opik / Langfuse remote reporting: it works even with remote reporting off.
+# Off by default, no performance impact.
+traceArchive:
+  enabled: false                   # true = enable the local JSONL trace archive; false = off (default)
+  dir: "logs/traces"               # archive directory (relative to the project root, or absolute)

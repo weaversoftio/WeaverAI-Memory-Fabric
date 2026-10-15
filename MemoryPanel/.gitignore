@@ -1,0 +1,85 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build
+dist/
+build/
+*.js.map
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Instance registry: contains the wamf kernel bearer token; never commit it.
+# Each dev machine creates its own real file from config/metadata-instances.example.json.
+# Older commits stored real values; that's a legacy issue (it can wait while the repo isn't shared externally);
+# before open-sourcing/showing the repo to customers, clean the history with git filter-repo.
+config/metadata-instances.json
+!config/metadata-instances.example.json
+
+# Local data (the SQLite runtime database contains real user identity data; never commit it)
+data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.codebuddy
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Test coverage
+coverage/
+
+# Temporary
+tmp/
+.tmp/
+
+# iWiki plugin files
+.iwiki
+
+# tsc incremental build info
+*.tsbuildinfo
+
+# vite / tsc build output: frontend/src only allows .ts/.tsx sources; build output isn't committed
+frontend/src/**/*.js
+frontend/src/**/*.js.map
+
+# Playwright e2e test output
+frontend/test-results/
+frontend/playwright-report/
+
+specs/
+.cursor/
+
+# Instance registry with secrets (use metadata-instances.example.json)
+config/metadata-instances.json
+
+# Internal / company-only docs (keep local copies; do not publish)
+docs/internal/
+
+# Generated E2E reports
+docs/test-reports/
+
+# Smoke credentials (generated locally)
+scripts/smoke/
+
+# Internal architecture docs (keep local copies; do not publish)
+docs/architecture/*.md
+
+# Draft contributing guides live outside default commits until open-source PR
+CONTRIBUTING.md

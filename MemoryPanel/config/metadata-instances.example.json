@@ -1,0 +1,17 @@
+{
+  "_comment": "Copy this file to metadata-instances.json and replace the values as described. The real file is excluded by .gitignore; never commit it. api_key is the bearer token of the wamf kernel gateway, obtained from the kernel side. proxy_endpoint is optional and only affects the client connection address shown in the UI; in the local open-source deploy where core and proxy run separately, set the proxy's external address (e.g. http://127.0.0.1:8096); omit it online/internally where the gateway sits behind the proxy.",
+  "instances": [
+    {
+      "id": "default",
+      "name": "Local default instance",
+      "gateway_endpoint": "http://127.0.0.1:8420",
+      "api_key": "REPLACE_WITH_KERNEL_BEARER_TOKEN"
+    },
+    {
+      "id": "e2e-test",
+      "name": "E2E automated tests only (can be wiped any time)",
+      "gateway_endpoint": "http://127.0.0.1:8420",
+      "api_key": "REPLACE_WITH_KERNEL_BEARER_TOKEN"
+    }
+  ]
+}

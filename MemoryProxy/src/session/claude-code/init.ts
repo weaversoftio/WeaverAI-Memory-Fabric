@@ -1,0 +1,1210 @@
+/**
+ * Claude Code Session Initialization -- state machine entry.
+ *
+ * Flow:
+ *   1. uninitialized -> fetch teams[] from the kernel, send an `AskUserQuestion` form
+ *   2. pending_team_select -> parse the JSON tool_result team choice, send the agent_select form
+ *   3. pending_agent_select -> parse the agent (pagination supported), send the task_select form
+ *   4. pending_task_select -> parse the task (pagination supported), fetch details, register, inject
+ *   5. initialized -> strip + inject on every request
+ */
+
+import type { SessionInitConfig } from "../../types.js";
+import type {
+  AgentDetail,
+  SessionInitData,
+  SessionInitState,
+  SessionRegistrationData,
+  TaskDetail,
+  TaskInTeam,
+  TeamOption,
+} from "../types.js";
+import { DEFAULT_TASK_LABEL } from "../types.js";
+import { SessionStore } from "../store.js";
+import { buildSessionInfo } from "../registrar.js";
+import {
+  injectSessionContextWithToggles,
+  buildSessionContextBlockWithToggles,
+} from "../context-injector.js";
+import type { MetadataClient } from "../../meta/client.js";
+import { resolvePresetIdentity, type PresetIdentity } from "../preset.js";
+
+import { buildFormResponse, FormData, MORE_LABEL } from "./form.js";
+import { computePagination } from "./pagination.js";
+import { emitSessionInitTelemetryIfCompleted } from "../init-telemetry.js";
+import {
+  extractFromOptionText,
+  extractTeamFromOptionText,
+  extractTaskFromOptionText,
+  extractAssetConfirm,
+  extractStructured,
+  resolveAgent,
+  resolveTask,
+  BYPASS_MARKER,
+  MORE_MARKER,
+} from "./extractor.js";
+import { getLastUserMessageText } from "./cleaner.js";
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+export interface SessionRequestContext {
+  stream: boolean;
+  modelId: string;
+  /**
+   * Wire protocol of the incoming request. Anthropic keeps the system prompt
+   * on `body.system` (not in `messages`), so session-context injection cannot
+   * ride on the returned `messages` array — the caller has to apply the
+   * returned {@link SessionInitResult.systemAppend} to `body.system` itself.
+   * When omitted, treated as "openai" (historical default; messages-carried
+   * injection stays effective).
+   */
+  protocol?: "openai" | "anthropic";
+}
+
+export interface SessionInitResult {
+  intercepted: boolean;
+  response?: Response;
+  messages?: Record<string, unknown>[];
+  sessionInfo?: import("../types.js").SessionInfo | null;
+  justRegistered?: boolean;
+  agentDetail?: AgentDetail | null;
+  taskDetail?: TaskDetail | null;
+  bypassed?: boolean;
+  /** This registration was triggered by session-reset (the pre-hook sets resetFlow=true -> kept until completeRegistration). */
+  resetFlow?: boolean;
+  /**
+   * Anthropic-only: the pre-built `<session_context>` string that MUST be
+   * appended to `body.system` by the caller (see {@link SessionRequestContext.protocol}).
+   * `null` / omitted = nothing to append (either not Anthropic, or agent+task
+   * both empty, or both toggles off). OpenAI callers can ignore this field —
+   * the injection has already been performed inside `messages`.
+   */
+  systemAppend?: string | null;
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+type MessageArr = Record<string, unknown>[];
+
+function isFreshCCConversation(messages: MessageArr): boolean {
+  let userCount = 0;
+  for (const m of messages) {
+    const role = (m.role as string) ?? "";
+    if (role === "assistant" && !containsSessionInitMarker(m)) return false;
+    if (role === "tool") return false;
+    if (role === "user") userCount++;
+    if (userCount > 5) return false;
+  }
+  return userCount <= 5;
+}
+
+function containsSessionInitMarker(msg: Record<string, unknown>): boolean {
+  const content = msg.content;
+  if (!Array.isArray(content)) return false;
+  for (const block of content as any[]) {
+    if (block.type === "tool_use" && typeof block.id === "string" && block.id.startsWith("toolu_cc_session_init_")) {
+      return true;
+    }
+  }
+  return false;
+}
+
+async function fetchTeamsAndAgents(
+  userId: string,
+  config: SessionInitConfig,
+  metadataClient: MetadataClient,
+): Promise<{ teams: TeamOption[] }> {
+  const teamsRaw = await metadataClient.listTeams(userId);
+  const teamResults = await Promise.all(
+    teamsRaw.map(async (t) => {
+      const [agentsRaw, tasksRaw] = await Promise.all([
+        // Agents are scoped to (team, owner) — each user only sees the agents
+        // they created within the team. Tasks remain team-wide (unchanged).
+        metadataClient.listAgents(t.team_id, userId),
+        metadataClient.listTasks(t.team_id),
+      ]);
+      const tasks: TaskInTeam[] = tasksRaw.map((tk) => ({
+        task_id: tk.task_id,
+        task_name: tk.title,
+      }));
+      // Source injection: if defaultTaskId is configured, it is placed before the real
+      // tasks as a "Skip for now" virtual entry. Downstream form/extractor/init need not change a single byte -- the single source of truth for pagination total
+      // and the auto-select cascade is tasks.length. The user picks the virtual entry ->
+      // completeRegistration reports with defaultTaskId -> getTask will 404 but
+      // Promise.allSettled absorbs it, taskDetail=null -> [Task] is not injected, which is exactly
+      // the semantics of "skip the task but keep the agent association".
+      if (config.defaultTaskId) {
+        tasks.unshift({
+          task_id: config.defaultTaskId,
+          task_name: DEFAULT_TASK_LABEL,
+          isDefault: true,
+        });
+      }
+      return {
+        team_id: t.team_id,
+        team_name: t.name,
+        agents: agentsRaw.map((a) => ({
+          agent_id: a.agent_id,
+          agent_name: a.name,
+          description: a.description ?? undefined,
+        })),
+        tasks,
+      };
+    }),
+  );
+  return { teams: teamResults };
+}
+
+function findTeamIdForAgent(teams: TeamOption[], agentId: string): string | undefined {
+  for (const team of teams) {
+    if (team.agents.some((a) => a.agent_id === agentId)) return team.team_id;
+  }
+  return undefined;
+}
+
+/**
+ * Return the single agent_id on the given page when that page has exactly 1
+ * agent AND is the last page — meaning the user would be forced to pick the
+ * only real option. If so, we auto-select and skip rendering the form.
+ *
+ * Historical background: with the old pagination strategy (`3 per page + MORE`), when total mod 3 == 1 (4, 7, 10...)
+ * the last page was left with 1 item, and after the user clicked MORE this function would directly auto-select it, an odd experience. Now
+ * pagination.ts shows a single page when total <= 4, and when total > 4 and the last page would be solo it shifts 1 item over from the
+ * second-to-last page, so under normal paths this function's solo branch is no longer triggered.
+ *
+ * Reason to keep: defensive fallback -- if pagination.ts is changed back to the old strategy or has a bug, this function
+ * still prevents rendering a 1-option form; also the first-and-last page with total === 1 still hits (in that
+ * scenario init.ts upstream has already auto-selected via advanceFromAgentPicked, but the double
+ * safeguard is harmless).
+ */
+function autoSelectSoloAgent(team: TeamOption | undefined, pageIndex: number): string | null {
+  if (!team) return null;
+  const page = computePagination(team.agents.length, pageIndex);
+  if (page.isLastPage && page.count === 1) {
+    return team.agents[page.start].agent_id;
+  }
+  return null;
+}
+
+/** Symmetric to {@link autoSelectSoloAgent} for tasks. */
+function autoSelectSoloTask(team: TeamOption | undefined, pageIndex: number): string | null {
+  if (!team) return null;
+  const page = computePagination(team.tasks.length, pageIndex);
+  if (page.isLastPage && page.count === 1) {
+    return team.tasks[page.start].task_id;
+  }
+  return null;
+}
+
+/**
+ * Symmetric to {@link autoSelectSoloAgent} for teams.
+ *
+ * pagination.ts guarantees that when total >= 2 any page has count >= 2 -> not hit under normal paths;
+ * kept only as a fallback, to prevent a future pagination strategy rollback to "solo last page" from producing a 1-option form.
+ */
+function autoSelectSoloTeam(cachedTeams: TeamOption[], pageIndex: number): string | null {
+  const page = computePagination(cachedTeams.length, pageIndex);
+  if (page.isLastPage && page.count === 1) {
+    return cachedTeams[page.start].team_id;
+  }
+  return null;
+}
+
+/**
+ * Given a chosen (or auto-selected) team, decide the next step in the flow
+ * and either register (all auto), enter task_select, or enter agent_select.
+ * Consolidates the "user picked team → what now" logic so both the
+ * asset_confirm shortcut (single team) and the pending_team_select handler
+ * apply the same auto-select semantics.
+ */
+async function advanceFromTeamPicked(
+  team: TeamOption,
+  cachedTeams: TeamOption[],
+  compositeKey: string,
+  sessionKey: string,
+  userId: string | null,
+  state: SessionInitState,
+  config: SessionInitConfig,
+  store: SessionStore,
+  reqCtx: SessionRequestContext,
+  strippedMsgs: MessageArr,
+  metadataClient: MetadataClient | undefined,
+  userKey: string | undefined,
+  spaceId: string | undefined,
+): Promise<SessionInitResult> {
+  const teamId = team.team_id;
+
+  if (team.agents.length === 0) {
+    console.warn(
+      `[session-init:cc] session=${compositeKey} team=${teamId} has no agents → bypass`,
+    );
+    await store.set(compositeKey, {
+      ...state,
+      status: "initialized",
+      selectedTeamId: teamId,
+      cachedTeams,
+      bypassed: true,
+    } as SessionInitState);
+    return { intercepted: false, bypassed: true, resetFlow: state?.resetFlow ?? false };
+  }
+
+  // Only 1 agent — pick it, then decide task step.
+  if (team.agents.length === 1) {
+    const agentId = team.agents[0].agent_id;
+    console.log(
+      `[session-init:cc] session=${compositeKey} team=${teamId} auto-select single agent=${agentId}`,
+    );
+    return advanceFromAgentPicked(
+      team, agentId, cachedTeams, compositeKey, sessionKey, userId,
+      { ...state, selectedTeamId: teamId },
+      config, store, reqCtx, strippedMsgs, metadataClient, userKey, spaceId,
+    );
+  }
+
+  // ≥2 agents — render agent form. Store pending_agent_select first.
+  await store.set(compositeKey, {
+    ...state,
+    status: "pending_agent_select",
+    selectedTeamId: teamId,
+    cachedTeams,
+    attemptCount: 0,
+    agentPageIndex: 0,
+  });
+  console.log(
+    `[session-init:cc] session=${compositeKey} team=${teamId} → pending_agent_select (agents=${team.agents.length})`,
+  );
+  const fd: FormData = {
+    teams: cachedTeams,
+    stage: "agent_select",
+    selectedTeamId: teamId,
+    pageIndex: 0,
+    stream: reqCtx.stream,
+    modelId: reqCtx.modelId,
+  };
+  return { intercepted: true, response: buildFormResponse(fd) };
+}
+
+/**
+ * Given a chosen (or auto-selected) agent within a team, decide whether to
+ * register immediately (0 or 1 task) or enter task_select (≥2 tasks).
+ */
+async function advanceFromAgentPicked(
+  team: TeamOption,
+  agentId: string,
+  cachedTeams: TeamOption[],
+  compositeKey: string,
+  sessionKey: string,
+  userId: string | null,
+  state: SessionInitState,
+  config: SessionInitConfig,
+  store: SessionStore,
+  reqCtx: SessionRequestContext,
+  strippedMsgs: MessageArr,
+  metadataClient: MetadataClient | undefined,
+  userKey: string | undefined,
+  spaceId: string | undefined,
+): Promise<SessionInitResult> {
+  const teamId = team.team_id;
+
+  // 0 tasks -> bypass (unified contract: no injection if any of team+agent+task is missing).
+  //   The historical behaviour was "register but task_id=undefined, inject only the [Agent] section"; now it is a full bypass.
+  // 1 task -> auto-select, advance directly to completeRegistration.
+  if (team.tasks.length === 0) {
+    console.log(
+      `[session-init:cc] session=${compositeKey} team=${teamId} agent=${agentId} has 0 tasks → bypass`,
+    );
+    await store.set(compositeKey, {
+      ...state,
+      status: "initialized",
+      selectedTeamId: teamId,
+      selectedAgentId: agentId,
+      cachedTeams,
+      sessionInfo: null,
+      agentDetail: null,
+      taskDetail: null,
+      bypassed: true,
+    } as SessionInitState);
+    return { intercepted: false, bypassed: true, resetFlow: state?.resetFlow ?? false };
+  }
+  if (team.tasks.length === 1) {
+    const taskId = team.tasks[0].task_id;
+    console.log(
+      `[session-init:cc] session=${compositeKey} agent=${agentId} auto-select single task=${taskId}`,
+    );
+    return completeRegistration(
+      { agent_id: agentId, task_id: taskId },
+      state, cachedTeams, teamId, compositeKey, sessionKey, userId,
+      config, store, reqCtx, strippedMsgs, metadataClient, userKey, spaceId,
+    );
+  }
+
+  // ≥2 tasks — render task form.
+  await store.set(compositeKey, {
+    ...state,
+    status: "pending_task_select",
+    selectedTeamId: teamId,
+    selectedAgentId: agentId,
+    cachedTeams,
+    attemptCount: 0,
+    agentPageIndex: 0,
+  });
+  console.log(
+    `[session-init:cc] session=${compositeKey} agent=${agentId} → pending_task_select (tasks=${team.tasks.length})`,
+  );
+  const fd: FormData = {
+    teams: cachedTeams,
+    stage: "task_select",
+    selectedTeamId: teamId,
+    pageIndex: 0,
+    stream: reqCtx.stream,
+    modelId: reqCtx.modelId,
+  };
+  return { intercepted: true, response: buildFormResponse(fd) };
+}
+
+/**
+ * Assemble the registration payload for a resolved (agent, task). Returns
+ * `null` when the agent cannot be matched to any team in the cached list —
+ * the caller must bypass session init in that case (there is no
+ * `defaultTeamId` fallback any more).
+ */
+function buildRegistrationData(
+  extracted: SessionInitData,
+  cachedTeams: TeamOption[],
+  sessionId: string,
+  userId: string,
+): SessionRegistrationData | null {
+  const teamId = findTeamIdForAgent(cachedTeams, extracted.agent_id);
+  if (!teamId) return null;
+  return {
+    team_id: teamId,
+    user_id: userId,
+    agent_id: extracted.agent_id,
+    task_id: extracted.task_id,
+    session_id: sessionId,
+  };
+}
+
+interface ArtifactsAndContextResult {
+  messages: MessageArr;
+  /**
+   * Anthropic-only: pre-built `<session_context>` string the HTTP handler
+   * must append to `body.system`. Non-null only when `protocol === "anthropic"`
+   * and at least one of agent/task would inject. See
+   * {@link SessionInitResult.systemAppend}.
+   */
+  systemAppend: string | null;
+}
+
+function applyArtifactsAndContext(
+  messages: MessageArr,
+  agentDetail: AgentDetail | null | undefined,
+  taskDetail: TaskDetail | null | undefined,
+  sessionKey: string,
+  config: SessionInitConfig,
+  protocol: "openai" | "anthropic" | undefined,
+): ArtifactsAndContextResult {
+  // This used to decide whether to stripInitArtifacts based on config.keepInitArtifacts,
+  // now the session_init form interaction is **always kept**, with no deletion.
+
+  // Anthropic keeps the system prompt on body.system, not in messages, so the
+  // block is handed back through `systemAppend` and the handler applies it at
+  // the boundary. On OpenAI (and when protocol is omitted, for callers/tests
+  // that don't set it), we retain the historical messages-based injection.
+  let out: MessageArr;
+  let systemAppend: string | null = null;
+  if (protocol === "anthropic") {
+    systemAppend = buildSessionContextBlockWithToggles(agentDetail, taskDetail, config, sessionKey);
+    out = messages;
+  } else {
+    out = injectSessionContextWithToggles(messages, agentDetail, taskDetail, config, sessionKey) as MessageArr;
+  }
+
+  const injected = out;
+  const injectedChanged = protocol === "anthropic" ? systemAppend !== null : injected !== messages;
+  if (injectedChanged) {
+    const finalRoles = (injected as unknown[]).map((m: any) => m.role);
+    console.log(
+      `[session-init:cc] session=${sessionKey} processed: ${messages.length} msgs, ` +
+        `ctx=${agentDetail ? "Y" : "N"}/${taskDetail ? "Y" : "N"} ` +
+        `protocol=${protocol ?? "openai"} systemAppend=${systemAppend ? "Y" : "N"} final=[${finalRoles.join(",")}]`,
+    );
+  }
+  return { messages: injected, systemAppend };
+}
+
+async function completeRegistration(
+  resolved: SessionInitData,
+  state: SessionInitState,
+  cachedTeams: TeamOption[],
+  selectedTeamId: string | undefined,
+  compositeKey: string,
+  sessionKey: string,
+  userId: string | null,
+  config: SessionInitConfig,
+  store: SessionStore,
+  reqCtx: SessionRequestContext,
+  strippedMsgs: MessageArr,
+  metadataClient?: MetadataClient,
+  userKey?: string,
+  spaceId?: string,
+): Promise<SessionInitResult> {
+  const regUserId = (state as any).userId || userId;
+  if (!regUserId) {
+    console.warn(
+      `[session-init:cc] session=${compositeKey} no user_id available → bypass`,
+    );
+    await store.set(compositeKey, { status: "initialized", bypassed: true } as SessionInitState);
+    return { intercepted: false, bypassed: true, resetFlow: state?.resetFlow ?? false };
+  }
+  // task_id is OPTIONAL for registration: the kernel treats task as an
+  // optional business dimension (isolation.ts), so a header-identity agent
+  // with team+agent but no task (or a stale task) still registers and gets
+  // memory — recall just broadens across the agent's memories instead of
+  // narrowing to a task. The interactive "Skip for now" / defaultTaskId path
+  // also lands here with task_id = defaultTaskId (a virtual value). Do NOT
+  // bypass when task_id is missing/undefined.
+  const regData = buildRegistrationData(resolved, cachedTeams, sessionKey, regUserId);
+  if (!regData) {
+    console.warn(
+      `[session-init:cc] session=${compositeKey} agent=${resolved.agent_id} not bound to any team → bypass`,
+    );
+    await store.set(compositeKey, { status: "initialized", bypassed: true } as SessionInitState);
+    return { intercepted: false, bypassed: true, resetFlow: state?.resetFlow ?? false };
+  }
+
+  let agentDetail: AgentDetail | null = null;
+  let taskDetail: TaskDetail | null = null;
+
+  if (metadataClient) {
+    // When task_id is the defaultTaskId (a virtual value), skip the getTask call --
+    // the task does not exist in the kernel, and the call would only 404 and produce a meaningless warn.
+    const shouldFetchTask = regData.task_id && regData.task_id !== config.defaultTaskId;
+    const [agentRes, taskRes] = await Promise.allSettled([
+      metadataClient.getAgent(resolved.agent_id).then((a) => ({
+        id: a.agent_id,
+        name: a.name,
+        description: a.description ?? undefined,
+        prompt: a.prompt ?? undefined,
+      })),
+      shouldFetchTask
+        ? metadataClient.getTask(regData.task_id!).then((t) => ({
+            id: t.task_id,
+            name: t.title,
+            description: t.description ?? undefined,
+          }))
+        : Promise.resolve(null),
+    ]);
+    if (agentRes.status === "fulfilled") agentDetail = agentRes.value;
+    else console.warn(`[session-init:cc] getAgent failed: ${String(agentRes.reason)}`);
+    if (taskRes.status === "fulfilled") taskDetail = taskRes.value;
+    else console.warn(`[session-init:cc] getTask failed: ${String(taskRes.reason)}`);
+  }
+
+  const sessionInfo = buildSessionInfo(regData, userKey, spaceId);
+  console.log(
+    `[session-init:cc] session=${compositeKey} → initialized ` +
+      `agent=${resolved.agent_id} task=${regData.task_id ?? "-"} team=${regData.team_id} user=${sessionInfo.user_id}`,
+  );
+
+  // Fire-and-forget: record one (team, task, agent, user) participation log for the board's "actual participation"
+  // section display. The bypass path has already returned above and never gets here; the debug forceIdentity path also
+  // goes through append -- used for local / e2e integration verification. On failure only warn, never blocking the session injection path.
+  // WARNING: task_id === defaultTaskId is the "Skip for now" virtual value, not a task that really exists in the kernel;
+  //    reporting it directly would trigger a `task_not_found: task not found: default` 404, so skip.
+  if (
+    metadataClient &&
+    typeof metadataClient.appendParticipationLog === "function" &&
+    regData.task_id &&
+    regData.task_id !== config.defaultTaskId
+  ) {
+    metadataClient
+      .appendParticipationLog({
+        team_id: regData.team_id,
+        task_id: regData.task_id,
+        agent_id: regData.agent_id,
+        user_id: regData.user_id,
+        source: "context_proxy:claude-code",
+      })
+      .catch((err: unknown) => {
+        console.warn(
+          `[session-init:cc] participation-log append failed for session=${compositeKey}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
+  }
+
+  const nextState: SessionInitState = {
+    status: "initialized",
+    keyId: sessionKey,
+    startedAt: state.startedAt,
+    attemptCount: state.attemptCount,
+    sessionInfo,
+    userId: regUserId,
+    cachedTeams: state.cachedTeams,
+    selectedTeamId: state.selectedTeamId,
+    agentDetail,
+    taskDetail,
+    // Keep resetFlow/resetEpoch so the handler side prewarm can decide clearBefore
+    resetFlow: state.resetFlow,
+    resetEpoch: state.resetEpoch,
+  };
+  await store.set(compositeKey, nextState);
+
+  const out = applyArtifactsAndContext(strippedMsgs, agentDetail, taskDetail, compositeKey, config, reqCtx.protocol);
+  return {
+    intercepted: false,
+    messages: out.messages,
+    systemAppend: out.systemAppend,
+    sessionInfo,
+    justRegistered: true,
+    agentDetail,
+    taskDetail,
+    resetFlow: state.resetFlow ?? false,
+  };
+}
+
+// ── Main Handler ───────────────────────────────────────────────────────────────
+
+/**
+ * Top-level entry wrapper: decorates handleSessionInitInner, emitting one telemetry entry after completion
+ * (only when prev !== initialized && after === initialized).
+ *
+ * The telemetry decoration never changes the state machine; failures / exceptions are silent, with zero awareness in the business path.
+ * See docs/design/2026-08-03-internal-usage-telemetry-plan.md section 7.2.
+ */
+export async function handleSessionInit(
+  sessionKey: string,
+  userId: string | null,
+  messages: MessageArr,
+  config: SessionInitConfig,
+  store: SessionStore,
+  reqCtx: SessionRequestContext,
+  metadataClient?: MetadataClient,
+  userKey?: string,
+  spaceId?: string,
+  presetIdentity?: PresetIdentity,
+): Promise<SessionInitResult> {
+  const compositeKey = `claude-code:${sessionKey}`;
+  const prevStatus = store.get(compositeKey)?.status ?? "uninitialized";
+  try {
+    return await handleSessionInitInner(
+      sessionKey, userId, messages, config, store, reqCtx,
+      metadataClient, userKey, spaceId, presetIdentity,
+    );
+  } finally {
+    // Try to emit one telemetry entry whether it returns normally or abnormally; the decorator swallows exceptions internally.
+    emitSessionInitTelemetryIfCompleted({
+      store,
+      compositeKey,
+      prevStatus,
+      agentSource: "claude-code",
+    });
+  }
+}
+
+async function handleSessionInitInner(
+  sessionKey: string,
+  userId: string | null,
+  messages: MessageArr,
+  config: SessionInitConfig,
+  store: SessionStore,
+  reqCtx: SessionRequestContext,
+  metadataClient?: MetadataClient,
+  userKey?: string,
+  spaceId?: string,
+  presetIdentity?: PresetIdentity,
+): Promise<SessionInitResult> {
+  const compositeKey = `claude-code:${sessionKey}`;
+  if (sessionKey === "unknown" || !sessionKey) return { intercepted: false };
+
+  const state = store.get(compositeKey);
+  // This used to decide whether to stripInitArtifacts based on config.keepInitArtifacts,
+  // now the session_init form interaction is **always kept**, with no deletion. The variable name stripped
+  // is kept only so downstream call sites need not change much; semantically it is just messages itself.
+  const stripped = messages;
+
+  // ── DEBUG BYPASS ─────────────────────────────────────────────────────────
+  // When `sessionInit.debugForceIdentity` is set (developer/e2e config),
+  // register the session with the forced identity on first-touch and skip
+  // the entire interactive form flow. Purely for local testing.
+  if (
+    config.debugForceIdentity &&
+    (!state || state.status !== "initialized")
+  ) {
+    const forced = config.debugForceIdentity;
+    // Debug path only — real production sessions never reach here.
+    const forcedUserId = userId || "u_debug";
+    console.log(
+      `[session-init:cc] session=${compositeKey} DEBUG bypass — force identity ` +
+        `team=${forced.team_id} agent=${forced.agent_id} task=${forced.task_id ?? "-"} user=${forcedUserId}`,
+    );
+    return completeRegistration(
+      { agent_id: forced.agent_id, task_id: forced.task_id },
+      // Seed a minimal state so completeRegistration has the required shape.
+      (state ?? {
+        status: "uninitialized",
+        keyId: sessionKey,
+        startedAt: Date.now(),
+        attemptCount: 0,
+        userId: forcedUserId,
+        cachedTeams: [{
+          team_id: forced.team_id,
+          team_name: forced.team_id,
+          agents: [{ agent_id: forced.agent_id, agent_name: forced.agent_id }],
+          tasks: forced.task_id
+            ? [{ task_id: forced.task_id, task_name: forced.task_id }]
+            : [],
+        }],
+        selectedTeamId: forced.team_id,
+      }) as SessionInitState,
+      // completeRegistration needs cachedTeams to find team_id for agent
+      [{
+        team_id: forced.team_id,
+        team_name: forced.team_id,
+        agents: [{ agent_id: forced.agent_id, agent_name: forced.agent_id }],
+        tasks: forced.task_id
+          ? [{ task_id: forced.task_id, task_name: forced.task_id }]
+          : [],
+      }],
+      forced.team_id,
+      compositeKey,
+      sessionKey,
+      forcedUserId,
+      config,
+      store,
+      reqCtx,
+      stripped,
+      metadataClient,
+      userKey,
+      spaceId,
+    );
+  }
+
+  // [session-reset] gate removed: always init on missing state
+
+  // -- Case 1: Uninitialized -> first pop the asset_confirm dialog ---------
+  if (!state || state.status === "uninitialized") {
+    console.log(`[session-init:cc] session=${compositeKey} state=${state?.status ?? "none"} → uninitialized`);
+    if (!userId) {
+      console.warn(
+        `[session-init:cc] session=${compositeKey} no userId, bypassing`,
+      );
+      await store.set(compositeKey, {
+        status: "initialized",
+        keyId: sessionKey,
+        startedAt: Date.now(),
+        attemptCount: 0,
+        sessionInfo: null,
+        agentDetail: null,
+        taskDetail: null,
+        bypassed: true,
+      } as SessionInitState);
+      return { intercepted: false, bypassed: true, resetFlow: state?.resetFlow ?? false };
+    }
+    if (!metadataClient) {
+      console.warn(
+        `[session-init:cc] session=${compositeKey} no metadataClient, bypassing`,
+      );
+      await store.set(compositeKey, {
+        status: "initialized",
+        keyId: sessionKey,
+        startedAt: Date.now(),
+        attemptCount: 0,
+        sessionInfo: null,
+        agentDetail: null,
+        taskDetail: null,
+        bypassed: true,
+      } as SessionInitState);
+      return { intercepted: false, bypassed: true, resetFlow: state?.resetFlow ?? false };
+    }
+
+    let teams: TeamOption[];
+    try {
+      const cfg = await fetchTeamsAndAgents(userId, config, metadataClient);
+      teams = cfg.teams;
+    } catch (err) {
+      console.warn(
+        `[session-init:cc] session=${compositeKey} kernel unavailable for user=${userId}, bypassing: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      await store.set(compositeKey, {
+        status: "initialized",
+        keyId: sessionKey,
+        startedAt: Date.now(),
+        attemptCount: 0,
+        userId,
+        sessionInfo: null,
+        agentDetail: null,
+        taskDetail: null,
+        bypassed: true,
+      } as SessionInitState);
+      return { intercepted: false, bypassed: true, resetFlow: state?.resetFlow ?? false };
+    }
+
+    const totalAgents = teams.reduce((acc, t) => acc + t.agents.length, 0);
+    if (totalAgents === 0) {
+      console.warn(
+        `[session-init:cc] session=${compositeKey} user=${userId} has no active agents, bypassing`,
+      );
+      await store.set(compositeKey, {
+        status: "initialized",
+        keyId: sessionKey,
+        startedAt: Date.now(),
+        attemptCount: 0,
+        userId,
+        cachedTeams: teams,
+        sessionInfo: null,
+        agentDetail: null,
+        taskDetail: null,
+        bypassed: true,
+      } as SessionInitState);
+      return { intercepted: false, bypassed: true, resetFlow: state?.resetFlow ?? false };
+    }
+
+    // ── Header-driven pre-selection: skip forms when identity is provided ──
+    if (presetIdentity && config.headerAutoSelect?.enabled) {
+      const pr = resolvePresetIdentity(teams, presetIdentity);
+
+      if (pr.hadMismatch) {
+        if (config.headerAutoSelect.onMismatch === "bypass") {
+          console.warn(`[session-init:cc] session=${compositeKey} preset mismatch → bypass`);
+          await store.set(compositeKey, {
+            status: "initialized",
+            keyId: sessionKey,
+            startedAt: Date.now(),
+            attemptCount: 0,
+            userId,
+            cachedTeams: teams,
+            sessionInfo: null,
+            agentDetail: null,
+            taskDetail: null,
+            bypassed: true,
+          } as SessionInitState);
+          return { intercepted: false, bypassed: true, resetFlow: state?.resetFlow ?? false };
+        }
+        console.warn(`[session-init:cc] session=${compositeKey} preset mismatch → fallback to form`);
+        // fall through to the normal asset_confirm flow below
+      } else if (pr.canRegister) {
+        // team + agent resolved → register directly (task optional). A missing
+        // task_id yields undefined → broad recall across the agent's memories;
+        // a stale (unknown) task_id was already dropped by resolvePresetIdentity
+        // (not echoed back) — warn so the operator can re-point the client.
+        if (presetIdentity?.taskId && !pr.taskId) {
+          console.warn(
+            `[session-init:cc] session=${compositeKey} preset task_id="${presetIdentity.taskId}" not found in team=${pr.teamId} → registering without a task (broad recall)`,
+          );
+        }
+        console.log(
+          `[session-init:cc] session=${compositeKey} preset hit team=${pr.teamId} agent=${pr.agentId} task=${pr.taskId ?? "-"} → register directly`,
+        );
+        const seedState: SessionInitState = {
+          status: "uninitialized",
+          keyId: sessionKey,
+          startedAt: Date.now(),
+          attemptCount: 0,
+          userId,
+          cachedTeams: teams,
+          selectedTeamId: pr.teamId,
+        };
+        return completeRegistration(
+          { agent_id: pr.agentId!, task_id: pr.taskId },
+          seedState, teams, pr.teamId, compositeKey, sessionKey, userId,
+          config, store, reqCtx, stripped, metadataClient, userKey, spaceId,
+        );
+      } else if (pr.teamId) {
+        // Only team resolved → auto-select cascade from that team (skip
+        // asset_confirm + team_select). advanceFromTeamPicked also handles
+        // the "1 agent + 1 task" full auto-register case.
+        const presetTeam = teams.find((t) => t.team_id === pr.teamId);
+        if (presetTeam) {
+          console.log(
+            `[session-init:cc] session=${compositeKey} preset team=${pr.teamId} → advance`,
+          );
+          const seedState: SessionInitState = {
+            status: "uninitialized",
+            keyId: sessionKey,
+            startedAt: Date.now(),
+            attemptCount: 0,
+            userId,
+            cachedTeams: teams,
+            selectedTeamId: pr.teamId,
+          };
+          return advanceFromTeamPicked(
+            presetTeam, teams, compositeKey, sessionKey, userId,
+            seedState, config, store, reqCtx, stripped,
+            metadataClient, userKey, spaceId,
+          );
+        }
+        // preset team not in cached list → fall through to normal asset_confirm flow
+      }
+    }
+
+    // -- skipAssetConfirm: skip the asset_confirm dialog, treat it as the user choosing "Yes" ---
+    if (config.skipAssetConfirm) {
+      console.log(
+        `[session-init:cc] session=${compositeKey} skipAssetConfirm=true → skip asset_confirm (teams=${teams.length})`,
+      );
+      const seedState: SessionInitState = {
+        status: "uninitialized",
+        keyId: sessionKey,
+        startedAt: Date.now(),
+        attemptCount: 0,
+        userId,
+        cachedTeams: teams,
+        resetFlow: state?.resetFlow,
+        resetEpoch: state?.resetEpoch,
+      };
+      if (teams.length === 1) {
+        return advanceFromTeamPicked(
+          teams[0], teams, compositeKey, sessionKey, userId,
+          seedState, config, store, reqCtx, stripped,
+          metadataClient, userKey, spaceId,
+        );
+      }
+      // >= 2 teams -> pop the team_select form
+      await store.set(compositeKey, {
+        ...seedState,
+        status: "pending_team_select",
+      });
+      console.log(
+        `[session-init:cc] session=${compositeKey} → pending_team_select (teams=${teams.length})`,
+      );
+      const fd: FormData = {
+        teams,
+        stage: "team",
+        stream: reqCtx.stream,
+        modelId: reqCtx.modelId,
+      };
+      return { intercepted: true, response: buildFormResponse(fd) };
+    }
+
+    await store.set(compositeKey, {
+      status: "pending_asset_confirm",
+      keyId: sessionKey,
+      startedAt: Date.now(),
+      attemptCount: 0,
+      userId,
+      cachedTeams: teams,
+      // Keep resetFlow/resetEpoch: the marker written by the pre-hook must run through the whole form flow,
+      // so that completeRegistration finally returns resetFlow=true -> the handler triggers a confirmation response.
+      resetFlow: state?.resetFlow,
+      resetEpoch: state?.resetEpoch,
+    });
+    console.log(
+      `[session-init:cc] session=${compositeKey} user=${userId} → pending_asset_confirm (teams=${teams.length})`,
+    );
+    const fd: FormData = {
+      teams,
+      stage: "asset_confirm",
+      stream: reqCtx.stream,
+      modelId: reqCtx.modelId,
+    };
+    return { intercepted: true, response: buildFormResponse(fd) };
+  }
+
+  // ── Case 1.25: Awaiting asset_confirm ────────────────────────────────────
+  if (state.status === "pending_asset_confirm") {
+    const lastUserText = getLastUserMessageText(messages);
+    const choice = extractAssetConfirm(lastUserText);
+    console.log(`[session-init:cc:debug] session=${compositeKey} pending_asset_confirm lastUserText=${JSON.stringify(lastUserText.slice(0,500))} choice=${choice}`);
+
+    if (choice === false) {
+      // bypass: the user explicitly chose "do not link" -- keep the form dialogue as is, do not delete.
+      await store.set(compositeKey, {
+        status: "initialized",
+        keyId: sessionKey,
+        startedAt: state.startedAt,
+        attemptCount: state.attemptCount,
+        userId: state.userId,
+        cachedTeams: state.cachedTeams,
+        selectedTeamId: undefined,
+        agentDetail: null,
+        taskDetail: null,
+        sessionInfo: null,
+        bypassed: true,
+        resetFlow: state.resetFlow,
+        resetEpoch: state.resetEpoch,
+      } as SessionInitState);
+      console.log(`[session-init:cc] session=${compositeKey} user chose no-asset → bypass`);
+      return { intercepted: false, messages: messages as Record<string, unknown>[], bypassed: true, resetFlow: state?.resetFlow ?? false };
+    }
+
+    if (choice === true) {
+      const teams = state.cachedTeams ?? [];
+
+      // Auto-select cascade: with only 1 team the team form is not popped; advance directly to
+      // the agent stage (the agent internally decides again whether to auto-select). This way the minimal "1 team + 1 agent
+      // + 1 task" configuration pops no extra form after asset_confirm=Yes.
+      if (teams.length === 1) {
+        console.log(
+          `[session-init:cc] session=${compositeKey} auto-select single team=${teams[0].team_id}`,
+        );
+        return advanceFromTeamPicked(
+          teams[0], teams, compositeKey, sessionKey, userId,
+          { ...state, cachedTeams: teams } as SessionInitState,
+          config, store, reqCtx, stripped, metadataClient, userKey, spaceId,
+        );
+      }
+
+      // >= 2 teams -> pop the team_select form.
+      await store.set(compositeKey, {
+        status: "pending_team_select",
+        keyId: sessionKey,
+        startedAt: state.startedAt,
+        attemptCount: 0,
+        userId: state.userId,
+        cachedTeams: teams,
+        resetFlow: state.resetFlow,
+        resetEpoch: state.resetEpoch,
+      });
+      console.log(
+        `[session-init:cc] session=${compositeKey} → pending_team_select (teams=${teams.length})`,
+      );
+      const fd: FormData = {
+        teams,
+        stage: "team",
+        stream: reqCtx.stream,
+        modelId: reqCtx.modelId,
+      };
+      return { intercepted: true, response: buildFormResponse(fd) };
+    }
+
+    // Not recognized -> bypass (keep the form dialogue as is)
+    console.warn(`[session-init:cc] session=${compositeKey} asset-confirm unrecognized, bypassing`);
+    await store.set(compositeKey, { status: "initialized", bypassed: true } as SessionInitState);
+    return { intercepted: false, messages: messages as Record<string, unknown>[], bypassed: true, resetFlow: state?.resetFlow ?? false };
+  }
+
+  // ── Case 1.5: Awaiting team selection ─────────────────────────────────────
+  if (state.status === "pending_team_select") {
+    const lastUserText = getLastUserMessageText(messages);
+    const cachedTeams = state.cachedTeams ?? [];
+    const teamId = extractTeamFromOptionText(lastUserText, cachedTeams);
+
+    // -- MORE paging (when teams.length > 4) --
+    // Fully symmetric with the agent/task stage MORE branch: bump teamPageIndex and re-send the same stage
+    // form. Added 2026-09-03; previously the team stage had no pagination and the 5th+ teams were hard-truncated.
+    if (teamId === MORE_MARKER) {
+      const currentPage = state.teamPageIndex ?? 0;
+      const nextPage = currentPage + 1;
+      const totalPages = computePagination(cachedTeams.length, 0).totalPages;
+      const safeNextPage = nextPage > totalPages - 1 ? 0 : nextPage;
+
+      // Defensive solo fallback: pagination.ts guarantees no solo last page on normal paths, but this is a double safeguard.
+      const soloTeamId = autoSelectSoloTeam(cachedTeams, safeNextPage);
+      if (soloTeamId) {
+        const soloTeam = cachedTeams.find((t) => t.team_id === soloTeamId);
+        if (soloTeam) {
+          console.log(
+            `[session-init:cc] session=${compositeKey} MORE landed on solo team page ${safeNextPage} → auto-select team=${soloTeamId}`,
+          );
+          return advanceFromTeamPicked(
+            soloTeam, cachedTeams, compositeKey, sessionKey, userId,
+            state, config, store, reqCtx, stripped,
+            metadataClient, userKey, spaceId,
+          );
+        }
+      }
+
+      await store.set(compositeKey, { ...state, teamPageIndex: safeNextPage });
+      console.log(
+        `[session-init:cc] session=${compositeKey} team page ${currentPage} → ${safeNextPage}`,
+      );
+      const fd: FormData = {
+        teams: cachedTeams,
+        stage: "team",
+        pageIndex: safeNextPage,
+        stream: reqCtx.stream,
+        modelId: reqCtx.modelId,
+      };
+      return { intercepted: true, response: buildFormResponse(fd) };
+    }
+
+    if (teamId && teamId !== BYPASS_MARKER) {
+      const team = cachedTeams.find((t) => t.team_id === teamId);
+      if (team) {
+        // Delegate to shared auto-select cascade — same path as the
+        // asset_confirm shortcut, so "1 agent + 1 task" still fully auto-picks.
+        return advanceFromTeamPicked(
+          team, cachedTeams, compositeKey, sessionKey, userId,
+          state, config, store, reqCtx, stripped,
+          metadataClient, userKey, spaceId,
+        );
+      }
+      // Extracted teamId not in cached list — treat as unrecognized.
+    }
+
+    console.warn(`[session-init:cc] session=${compositeKey} team-select unrecognized, bypassing`);
+    // bypass: keep the form dialogue as is, do not delete.
+    await store.set(compositeKey, { status: "initialized", bypassed: true } as SessionInitState);
+    return { intercepted: false, messages: messages as Record<string, unknown>[], bypassed: true, resetFlow: state?.resetFlow ?? false };
+  }
+
+  // ── Case 2: Awaiting agent selection ─────────────────────────────────────
+  if (state.status === "pending_agent_task" || state.status === "pending_form" || state.status === "pending_agent_select") {
+    const lastUserText = getLastUserMessageText(messages);
+    const cachedTeams = state.cachedTeams ?? [];
+    const selectedTeamId = state.selectedTeamId;
+    const team = cachedTeams.find((t) => t.team_id === selectedTeamId);
+
+    // LLM-based extraction fallback was removed — engineered paths only.
+    // If neither the option-text match nor the structured parser recognises
+    // the reply, the caller falls through to the retry / bypass branch.
+    let extracted = extractFromOptionText(lastUserText, cachedTeams, selectedTeamId)
+      ?? extractStructured(lastUserText);
+
+    if (extracted && extracted.agent_id === MORE_MARKER) {
+      const currentPage = state.agentPageIndex ?? 0;
+      const nextPage = currentPage + 1;
+      // Get totalPages from pagination.ts to judge out-of-range, the same algorithm as the slice in form.ts.
+      const totalPages = computePagination(team?.agents.length ?? 0, 0).totalPages;
+      const safeNextPage = nextPage > totalPages - 1 ? 0 : nextPage;
+
+      // Defensive: pagination.ts already guarantees no solo last page on normal paths, but the double safeguard
+      // covers it -- if a paginator change introduces a bug, the user will still not be startled by auto-select (it would go
+      // here and auto-select, which is also an acceptable degradation from the old behaviour's point of view).
+      const soloOnNext = autoSelectSoloAgent(team, safeNextPage);
+      if (soloOnNext) {
+        console.log(
+          `[session-init:cc] session=${compositeKey} MORE landed on solo page ${safeNextPage} → auto-select agent=${soloOnNext}`,
+        );
+        return advanceFromAgentPicked(
+          team!, soloOnNext, cachedTeams, compositeKey, sessionKey, userId,
+          state, config, store, reqCtx, stripped, metadataClient, userKey, spaceId,
+        );
+      }
+
+      await store.set(compositeKey, { ...state, agentPageIndex: safeNextPage });
+      console.log(
+        `[session-init:cc] session=${compositeKey} agent page ${currentPage} → ${safeNextPage}`,
+      );
+      const fd: FormData = {
+        teams: cachedTeams,
+        stage: "agent_select",
+        selectedTeamId,
+        pageIndex: safeNextPage,
+        stream: reqCtx.stream,
+        modelId: reqCtx.modelId,
+      };
+      return { intercepted: true, response: buildFormResponse(fd) };
+    }
+
+    if (extracted && extracted.agent_id === BYPASS_MARKER) {
+      const bypassState: SessionInitState = {
+        status: "initialized",
+        keyId: sessionKey,
+        startedAt: state.startedAt,
+        attemptCount: 0,
+        userId: state.userId,
+        cachedTeams: cachedTeams,
+        selectedTeamId: selectedTeamId,
+        bypassed: true,
+      } as SessionInitState;
+      await store.set(compositeKey, bypassState);
+      console.log(`[session-init:cc] session=${compositeKey} user chose skip-agent → bypass`);
+      return { intercepted: false, messages: stripped as Record<string, unknown>[], bypassed: true, resetFlow: state?.resetFlow ?? false };
+    }
+
+    if (extracted && extracted.agent_id) {
+      const resolvedAgentId = resolveAgent(extracted.agent_id, cachedTeams, selectedTeamId);
+      if (!team) {
+        // Extremely unlikely (selectedTeamId set but not in cachedTeams).
+        console.warn(
+          `[session-init:cc] session=${compositeKey} team ${selectedTeamId} not in cache → bypass`,
+        );
+        await store.set(compositeKey, { status: "initialized", bypassed: true } as SessionInitState);
+        return { intercepted: false, bypassed: true, resetFlow: state?.resetFlow ?? false };
+      }
+      // Delegate to shared cascade — auto-selects the sole task when tasks.length === 1.
+      return advanceFromAgentPicked(
+        team, resolvedAgentId, cachedTeams, compositeKey, sessionKey, userId,
+        state, config, store, reqCtx, stripped, metadataClient, userKey, spaceId,
+      );
+    }
+
+    console.warn(`[session-init:cc] session=${compositeKey} agent-select unrecognized, bypassing`);
+    // bypass: keep the form dialogue as is, do not delete.
+    await store.set(compositeKey, { status: "initialized", bypassed: true } as SessionInitState);
+    return { intercepted: false, messages: messages as Record<string, unknown>[], bypassed: true, resetFlow: state?.resetFlow ?? false };
+  }
+
+  // ── Case 2.5: Awaiting task selection ─────────────────────────────────────
+  if (state.status === "pending_task_select") {
+    const lastUserText = getLastUserMessageText(messages);
+    const cachedTeams = state.cachedTeams ?? [];
+    const selectedTeamId = state.selectedTeamId;
+    const team = cachedTeams.find((t) => t.team_id === selectedTeamId);
+
+    // The new UI has no "skip" button: the extractor takes the label from the answers JSON,
+    // and no longer treats the whole tool_result as the answer (the old path would, because of "(skippable)" in the question wording,
+    // trigger an answer.includes("skip") false positive -> the task the user explicitly chose got swallowed).
+    const extracted = extractTaskFromOptionText(lastUserText, team);
+
+    if (extracted === MORE_MARKER) {
+      const currentPage = state.agentPageIndex ?? 0;
+      const nextPage = currentPage + 1;
+      const totalPages = computePagination(team?.tasks.length ?? 0, 0).totalPages;
+      const safeNextPage = nextPage > totalPages - 1 ? 0 : nextPage;
+
+      // Defensive: see the same-named comment in the agent MORE branch. On normal paths pagination.ts has already avoided
+      // a solo last page; the double safeguard is kept here.
+      const soloTaskId = autoSelectSoloTask(team, safeNextPage);
+      if (soloTaskId && state.selectedAgentId) {
+        console.log(
+          `[session-init:cc] session=${compositeKey} MORE landed on solo task page ${safeNextPage} → auto-select task=${soloTaskId}`,
+        );
+        return completeRegistration(
+          { agent_id: state.selectedAgentId, task_id: soloTaskId },
+          state, cachedTeams, selectedTeamId, compositeKey, sessionKey, userId,
+          config, store, reqCtx, stripped, metadataClient, userKey, spaceId,
+        );
+      }
+
+      await store.set(compositeKey, { ...state, agentPageIndex: safeNextPage });
+      console.log(
+        `[session-init:cc] session=${compositeKey} task page ${currentPage} → ${safeNextPage}`,
+      );
+      const fd: FormData = {
+        teams: cachedTeams,
+        stage: "task_select",
+        selectedTeamId,
+        pageIndex: safeNextPage,
+        stream: reqCtx.stream,
+        modelId: reqCtx.modelId,
+      };
+      return { intercepted: true, response: buildFormResponse(fd) };
+    }
+
+    // BYPASS_MARKER = declined / explicit skip compatible with the old form; null = there is a reply but it matches no task
+    // Both are treated as "not recognized", aligned with the behaviour of the other stages -> bypass the whole session-init.
+    if (extracted === BYPASS_MARKER || extracted === null) {
+      console.warn(`[session-init:cc] session=${compositeKey} task-select unrecognized, bypassing`);
+      // bypass: keep the form dialogue as is, do not delete.
+      await store.set(compositeKey, { status: "initialized", bypassed: true } as SessionInitState);
+      return {
+        intercepted: false,
+        messages: messages as Record<string, unknown>[],
+        bypassed: true,
+      };
+    }
+
+    // Hit task_id
+    const resolved: SessionInitData = {
+      agent_id: state.selectedAgentId!,
+      task_id: extracted,
+    };
+    return await completeRegistration(resolved, state, cachedTeams, selectedTeamId, compositeKey, sessionKey, userId, config, store, reqCtx, stripped, metadataClient, userKey, spaceId);
+  }
+
+  // ── Case 3: Initialized ───────────────────────────────────────────────────
+  const bypassed = (state as any).bypassed === true;
+  const agent = bypassed ? null : (state.agentDetail ?? null);
+  const task = bypassed ? null : (state.taskDetail ?? null);
+  const out = applyArtifactsAndContext(messages, agent, task, sessionKey, config, reqCtx.protocol);
+  return {
+    intercepted: false,
+    messages: out.messages,
+    systemAppend: out.systemAppend,
+    sessionInfo: state.sessionInfo,
+    bypassed,
+  };
+}

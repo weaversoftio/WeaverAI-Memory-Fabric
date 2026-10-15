@@ -1,0 +1,77 @@
+# syntax=docker/dockerfile:1
+# ──────────────────────────────────────────────────────────────────────
+# team-memory-control: image for the local deployment mode (Panel Control HTTP :8123)
+#
+# Characteristics (local mode):
+#   - runs src/index.ts directly with tsx (stateless panel, entry src/panel/);
+#   - installs all dependencies; the native dependency better-sqlite3 needs python3/make/g++ to compile;
+#   - the web/ frontend is built in a separate stage and its output is served statically from UI_DIST_DIR.
+#
+# Note: the build context is the repository root (the image packs the current working tree).
+#
+# Build:
+#   docker build --build-arg PANEL_UI=web -t team-memory-control:local \
+#     -f docker/local/Dockerfile.local .
+# Run:
+#   docker run -d -p 8123:8123 \
+#     -e UI_DIST_DIR=./web/dist \
+#     -e METADATA_INSTANCES_CONFIG=/app/config/metadata-instances.json \
+#     team-memory-control:local
+# ──────────────────────────────────────────────────────────────────────
+ARG PANEL_UI=web
+
+# ── base: node:22-slim (official Debian apt sources) + native build toolchain ──────────────
+FROM node:22-slim AS base
+
+# better-sqlite3 native build + git (optional) + curl (healthcheck)
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+      python3 make g++ git curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# ── ui-builder: builds only the selected panel (web or frontend) → /ui/dist ────────
+# WEB_UI=1 (default): builds the panel UI normally.
+# WEB_UI=0: skips the panel UI build and generates a placeholder dist. The panel UI depends on internal @weaversoft/* packages
+#   that public npm mirrors don't have; use this to get around it offline/without the internal registry. The control backend, /health and /api/
+#   are unaffected; only the static panel is unavailable (see src/panel/http/app.ts: /api and /health are served first).
+FROM base AS ui-builder
+ARG PANEL_UI
+ARG WEB_UI=1
+COPY ${PANEL_UI}/ /ui/
+WORKDIR /ui
+RUN --mount=type=cache,id=npm-tmc-ui,target=/root/.npm \
+    if [ "$WEB_UI" = "0" ]; then \
+      echo "[ui-builder] WEB_UI=0 → skipping the panel UI build, generating a placeholder dist"; \
+      mkdir -p /ui/dist && \
+      printf '<!doctype html><meta charset="utf-8"><title>panel disabled</title><body>Control panel UI is disabled in this image (WEB_UI=0).</body>' > /ui/dist/index.html; \
+    else \
+      npm install --no-audit --no-fund && npm run build; \
+    fi
+
+# ── runtime: control backend (tsx runs src/index.ts directly) ────────────────────
+FROM base AS runtime
+ARG PANEL_UI
+
+# COPY the whole repository, then install (native better-sqlite3 is compiled in this image)
+COPY . .
+RUN --mount=type=cache,id=npm-tmc,target=/root/.npm \
+    npm install --no-audit --no-fund
+
+# Put the selected panel build into the Panel's static hosting directory
+COPY --from=ui-builder /ui/dist ./${PANEL_UI}/dist
+ENV UI_DIST_DIR=./${PANEL_UI}/dist
+
+ENV NODE_ENV=production \
+    HOST=0.0.0.0 \
+    PORT=8123
+RUN mkdir -p /app/logs /data
+EXPOSE 8123
+
+HEALTHCHECK --interval=15s --timeout=10s --retries=20 --start-period=60s \
+  CMD curl -fsS http://127.0.0.1:8123/health || exit 1
+
+# control runs the sources directly with tsx (stateless panel, entry src/panel/)
+CMD ["node", "--import", "tsx/esm", "src/index.ts"]

@@ -1,0 +1,16 @@
+{
+  "name": "weaversoft",
+  "owner": {
+    "name": "Weaversoft"
+  },
+  "metadata": {
+    "description": "Weaversoft plugins for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "agent-memory",
+      "source": "./plugins/agent-memory",
+      "description": "Team memory for Claude Code: memory tools over MCP, plus hooks that save every turn and load the agent's memory at session start."
+    }
+  ]
+}

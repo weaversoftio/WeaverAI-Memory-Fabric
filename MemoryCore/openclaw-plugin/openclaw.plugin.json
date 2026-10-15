@@ -1,0 +1,95 @@
+{
+  "id": "memory-weaverai-client",
+  "name": "WeaverAI Memory Fabric (Client)",
+  "version": "1.0.0-beta.1",
+  "description": "Long-term memory plugin (client-access edition, /v3) - provides four-layer memory via a remote Memory Gateway",
+  "author": "WeaverAI",
+  "activation": {
+    "onStartup": true
+  },
+  "contracts": {
+    "tools": [
+      "wamf_memory_search",
+      "wamf_conversation_search",
+      "wamf_read_file"
+    ]
+  },
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "server": {
+        "type": "object",
+        "description": "Remote memory server connection and v3 isolation settings",
+        "properties": {
+          "url": {
+            "type": "string",
+            "default": "http://127.0.0.1:8420",
+            "description": "Memory server URL"
+          },
+          "apiKey": {
+            "type": "string",
+            "default": "local",
+            "description": "API Key (Bearer); in local mode you can use the value local"
+          },
+          "instanceId": {
+            "type": "string",
+            "default": "default",
+            "description": "Memory instance id (HTTP header x-wamf-service-id)"
+          },
+          "teamId": {
+            "type": "string",
+            "default": "default",
+            "description": "v3 isolation team_id (in local mode defaults to DEFAULT_ISOLATION_ID)"
+          },
+          "agentId": {
+            "type": "string",
+            "default": "default",
+            "description": "v3 isolation agent_id"
+          },
+          "userId": {
+            "type": "string",
+            "default": "default",
+            "description": "v3 isolation user_id"
+          },
+          "rejectUnauthorized": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to verify HTTPS certificates. Default true; set explicitly to false only in self-signed-certificate test environments"
+          }
+        }
+      },
+      "recall": {
+        "type": "object",
+        "description": "Memory recall settings",
+        "properties": {
+          "maxResults": {
+            "type": "number",
+            "default": 5,
+            "description": "Maximum number of L1 memories injected per turn"
+          },
+          "includePersona": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to inject the L3 persona"
+          },
+          "includeSceneNav": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to inject the L2 scene navigation index"
+          }
+        }
+      },
+      "capture": {
+        "type": "object",
+        "description": "Conversation capture settings",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to enable automatic conversation capture (L0)"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,210 @@
+{{- $h := include "am.hub" . -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $h }}-data
+  labels: {{- include "am.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: keep   # uninstall must not delete the data
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: {{ .Values.storage.className }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.hubSize }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $h }}
+  labels: {{- include "am.labels" . | nindent 4 }}
+    app.kubernetes.io/component: hub
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate          # SQLite on a RWO volume: one writer at a time
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: hub
+  template:
+    metadata:
+      labels: {{- include "am.labels" . | nindent 8 }}
+        app.kubernetes.io/component: hub
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+    spec:
+      automountServiceAccountToken: false   # no Kubernetes API access needed
+      securityContext: {{- include "am.podSecurity" . | nindent 8 }}
+      containers:
+        - name: hub
+          image: {{ .Values.images.hub }}
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          securityContext: {{- include "am.containerSecurity" . | nindent 12 }}
+          ports:
+            - name: panel
+              containerPort: 8125
+            - name: knowledge
+              containerPort: 8424
+          env:
+            - name: PANEL_PORT
+              value: "8125"
+            - name: KNOWLEDGE_PORT
+              value: "8424"
+            - name: REMOTE_INSTANCE_ID
+              value: default
+            - name: REMOTE_INSTANCE_NAME
+              value: default
+            # In-cluster address the panel/agents use to reach knowledge tools (must end in /v3).
+            - name: KNOWLEDGE_PUBLIC_BASE_URL
+              value: http://{{ $h }}:8424/v3
+            - name: LLM_MODE
+              value: custom
+            - name: LLM_PROTOCOL
+              value: openai
+            - name: LLM_BASE_URL
+              value: {{ .Values.llm.baseUrl | quote }}
+            - name: LLM_MODEL
+              value: {{ .Values.llm.model | quote }}
+            - name: LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: llm-api-key
+            - name: KNOWLEDGE_LLM_BINDING_SYNC
+              value: "0"
+            # Knowledge's write routes need this Bearer; the panel sends it (KNOWLEDGE_AUTH_TOKEN)
+            # and Knowledge signs its status callbacks to the panel with it.
+            - name: KNOWLEDGE_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: knowledge-service-key
+            - name: KNOWLEDGE_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: knowledge-service-key
+            {{- if .Values.gitAuth.token }}
+            # Private repos for Code Graph: one read-only credential for every repo under the prefix.
+            - name: KNOWLEDGE_GIT_AUTH_URL_PREFIX
+              value: {{ .Values.gitAuth.urlPrefix | quote }}
+            - name: KNOWLEDGE_GIT_AUTH_USERNAME
+              value: {{ .Values.gitAuth.username | quote }}
+            - name: KNOWLEDGE_GIT_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: git-auth-token
+            {{- end }}
+            {{- if .Values.auth.oidc.enabled }}
+            # Panel SSO (OIDC, e.g. Keycloak). user_key login stays on: the admin signs in with it.
+            - name: PANEL_AUTH_MODE
+              value: user_key,oidc
+            - name: PANEL_AUTH_APP_URL
+              value: {{ required "auth.appUrl is required when auth.oidc.enabled" .Values.auth.appUrl | quote }}
+            - name: PANEL_AUTH_OIDC_ID
+              value: {{ .Values.auth.oidc.id | quote }}
+            - name: PANEL_AUTH_OIDC_DISPLAY_NAME
+              value: {{ .Values.auth.oidc.displayName | quote }}
+            - name: PANEL_AUTH_OIDC_ISSUER_URL
+              value: {{ required "auth.oidc.issuerUrl is required when auth.oidc.enabled" .Values.auth.oidc.issuerUrl | quote }}
+            - name: PANEL_AUTH_OIDC_INTERNAL_ISSUER_URL
+              value: {{ .Values.auth.oidc.internalIssuerUrl | quote }}
+            - name: PANEL_AUTH_OIDC_CLIENT_ID
+              value: {{ .Values.auth.oidc.clientId | quote }}
+            - name: PANEL_AUTH_OIDC_CLIENT_SECRET_FILE
+              value: /var/run/secrets/agent-memory-oidc/client-secret
+            - name: PANEL_AUTH_OIDC_DEFAULT_TEAM
+              value: {{ .Values.auth.oidc.defaultTeam | quote }}
+            - name: PANEL_AUTH_OIDC_DEFAULT_ROLE
+              value: {{ .Values.auth.oidc.defaultRole | quote }}
+            # Creating SSO accounts needs the admin's user_key (the instance api_key is a placeholder).
+            - name: PANEL_AUTH_ADMIN_USER_KEY_FILE
+              value: /var/run/secrets/agent-memory-admin/user-key
+            {{- with .Values.auth.waipIdentity.jwksUrl }}
+            # Agents behind the WAIP MCP proxy act as the WAIP user it vouches for (X-WAIP-Identity).
+            - name: PANEL_AUTH_WAIP_JWKS_URL
+              value: {{ . | quote }}
+            - name: PANEL_AUTH_WAIP_ISSUER
+              value: {{ $.Values.auth.waipIdentity.issuer | quote }}
+            - name: PANEL_AUTH_WAIP_AUDIENCE
+              value: {{ $.Values.auth.waipIdentity.audience | quote }}
+            {{- end }}
+            # SSO identity links and the key that encrypts them must survive restarts (the root fs is read-only).
+            - name: PANEL_AUTH_IDENTITY_STORE_PATH
+              value: /data/knowledge/panel-auth/identities.json
+            {{- end }}
+            - name: HOME
+              value: /tmp
+          readinessProbe:
+            # The panel port: the knowledge port only admits this release's pods (networkpolicy.yaml).
+            httpGet: { path: /health, port: panel }
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: { port: panel }
+            initialDelaySeconds: 90
+            periodSeconds: 20
+          resources: {{- toYaml .Values.resources.hub | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data/knowledge
+            - name: secrets
+              mountPath: /app/panel/config/metadata-instances.json
+              subPath: metadata-instances.json
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            {{- if .Values.auth.oidc.enabled }}
+            - name: oidc
+              mountPath: /var/run/secrets/agent-memory-oidc
+              readOnly: true
+            - name: admin-key
+              mountPath: /var/run/secrets/agent-memory-admin
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ $h }}-data
+        - name: secrets
+          secret:
+            secretName: {{ .Release.Name }}-secrets
+        - name: tmp
+          emptyDir: {}
+        {{- if .Values.auth.oidc.enabled }}
+        # Created outside the chart (never in git). optional: a missing Secret leaves SSO off
+        # (the panel logs why) instead of keeping the pod from starting.
+        - name: oidc
+          secret:
+            secretName: {{ .Values.auth.oidc.clientSecretName }}
+            optional: true
+            items:
+              - key: client-secret
+                path: client-secret
+        # Created by the install pipeline after the chart (first install): optional, and read on use.
+        - name: admin-key
+          secret:
+            secretName: {{ .Release.Name }}-admin-key
+            optional: true
+            items:
+              - key: user-key
+                path: user-key
+        {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $h }}
+  labels: {{- include "am.labels" . | nindent 4 }}
+spec:
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: hub
+  ports:
+    - name: panel
+      port: 8125
+      targetPort: panel
+    - name: knowledge
+      port: 8424
+      targetPort: knowledge

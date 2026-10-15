@@ -1,0 +1,63 @@
+node_modules
+.git
+__tests__
+tests
+docs
+*.md
+*.pdf
+*.pptx
+*.html
+*.png
+*.tgz
+.DS_Store
+.codebuddy
+.ai_assets
+benchmark-runs
+deploy
+sdk
+docker
+backup-*
+pnpm-lock.yaml
+install_hermes_ubuntu24.04_hongkong.sh
+scripts/sync-hermes-llm-to-wamf.sh
+dump.rdb
+vitest.config.ts
+vitest.e2e.config.ts
+kubb.config.ts
+tsdown.config.ts
+
+# ── Sensitive config (kept out of the image; production injects it via env or a mounted volume) ──
+# Root-level yaml such as wamf-gateway.yaml can contain real Langfuse / database / API_KEY values;
+# even with empty-string fallbacks they shouldn't ship in the image; prod uses a K8s Secret + env template.
+wamf-gateway.yaml
+wamf-gateway.*.yaml
+.env
+.env.*
+**/.env
+**/.env.*
+
+# internal CI/git metadata
+.gitmodules
+.coding-ci.yaml
+.gitlab-ci.yml
+
+# src/integrations is the mount point of a private submodule. On the open-source branch the directory doesn't exist (git
+# treats it as an empty submodule pointer); internal builds check it out with the Redis /
+# Observability backend implementations. This dockerignore used to exclude the whole
+# directory, so internal deployments with state_backend=redis failed at startup because index.js was missing
+# ("Cannot find module '/app/src/integrations/redis/index.js'").
+# Now it's allowed through: open-source builds copy an empty directory harmlessly, internal builds can load the backends.
+
+# e2e / load test / smoke scripts aren't needed at runtime and contain debug SSH hosts / internal IP references
+scripts/e2e-*
+scripts/verify-*
+scripts/warm-*
+scripts/stress-*
+scripts/inspect-*
+scripts/smoke-*
+scripts/start-offload-*
+scripts/bench-*
+scripts/soak-*
+
+# Keep the needed md files (excluded by *.md above, but README.md etc. don't affect runtime, so there's nothing to keep)
+# If you need to read README.md inside the container, delete the *.md line above

@@ -1,0 +1,75 @@
+# ============================================================
+# WAMF Gateway: local Mongo configuration (used with docker-compose.local-mongo.yaml)
+# ============================================================
+# Fits: verifying the Mongo backend in local containers (atlas-local mongot + a single gateway container)
+# Storage choice: **decided by environment variables; this file has no storage backend config**:
+#   STORE_MODE=mongodb            the data plane uses Mongo (the gateway mode doesn't read memory.storeBackend)
+#   MONGODB_ENDPOINT/DATABASE     Mongo connection (points at the mongo-search service inside compose)
+#   STATE_BACKEND=local           in-process state/pipeline (no Redis)
+# Metadata: without WAMF_METADATA_MONGO_URI → sqlite automatically (stored in baseDir; consolidated only in Phase 4)
+# ============================================================
+
+deployMode: standalone
+stateBackend: "local"
+
+server:
+  port: 8420
+  host: "0.0.0.0"                      # must listen on all interfaces inside the container, otherwise port mapping doesn't work
+  apiKey: "${WAMF_GATEWAY_API_KEY}"    # empty locally = Layer1 auth off (same meaning as in .env.knowledge-local)
+
+data:
+  baseDir: /data/wamf-memory
+
+# ── LLM (required, injected from environment variables) ──
+llm:
+  baseUrl: "${WAMF_LLM_BASE_URL}"
+  apiKey: "${WAMF_LLM_API_KEY}"
+  model: "${WAMF_LLM_MODEL}"
+  maxTokens: 65536
+  timeoutMs: 300000
+
+# ── Memory engine configuration ──
+memory:
+  capture:
+    enabled: true
+  extraction:
+    enabled: true
+    enableDedup: true
+    maxMemoriesPerSession: 20
+  persona:
+    triggerEveryN: 50
+    maxScenes: 15
+  pipeline:
+    everyNConversations: 5
+    enableWarmup: true
+    l1IdleTimeoutSeconds: 600
+    l2DelayAfterL1Seconds: 90
+    l2MinIntervalSeconds: 900
+    l2MaxIntervalSeconds: 3600
+  recall:
+    enabled: true
+    maxResults: 5
+    scoreThreshold: 0.3
+    strategy: "hybrid"
+    timeoutMs: 5000
+  embedding:
+    provider: "none"                   # vectors off, mongot native BM25 only
+
+# ── Skill module ──
+skill:
+  enabled: true
+  routing:
+    mode: "bm25"
+    searchTopK: 20
+  extraction:
+    enabled: true
+    maxIterations: 16
+  resources:
+    maxResourceSizeBytes: 5000000
+    allowExecutable: false
+
+# ── Metadata (meta_assets / ACL) ──
+metadata:
+  maxUsersPerInstance: 500
+  maxTeamsPerInstance: 100
+  passwordPepper: "${WAMF_PASSWORD_PEPPER:-local-dev-pepper}"

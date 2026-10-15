@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "weaverai-memory-fabric-sdk-python"
+version = "1.0.1-beta.1"
+description = "Python SDK for WeaverAI Memory Fabric v2/v3 API (incl. /v3/skill/*)"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [{ name = "WeaverAI" }]
+dependencies = ["httpx>=0.24.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-asyncio>=0.21", "respx>=0.20", "build", "python-dotenv>=1.0"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["weaverai_memory_fabric"]

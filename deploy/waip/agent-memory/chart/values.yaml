@@ -1,0 +1,72 @@
+# Defaults. The catalog's values.yaml (deploy/waip/agent-memory/values.yaml)
+# overrides these at install time with $VARS from pipeline.yaml.
+
+images:
+  core: zot.platform.weaversoft.io/apps/agent-memory-core:2026.08.25
+  hub: zot.platform.weaversoft.io/apps/agent-memory-hub:2026.08.25
+  proxy: zot.platform.weaversoft.io/apps/agent-memory-proxy:2026.08.25
+  pullPolicy: IfNotPresent   # tags are immutable per build
+
+# One OpenAI-compatible endpoint for everything: memory extraction (core),
+# wiki/codegraph LLM work (hub) and the upstream the proxy forwards agent traffic to.
+llm:
+  baseUrl: http://litellm.inference.svc.cluster.local:4000/v1
+  model: gpt-5.6-luna
+  apiKey: ""                 # sensitive — supplied by the pipeline, never committed
+
+publicUrls:
+  proxy: ""                  # https://<proxy-host> — shown in the panel's "client connection" card
+
+# Private git repos for Code Graph. Repos under urlPrefix are cloned with this read-only
+# credential, sent as an HTTP header (never stored in the repo URL). Empty token = public only.
+gitAuth:
+  urlPrefix: https://bitbucket.org/weaversoft/
+  username: x-token-auth     # Bitbucket repository / project / workspace access tokens
+  token: ""                  # sensitive — supplied by the pipeline, never committed
+
+# Panel sign-in. user_key login always stays on (the admin signs in with it).
+auth:
+  appUrl: ""                 # https://<panel host>; required for SSO (redirect URI and logout return)
+  oidc:
+    enabled: false
+    id: keycloak             # IdP client redirect URI: <appUrl>/api/v1/auth/idp/<id>/callback
+    displayName: SSO         # login button: "Sign in with <displayName>"
+    issuerUrl: ""            # public realm URL, e.g. https://auth.example.com/realms/acme
+    internalIssuerUrl: ""    # in-cluster realm URL for server-side calls; empty = issuerUrl
+    clientId: agent-memory
+    clientSecretName: agent-memory-oidc   # existing Secret with key client-secret, never committed
+    defaultTeam: ""          # team new SSO accounts join (created on first use); empty = none
+    defaultRole: member
+  # The WAIP MCP proxy's signed caller identity (X-WAIP-Identity), so agents act as their
+  # WAIP user without an sk-mem key. Needs auth.oidc (accounts are the SSO accounts).
+  waipIdentity:
+    jwksUrl: ""              # the platform's /api/auth/jwks.json, in-cluster; empty = off
+    issuer: weaverai-platform
+    audience: mcp:memory-mcp # "mcp:<MCP store entry name>"
+
+storage:
+  className: mayastor-1rep-wait
+  coreSize: 2Gi
+  hubSize: 5Gi
+
+memory:
+  promptMode: chat           # chat | code
+  l0RetentionDays: 30        # delete raw history (L0) older than this, daily; facts are kept. 0 = forever, min 3
+
+securityContext:
+  uid: 10001
+
+# Only this release's hub and proxy may reach memory-core (it has no Bearer gate).
+networkPolicy:
+  enabled: true
+
+resources:
+  core:
+    requests: { cpu: 100m, memory: 512Mi }
+    limits: { cpu: "1", memory: 1536Mi }
+  hub:
+    requests: { cpu: 100m, memory: 512Mi }
+    limits: { cpu: "1", memory: 2Gi }
+  proxy:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { cpu: 500m, memory: 512Mi }

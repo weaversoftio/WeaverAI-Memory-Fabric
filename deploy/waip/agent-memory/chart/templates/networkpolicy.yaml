@@ -1,0 +1,53 @@
+{{- if .Values.networkPolicy.enabled }}
+# memory-core has no Bearer gate (WAMF_GATEWAY_API_KEY is unset), so only this
+# release's hub and proxy may reach it. Its internal routes include instance
+# upstream keys, user lists and instance destroy.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "am.core" . }}
+  labels: {{- include "am.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: core
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ .Release.Name }}
+      ports:
+        - port: 8420
+          protocol: TCP
+{{- end }}
+{{- if .Values.networkPolicy.enabled }}
+---
+# Hub: the panel (8125) is public through the gateway and serves memory-mcp, so it stays
+# open. The knowledge API (8424) keeps wikis, code graphs (private repo source) and the
+# LLM binding, and its read routes need no key: only this release's pods (the proxy) may
+# reach it. The panel talks to it over loopback inside the pod.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "am.hub" . }}
+  labels: {{- include "am.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: hub
+  policyTypes: [Ingress]
+  ingress:
+    - ports:
+        - port: 8125
+          protocol: TCP
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ .Release.Name }}
+      ports:
+        - port: 8424
+          protocol: TCP
+{{- end }}

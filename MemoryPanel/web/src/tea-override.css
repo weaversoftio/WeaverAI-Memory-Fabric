@@ -1,0 +1,288 @@
+/* Tea + Tailwind compatibility overrides */
+/* Tea's default box-sizing is content-box; override to border-box for Tailwind compatibility */
+.tea-layout,
+.tea-layout *,
+.tea-layout *::before,
+.tea-layout *::after {
+  box-sizing: border-box;
+}
+
+/* ===== Button: icon + text laid out horizontally =====
+ * The external tea-component@2.8.0 .tea-btn defaults to display: inline-block;
+ * when an SVG icon is placed inside (e.g. <AddIcon /> for new Task), the SVG defaults to display: block,
+ * which puts the icon and text on separate lines. Switching to inline-flex centers them horizontally.
+ * The internal @weaverai/tea-component is inline-flex by default; this fills in the difference. */
+.tea-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+/* icon-only buttons need no gap */
+.tea-btn--icon {
+  gap: 0;
+}
+
+/* Outermost app shell: GlobalHeader (fixed 48px) + Layout (fills the remaining space) */
+._memory-app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* The brand of the single-product app is unified in GlobalHeader; hide the empty header when Menu has no title/icon,
+   so the sidebar does not reserve a blank strip of top space. */
+.tea-menu__header:empty {
+  display: none;
+}
+
+/* Tea Menu's default gap between the title area and the menu items below is too large; tighten it to a 16px bottom gap,
+   consistent with the 8px left/right padding of the pill menu items */
+.tea-menu__title {
+  padding-bottom: 16px;
+}
+
+/* Remove card radius in the content area. Tea's default Card carries margin: 20px auto 0,
+ * which makes single-card pages shrink/center on wide screens and stack with the layout gap; the shared page shell takes over the outer spacing. */
+.tea-card {
+  margin: 0;
+  border-radius: 0 !important;
+}
+
+/* The inner layer of Tea's Content.Body defaults to max-width 1360px; beyond that width it centers with whitespace,
+ * so Cards on the right-hand business pages look narrower than in the Memory project. The shared shell is made full-width, consistent with the reference project;
+ * individual business pages set a local max-width themselves when they truly need a reading width. */
+.tea-layout__content-body-inner {
+  max-width: 100%;
+}
+
+/* ===== Lock the page height to the viewport; scrollbars appear only inside the content area =====
+ * Previously html/body/#root had no fixed height, and no layer in the flex chain holding Content.Body
+ * had min-height:0, so flex children were sized by content by default (the classic min-height:auto
+ * trap); once a page's content grew taller it blew out the viewport-height container,
+ * producing a scrollbar at the browser window level that runs through the whole page (including sidebar/header).
+ * Here html/body/#root are locked to viewport height + overflow:hidden, leaving only
+ * Content.Body (.tea-layout__content-body) as the sole scroll container. */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+/* Layout is now a sibling of GlobalHeader inside _memory-app-shell,
+   using flex:1 (flex-basis:0) to fill the remaining height left by GlobalHeader,
+   rather than hard-coding 100vh (which would overflow the viewport together with the header) */
+.tea-layout {
+  flex: 1;
+  min-height: 0;
+}
+
+.tea-layout__body {
+  height: 100%;
+  overflow: hidden;
+}
+
+.tea-layout__content {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tea-layout__content-inner {
+  min-height: 0;
+}
+
+.tea-layout__content-body {
+  min-height: 0;
+  overflow-y: auto;
+  /* Always reserve space for the vertical scrollbar (even when the content is not tall enough and no scrollbar appears).
+   * Without this line: when ChatMemoryPanel switches between the "Team assets / Pinned assets" tab (tall content, scrollbar shown)
+   * and the "My asset allocation" tab (short content, no scrollbar), the usable width of the content area
+   * jumps as the scrollbar appears/disappears, visually making the whole content "flash" to the right (scrollbar disappears)
+   * or to the left (scrollbar appears). With scrollbar-gutter: stable the width stays constant
+   * and no longer jumps with content height. */
+  scrollbar-gutter: stable;
+}
+
+/* ===== Shared page content shell =====
+ * Aligned with the Memory project's Content.Body: page background, 16px content padding and full-width hosting are unified at the layout layer,
+ * so business pages need not handle viewport height and outer spacing themselves. */
+._memory-content-body {
+  max-width: 100%;
+  min-height: calc(100% - 34px);
+  padding: 16px;
+  background: var(--tea-color-bg-page-default);
+}
+
+._memory-page-frame {
+  width: 100%;
+  min-width: 0;
+  min-height: 100%;
+  /* Route-switch continuity: quick fade-in + slight upward shift, transform/opacity only, no load orchestration */
+  animation: _page-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes _page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* View switch (card/list) quick fade-in, making layout state changes perceivable */
+._view-swap {
+  animation: _view-swap-in 0.15s ease-out;
+}
+
+@keyframes _view-swap-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Metadata row of the resource detail header (secondary info: Branch / commit / time / page count, etc.), shared by both pages */
+._detail-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  padding-left: 28px; /* Aligned with icon (20px) + gap (8px), so the meta info starts below the title */
+  font-size: 12px;
+  color: var(--tea-color-text-tertiary);
+}
+
+._detail-meta-sep {
+  color: var(--tea-color-text-disabled);
+}
+
+/* Respect the system "reduce motion" preference: disable animations/transitions globally */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Prevent Tea's default margin from conflicting with the Tailwind layout */
+.tea-card + .tea-card {
+  margin-top: 0 !important;
+}
+
+/* Link color */
+a,
+.tea-link-external {
+  color: var(--tea-color-text-link-default);
+}
+
+/* Tea Alert fills the width inside a flex container */
+.tea-alert {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Standard wrapper for the console list body */
+.console-list-body {
+  display: block;
+}
+
+/* Justify-right area: flex aligned right */
+.tea-table__action-panel .tea-justify-grid__col--right {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ===== Sidebar nav pill style (minimal override) =====
+ * Tea Menu (light theme) selected state defaults to blue text only, with no background block,
+ * and the default icon has a margin-top offset and the text has extra padding, so alignment is poor.
+ * Here only the visual presentation is overridden, leaving the component structure unchanged. */
+.tea-menu--light .tea-menu__list > li:not(.tea-menu__label) {
+  margin: 2px 8px;
+}
+
+/* Anchor element: icon and text laid out horizontally + centered, pill radius, unified padding */
+.tea-menu--light .tea-menu__list > li:not(.tea-menu__label) > .tea-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 6px;
+}
+
+/* Remove Tea's default icon upward offset and the extra text padding, keeping it centered with the anchor */
+.tea-menu--light .tea-menu__list > li:not(.tea-menu__label) > .tea-menu__item .tea-menu__list-icon {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
+.tea-menu--light .tea-menu__list > li:not(.tea-menu__label) > .tea-menu__item .tea-menu__text {
+  padding: 0;
+  line-height: 1.4;
+}
+
+/* Selected state: brand color background + white text */
+.tea-menu--light .tea-menu__list > li:not(.tea-menu__label).is-selected > .tea-menu__item,
+.tea-menu--light .tea-menu__list > li:not(.tea-menu__label).is-selected > .tea-menu__item:hover {
+  background-color: var(--tea-color-bg-brand-default) !important;
+  color: var(--tea-color-text-on-bg-brand-default);
+}
+
+.tea-menu--light
+  .tea-menu__list
+  > li:not(.tea-menu__label).is-selected
+  > .tea-menu__item
+  .tea-menu__text {
+  color: var(--tea-color-text-on-bg-brand-default) !important;
+}
+
+/* Align group title spacing with the pills */
+.tea-menu--light .tea-menu__list > li.tea-menu__label {
+  padding-left: 8px;
+}
+
+/* ===== Onboarding Guide bubble adaptation (avoids the bubble overflowing the viewport on narrow viewports / edge elements) =====
+ * Tea Guide's internal overlay modifiers disable flip / preventOverflow / hide,
+ * so the bubble's fixed 356px width (.tea-guide{min-width:356px;max-width:356px}) overflows rigidly.
+ * Overridden to "adapt to viewport width, keeping a 16px viewport safe margin", so buttons and body text always stay clickable. */
+.tea-guide {
+  min-width: 280px;
+  max-width: min(360px, calc(100vw - 32px));
+}
+
+/* ===== Onboarding Guide footer flat layout =====
+ * Tea Guide's default footer uses a horizontal flex: dots on the left, button group (btn-group) on the right.
+ * With an 8-step guide the dots take ~120px, and the 3 buttons (skip/previous/next) exceed 200px in total width;
+ * with a total of 320+ that is not enough, so the dots squeeze out the buttons and the buttons are forced to wrap into a big block.
+ * Changed to "dots on their own row (centered), button group on a second row laid out flat without wrapping", ensuring the 3 buttons always stay on one row. */
+.tea-guide__footer {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+.tea-guide__footer .tea-guide__dot {
+  justify-content: center;
+}
+.tea-guide__footer .tea-guide__btn-group {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}

@@ -1,0 +1,319 @@
+/**
+ * SkillDetailPane style patch -- colors/fonts all go through Tea Design Tokens.
+ * No tailwind semantic colors, and no inline style on native tags.
+ */
+
+/* The right-hand detail is the main content column: 24px padding aligns with the 32px baseline of the left column title. */
+/* Fill the right column height (the outer _asset-split-detail already limits the viewport height), leaving no blank space even with little content */
+._memory-skill-detail-card {
+  --card-body-padding: 24px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tea Card internals fill the space; changed to a two-part "fixed head + scrolling body" layout,
+   with overflow pushed down to _memory-skill-detail-scroll, so the head stays put and does not scroll */
+._memory-skill-detail-card > .tea-card__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+._memory-skill-detail-empty {
+  min-height: 480px;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+._memory-skill-detail-body {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Tea Card.Body wraps children in another .tea-card__content layer,
+   which must likewise fill the space and become a flex column, otherwise the inner fixed head + scroll area flex layout breaks
+   and scroll gets no bounded height, making "the body unable to scroll". */
+._memory-skill-detail-body > .tea-card__content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Scrolling content area: takes all space below the head and scrolls independently */
+._memory-skill-detail-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-top: 12px;
+}
+
+/* While refreshing (reload after edit/create save): establish a positioning context + reduce content opacity, with the mask layer giving loading feedback */
+._memory-skill-detail-scroll--refreshing {
+  position: relative;
+}
+
+._memory-skill-detail-scroll--refreshing > *:not(._memory-skill-detail-refresh-mask) {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+._memory-skill-detail-refresh-mask {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0;
+  opacity: 1 !important;
+  pointer-events: none;
+}
+
+/* Attached resources pinned at the bottom: do not scroll with the body, always visible; scroll internally when the list itself is too tall */
+._memory-skill-detail-footer {
+  flex: 0 0 auto;
+  padding-top: 12px;
+  margin-top: 4px;
+  border-top: 1px solid var(--tea-color-border-primary-default);
+}
+
+/* In the narrow-screen stacked layout (AssetSplitLayout removes the height limit), the card returns to document-flow height */
+@media (max-width: 960px) {
+  ._memory-skill-detail-card {
+    height: auto;
+  }
+
+  ._memory-skill-detail-card > .tea-card__body,
+  ._memory-skill-detail-body,
+  ._memory-skill-detail-body > .tea-card__content {
+    overflow: visible;
+  }
+
+  ._memory-skill-detail-scroll {
+    overflow-y: visible;
+  }
+
+  /* Narrow-screen stacking: attached resources are no longer pinned/internally scrolled, returning to document flow with the whole card */
+  ._memory-skill-files-box--footer {
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+
+/* Fixed floating header: does not scroll, holds the skill name + description + action bar */
+._memory-skill-detail-head {
+  flex: 0 0 auto;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--tea-color-border-primary-default);
+}
+
+/* Header main row: info area on the left + action area on the right */
+._memory-skill-detail-head-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+._memory-skill-detail-head-info {
+  min-width: 0;
+  flex: 1;
+}
+
+/* Action bar: edit / new file / version history, right-aligned without wrapping */
+._memory-skill-detail-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+._memory-skill-detail-name {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tea-color-text-primary);
+  word-break: break-all;
+}
+
+._memory-skill-detail-desc {
+  margin-top: 4px;
+}
+
+/* skill_id row: monospace de-emphasized small text + copy button, right below the name */
+._memory-skill-detail-id {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  min-width: 0;
+}
+
+._memory-skill-detail-id-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--tea-color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+._memory-skill-detail-error {
+  margin-bottom: 8px;
+}
+
+._memory-skill-detail-section + ._memory-skill-detail-section {
+  margin-top: 16px;
+}
+
+._memory-skill-detail-section-title.tea-text {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+/* Section title row: title on the left, edit/new action buttons on the right */
+._memory-skill-detail-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+._memory-skill-detail-section-head ._memory-skill-detail-section-title.tea-text {
+  margin-bottom: 0;
+}
+
+/* ===== Edit state (body / file / new file) ===== */
+._memory-skill-edit-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Input.TextArea fills the width, monospace font, with ample edit height */
+._memory-skill-edit-textarea,
+._memory-skill-edit-textarea textarea {
+  width: 100%;
+  min-height: 320px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+._memory-skill-edit-hint {
+  font-size: 12px;
+}
+
+._memory-skill-edit-actions {
+  display: flex;
+  gap: 8px;
+}
+
+._memory-skill-newfile-field + ._memory-skill-newfile-field {
+  margin-top: 12px;
+}
+
+._memory-skill-newfile-path,
+._memory-skill-newfile-path input {
+  width: 100%;
+  font-family: var(--font-mono);
+}
+
+/* Inside the historical-version view Modal: spacing between attached resources and the body */
+._memory-skill-version-files {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--tea-color-border-primary-default);
+}
+
+/* ===== Version history (version number cell inside the Table) ===== */
+._memory-skill-version-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--tea-color-text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+._memory-skill-version-current {
+  color: var(--tea-color-text-link-default);
+}
+
+._memory-skill-detail-json,
+._memory-skill-file-content {
+  margin: 0;
+  padding: 12px;
+  background-color: var(--tea-color-bg-secondary-default);
+  border: 1px solid var(--tea-color-border-primary-default);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--tea-color-text-primary);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* The Markdown body box style has been migrated to the shared component components/markdown-view.css (._md-view) */
+
+._memory-skill-files-box {
+  padding: 8px 12px;
+  border: 1px solid var(--tea-color-border-primary-default);
+  background-color: var(--tea-color-bg-secondary-default);
+}
+
+/* Attached-resources box in the bottom fixed area: limited max height, scrolls internally when there are many files, without squeezing the body in the middle */
+._memory-skill-files-box--footer {
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+/* ===== File tree ===== */
+._memory-skill-filetree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Child levels rely on the fixed indentation of nested ul, avoiding dynamic inline style on li */
+._memory-skill-filetree ._memory-skill-filetree {
+  padding-inline-start: 12px;
+}
+
+._memory-skill-filetree li {
+  padding: 1px 0;
+}
+
+._memory-skill-file-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--tea-color-text-link-default);
+}
+
+._memory-skill-file-btn:hover {
+  text-decoration: underline;
+}
+
+._memory-skill-dir {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--tea-color-text-secondary);
+}

@@ -1,0 +1,83 @@
+/**
+ * AssetSplitLayout - split-pane layout styles of the asset management page.
+ * The left column width is draggable (column widths are controlled by the inline style's grid-template-columns),
+ * the middle is the drag handle, and the right detail pane adapts to the remaining width and scrolls internally.
+ */
+
+._asset-split {
+  display: grid;
+  /* grid-template-columns is injected inline by the component according to the dragged width: <sidebar>px 6px minmax(0,1fr) */
+  /* Fill the remaining viewport height: both columns are equal height and fill it, leaving no blank space even with little content */
+  height: calc(100vh - 220px);
+  align-items: stretch;
+  gap: 0;
+}
+
+._asset-split-sidebar,
+._asset-split-detail {
+  min-width: 0;
+}
+
+/* Right detail pane: fills the height, scrolls internally when content overflows, without stretching the outer page height */
+._asset-split-detail {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* The left list likewise fills the height and scrolls internally, so a long list does not stretch the whole page and a short list leaves no gap */
+._asset-split-sidebar {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* ===== Drag handle ===== */
+._asset-split-resizer {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: col-resize;
+  padding: 0;
+  border: none;
+  background: transparent;
+  /* The handle itself is 6px wide, with a bit of hot zone on each side, centered via flex */
+}
+
+._asset-split-resizer-bar {
+width: 2px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--tea-color-border-primary-default);
+  transition: background-color 0.15s ease-in-out;
+}
+
+._asset-split-resizer:hover ._asset-split-resizer-bar,
+._asset-split--dragging ._asset-split-resizer-bar {
+  background: var(--tea-color-border-brand-default);
+}
+
+._asset-split--dragging {
+  cursor: col-resize;
+}
+
+@media (max-width: 960px) {
+  ._asset-split {
+    grid-template-columns: minmax(0, 1fr) !important;
+    /* Narrow screens stack, returning to document-flow height */
+    height: auto;
+  }
+
+  /* On narrow screens stack the display, hide the drag handle, remove the height limit and return to document flow */
+  ._asset-split-resizer {
+    display: none;
+  }
+
+  ._asset-split-sidebar,
+  ._asset-split-detail {
+    height: auto;
+    max-height: none;
+    overflow-y: visible;
+  }
+}

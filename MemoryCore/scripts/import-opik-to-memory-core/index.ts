@@ -1,0 +1,811 @@
+#!/usr/bin/env npx tsx
+
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { resolve as resolvePath } from "node:path";
+import { parseArgs } from "node:util";
+import { pathToFileURL } from "node:url";
+
+type JsonObject = Record<string, unknown>;
+
+type Role = "user" | "assistant";
+
+export interface MemoryMessage {
+  role: Role;
+  content: string;
+  timestamp: string;
+  recordedAt?: string;
+}
+
+interface OpikProject {
+  id: string;
+  name: string;
+}
+
+interface OpikTrace {
+  id: string;
+  project_id?: string;
+  project_name?: string;
+  thread_id?: string;
+  name?: string;
+  start_time?: string;
+  end_time?: string;
+  created_at?: string;
+  input?: unknown;
+  output?: unknown;
+  metadata?: unknown;
+}
+
+interface Page<T> {
+  page: number;
+  size: number;
+  total: number;
+  content: T[];
+}
+
+interface ImportState {
+  version: 1;
+  completed: Record<string, { imported_at: string; accepted: number }>;
+}
+
+interface CliOptions {
+  opikApiBase: string;
+  memoryUrl: string;
+  workspace: string;
+  projects: string[];
+  teamId: string;
+  agentId: string;
+  userId: string;
+  taskId?: string;
+  serviceId: string;
+  pageSize: number;
+  maxTraces: number;
+  maxSessionMessages: number;
+  largeSessionStrategy: "tail" | "error";
+  stateFile: string;
+  resume: boolean;
+  dryRun: boolean;
+  includeSystem: boolean;
+  waitEvery: number;
+  finalWait: boolean;
+  pollMs: number;
+  maxWaitMs: number;
+  timeoutMs: number;
+  retries: number;
+}
+
+interface ApiEnvelope<T> {
+  code: number;
+  message: string;
+  request_id?: string;
+  data?: T;
+}
+
+const MAX_MESSAGE_CHARS = 8192;
+const MAX_MESSAGES_PER_REQUEST = 100;
+
+function usage(): string {
+  return `
+Import conversation Traces from Opik into Memory Core L0.
+
+Usage:
+  npm run import:opik -- [options]
+
+Data source:
+  --opik-url <url>       Opik UI or API URL; OPIK_URL also works
+                         e.g. http://opik.example.com:5173/default/projects?size=25
+  --workspace <name>     Opik workspace, default OPIK_WORKSPACE or the first URL segment / default
+  --project <name>       Import only the given project; repeatable or comma-separated, default all projects
+  --page-size <n>        Opik page size, default 100
+  --max-traces <n>       Max Traces to process this run, 0 means unlimited, default 0
+  --max-session-messages <n>
+                         Max L0 messages imported per target Session, default 40000; 0 disables the guard
+  --large-session-strategy <tail|error>
+                         When over the limit, import only the deduplicated tail messages, or fail; default tail
+
+Memory Core:
+  --memory-url <url>     Gateway URL, default MEMORY_CORE_URL or http://127.0.0.1:8420
+  --service-id <id>      x-wamf-service-id; also MEMORY_CORE_SERVICE_ID
+  --team-id <id>         target team; also MEMORY_CORE_TEAM_ID
+  --agent-id <id>        target agent; also MEMORY_CORE_AGENT_ID
+  --user-id <id>         target user; also MEMORY_CORE_USER_ID
+  --task-id <id>         optional target task; also MEMORY_CORE_TASK_ID
+
+Execution control:
+  --state-file <path>    checkpoint file, default .opik-memory-import-state.json
+  --no-resume            ignore existing checkpoint
+  --dry-run              fetch and convert, but do not write Memory Core/checkpoint
+  --include-system       import system/developer messages as user messages
+  --wait-every <n>       wait for L1 idle every N write requests; 0 disables, default 20
+  --no-final-wait        do not wait for L1/L2/L3 to all go idle after finishing
+  --poll-ms <n>          Pipeline poll interval, default 1000
+  --max-wait-ms <n>      per-wait upper bound, default 600000
+  --timeout-ms <n>       HTTP request timeout, default 30000
+  --retries <n>          retry count for 429/5xx/network errors, default 4
+  -h, --help             show help
+
+Secrets are read from environment variables only:
+  OPIK_API_KEY           optional; written verbatim into the Opik Authorization header
+  OPIK_AUTH_SCHEME       optional, e.g. Bearer; no prefix by default
+  MEMORY_CORE_API_KEY    required (except for dry-run)
+
+Example:
+  OPIK_URL='http://opik.example.com:5173/default/projects?size=25' \\
+  MEMORY_CORE_URL='http://127.0.0.1:8420' \\
+  MEMORY_CORE_API_KEY='***' MEMORY_CORE_SERVICE_ID='default' \\
+  MEMORY_CORE_TEAM_ID='team-1' MEMORY_CORE_AGENT_ID='agent-1' \\
+  MEMORY_CORE_USER_ID='user-1' \\
+  npm run import:opik -- --dry-run
+`.trim();
+}
+
+function parsePositiveInt(value: string | undefined, fallback: number, name: string, allowZero = false): number {
+  if (value == null || value === "") return fallback;
+  const parsed = Number(value);
+  const valid = Number.isSafeInteger(parsed) && (allowZero ? parsed >= 0 : parsed > 0);
+  if (!valid) throw new Error(`${name} must be a ${allowZero ? "non-negative" : "positive"} integer`);
+  return parsed;
+}
+
+function required(value: string | undefined, name: string): string {
+  const normalized = value?.trim();
+  if (!normalized) throw new Error(`Missing ${name}`);
+  return normalized;
+}
+
+function parseOpikBase(raw: string, explicitWorkspace?: string): { apiBase: string; workspace: string } {
+  const url = new URL(raw);
+  if (url.username || url.password) throw new Error("OPIK_URL must not contain credentials; pass secrets via environment variables");
+
+  const parts = url.pathname.split("/").filter(Boolean);
+  const workspaceFromUi = parts[0] && !["api", "v1"].includes(parts[0]) ? parts[0] : undefined;
+  let apiPath: string;
+  const apiIndex = parts.indexOf("api");
+  const v1Index = parts.indexOf("v1");
+  if (apiIndex >= 0 && parts[apiIndex + 1] === "v1") {
+    apiPath = `/${parts.slice(0, apiIndex + 2).join("/")}/private`;
+  } else if (v1Index >= 0) {
+    apiPath = `/${parts.slice(0, v1Index + 1).join("/")}/private`;
+  } else {
+    apiPath = "/api/v1/private";
+  }
+
+  url.pathname = apiPath.replace(/\/private\/private$/, "/private");
+  url.search = "";
+  url.hash = "";
+  return {
+    apiBase: url.toString().replace(/\/$/, ""),
+    workspace: explicitWorkspace?.trim() || workspaceFromUi || "default",
+  };
+}
+
+function parseCli(argv: string[]): CliOptions {
+  const { values } = parseArgs({
+    args: argv,
+    options: {
+      "opik-url": { type: "string" },
+      "memory-url": { type: "string" },
+      workspace: { type: "string" },
+      project: { type: "string", multiple: true },
+      "team-id": { type: "string" },
+      "agent-id": { type: "string" },
+      "user-id": { type: "string" },
+      "task-id": { type: "string" },
+      "service-id": { type: "string" },
+      "page-size": { type: "string" },
+      "max-traces": { type: "string" },
+      "max-session-messages": { type: "string" },
+      "large-session-strategy": { type: "string" },
+      "state-file": { type: "string" },
+      "no-resume": { type: "boolean" },
+      "dry-run": { type: "boolean" },
+      "include-system": { type: "boolean" },
+      "wait-every": { type: "string" },
+      "no-final-wait": { type: "boolean" },
+      "poll-ms": { type: "string" },
+      "max-wait-ms": { type: "string" },
+      "timeout-ms": { type: "string" },
+      retries: { type: "string" },
+      help: { type: "boolean", short: "h" },
+    },
+    strict: true,
+    allowPositionals: false,
+  });
+
+  if (values.help) {
+    console.log(usage());
+    process.exit(0);
+  }
+
+  const rawOpikUrl = required((values["opik-url"] as string | undefined) ?? process.env.OPIK_URL, "--opik-url or OPIK_URL");
+  const opik = parseOpikBase(rawOpikUrl, (values.workspace as string | undefined) ?? process.env.OPIK_WORKSPACE);
+  const projectValues = (values.project as string[] | undefined) ?? [];
+  const projects = projectValues.flatMap((item) => item.split(",")).map((item) => item.trim()).filter(Boolean);
+  const dryRun = Boolean(values["dry-run"]);
+  const largeSessionStrategy = (values["large-session-strategy"] as string | undefined) ?? "tail";
+  if (largeSessionStrategy !== "tail" && largeSessionStrategy !== "error") {
+    throw new Error("--large-session-strategy must be tail or error");
+  }
+
+  if (!dryRun) required(process.env.MEMORY_CORE_API_KEY, "MEMORY_CORE_API_KEY");
+
+  return {
+    opikApiBase: opik.apiBase,
+    memoryUrl: ((values["memory-url"] as string | undefined) ?? process.env.MEMORY_CORE_URL ?? "http://127.0.0.1:8420").replace(/\/$/, ""),
+    workspace: opik.workspace,
+    projects,
+    teamId: required((values["team-id"] as string | undefined) ?? process.env.MEMORY_CORE_TEAM_ID, "--team-id or MEMORY_CORE_TEAM_ID"),
+    agentId: required((values["agent-id"] as string | undefined) ?? process.env.MEMORY_CORE_AGENT_ID, "--agent-id or MEMORY_CORE_AGENT_ID"),
+    userId: required((values["user-id"] as string | undefined) ?? process.env.MEMORY_CORE_USER_ID, "--user-id or MEMORY_CORE_USER_ID"),
+    taskId: ((values["task-id"] as string | undefined) ?? process.env.MEMORY_CORE_TASK_ID)?.trim() || undefined,
+    serviceId: required((values["service-id"] as string | undefined) ?? process.env.MEMORY_CORE_SERVICE_ID, "--service-id or MEMORY_CORE_SERVICE_ID"),
+    pageSize: parsePositiveInt(values["page-size"] as string | undefined, 100, "--page-size"),
+    maxTraces: parsePositiveInt(values["max-traces"] as string | undefined, 0, "--max-traces", true),
+    maxSessionMessages: parsePositiveInt(values["max-session-messages"] as string | undefined, 40_000, "--max-session-messages", true),
+    largeSessionStrategy,
+    stateFile: resolvePath((values["state-file"] as string | undefined) ?? ".opik-memory-import-state.json"),
+    resume: !values["no-resume"],
+    dryRun,
+    includeSystem: Boolean(values["include-system"]),
+    waitEvery: parsePositiveInt(values["wait-every"] as string | undefined, 20, "--wait-every", true),
+    finalWait: !values["no-final-wait"],
+    pollMs: parsePositiveInt(values["poll-ms"] as string | undefined, 1000, "--poll-ms"),
+    maxWaitMs: parsePositiveInt(values["max-wait-ms"] as string | undefined, 600_000, "--max-wait-ms"),
+    timeoutMs: parsePositiveInt(values["timeout-ms"] as string | undefined, 30_000, "--timeout-ms"),
+    retries: parsePositiveInt(values.retries as string | undefined, 4, "--retries", true),
+  };
+}
+
+function isRecord(value: unknown): value is JsonObject {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function stringifyPrimitive(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return undefined;
+}
+
+function contentToText(value: unknown): string | undefined {
+  const primitive = stringifyPrimitive(value);
+  if (primitive != null) return primitive;
+  if (Array.isArray(value)) {
+    const parts = value.map((item) => {
+      if (typeof item === "string") return item;
+      if (!isRecord(item)) return undefined;
+      if (item.type === "text" && typeof item.text === "string") return item.text;
+      if (typeof item.content === "string") return item.content;
+      if (typeof item.text === "string") return item.text;
+      return undefined;
+    }).filter((item): item is string => Boolean(item?.trim()));
+    return parts.length > 0 ? parts.join("\n") : undefined;
+  }
+  if (!isRecord(value)) return undefined;
+  for (const key of ["content", "text", "responseContent", "answer", "response", "completion"]) {
+    const text = contentToText(value[key]);
+    if (text?.trim()) return text;
+  }
+  if (isRecord(value.message)) return contentToText(value.message);
+  if (Array.isArray(value.choices)) {
+    for (const choice of value.choices) {
+      if (!isRecord(choice)) continue;
+      const text = contentToText(choice.message ?? choice.text);
+      if (text?.trim()) return text;
+    }
+  }
+  return undefined;
+}
+
+function normalizeRole(value: unknown, includeSystem: boolean): Role | undefined {
+  if (typeof value !== "string") return undefined;
+  const role = value.toLowerCase();
+  if (["user", "human"].includes(role)) return "user";
+  if (["assistant", "ai", "model", "bot"].includes(role)) return "assistant";
+  if (includeSystem && ["system", "developer"].includes(role)) return "user";
+  return undefined;
+}
+
+function normalizeTimestamp(value: unknown, fallback: string): string {
+  const candidate = typeof value === "number" ? new Date(value).toISOString() : typeof value === "string" ? value : fallback;
+  const date = new Date(candidate);
+  return Number.isNaN(date.getTime()) ? fallback : date.toISOString();
+}
+
+function splitContent(text: string): string[] {
+  const normalized = text.trim();
+  if (!normalized) return [];
+  const chunks: string[] = [];
+  let offset = 0;
+  while (offset < normalized.length) {
+    let end = Math.min(offset + MAX_MESSAGE_CHARS, normalized.length);
+    if (end < normalized.length) {
+      const lastCode = normalized.charCodeAt(end - 1);
+      if (lastCode >= 0xd800 && lastCode <= 0xdbff) end--;
+    }
+    chunks.push(normalized.slice(offset, end));
+    offset = end;
+  }
+  return chunks;
+}
+
+function normalizeMessage(value: unknown, fallbackTimestamp: string, includeSystem: boolean): MemoryMessage[] {
+  if (!isRecord(value)) return [];
+  const role = normalizeRole(value.role ?? value.type ?? (isRecord(value.message) ? value.message.role : undefined), includeSystem);
+  if (!role) return [];
+  const rawContent = value.content ?? (isRecord(value.message) ? value.message.content : undefined) ?? value.text;
+  const text = contentToText(rawContent);
+  if (!text) return [];
+  const timestamp = normalizeTimestamp(value.timestamp ?? value.created_at ?? value.createdAt, fallbackTimestamp);
+  const rolePrefix = includeSystem && ["system", "developer"].includes(String(value.role ?? value.type).toLowerCase())
+    ? `[${String(value.role ?? value.type).toLowerCase()}] `
+    : "";
+  return splitContent(`${rolePrefix}${text}`).map((content) => ({ role, content, timestamp }));
+}
+
+function findMessageArrays(value: unknown, depth = 0): unknown[][] {
+  if (depth > 5) return [];
+  if (Array.isArray(value)) {
+    const looksLikeMessages = value.some((item) => isRecord(item) && ("role" in item || (isRecord(item.message) && "role" in item.message)));
+    return looksLikeMessages ? [value] : value.flatMap((item) => findMessageArrays(item, depth + 1));
+  }
+  if (!isRecord(value)) return [];
+  const preferred = ["messages", "conversation", "history"]
+    .flatMap((key) => key in value ? findMessageArrays(value[key], depth + 1) : []);
+  if (preferred.length > 0) return preferred;
+  return Object.values(value).flatMap((item) => findMessageArrays(item, depth + 1));
+}
+
+function extractPrompt(value: unknown, keys: string[]): string | undefined {
+  const primitive = stringifyPrimitive(value);
+  if (primitive?.trim()) return primitive;
+  if (!isRecord(value)) return undefined;
+  for (const key of keys) {
+    if (!(key in value)) continue;
+    const text = contentToText(value[key]);
+    if (text?.trim()) return text;
+  }
+  return contentToText(value);
+}
+
+function messageIdentity(message: MemoryMessage): string {
+  return `${message.role}\u0000${message.content}`;
+}
+
+function startsWithMessages(messages: MemoryMessage[], prefix: MemoryMessage[]): boolean {
+  return prefix.length <= messages.length
+    && prefix.every((message, index) => messageIdentity(message) === messageIdentity(messages[index]!));
+}
+
+export function mergeMessages(input: MemoryMessage[], output: MemoryMessage[]): MemoryMessage[] {
+  if (input.length === 0) return [...output];
+  if (output.length === 0) return [...input];
+  if (startsWithMessages(output, input)) return [...input, ...output.slice(input.length)];
+  if (startsWithMessages(input, output)) return [...input];
+
+  const pattern = output.map(messageIdentity);
+  const prefixTable = new Array<number>(pattern.length).fill(0);
+  for (let index = 1, matched = 0; index < pattern.length; index++) {
+    while (matched > 0 && pattern[index] !== pattern[matched]) matched = prefixTable[matched - 1]!;
+    if (pattern[index] === pattern[matched]) matched++;
+    prefixTable[index] = matched;
+  }
+
+  let overlap = 0;
+  // The overlap cannot exceed the output length; scan only the input tail to avoid degrading to O(n^2) with many independent Traces.
+  const inputStart = Math.max(0, input.length - output.length);
+  for (let index = inputStart; index < input.length; index++) {
+    const identity = messageIdentity(input[index]!);
+    while (overlap > 0 && identity !== pattern[overlap]) overlap = prefixTable[overlap - 1]!;
+    if (identity === pattern[overlap]) overlap++;
+    if (overlap === pattern.length && index < input.length - 1) overlap = prefixTable[overlap - 1]!;
+  }
+  return [...input, ...output.slice(overlap)];
+}
+
+function bestMessageArray(value: unknown, fallbackTimestamp: string, includeSystem: boolean): MemoryMessage[] {
+  return findMessageArrays(value)
+    .map((items) => items.flatMap((item) => normalizeMessage(item, fallbackTimestamp, includeSystem)))
+    .sort((a, b) => b.length - a.length)[0] ?? [];
+}
+
+export function extractMessages(trace: OpikTrace, includeSystem = false): MemoryMessage[] {
+  const inputTime = normalizeTimestamp(trace.start_time ?? trace.created_at, new Date(0).toISOString());
+  const outputTime = normalizeTimestamp(trace.end_time ?? trace.start_time ?? trace.created_at, inputTime);
+  const inputMessages = bestMessageArray(trace.input, inputTime, includeSystem);
+  const outputMessages = bestMessageArray(trace.output, outputTime, includeSystem);
+  const merged = mergeMessages(inputMessages, outputMessages);
+  if (merged.length > 0) return merged;
+
+  const result: MemoryMessage[] = [];
+  const prompt = extractPrompt(trace.input, ["userPrompt", "user_prompt", "prompt", "query", "input", "content", "text"]);
+  const answer = extractPrompt(trace.output, ["responseContent", "response_content", "answer", "response", "completion", "output", "content", "text"]);
+  if (prompt) result.push(...splitContent(prompt).map((content) => ({ role: "user" as const, content, timestamp: inputTime })));
+  if (answer) result.push(...splitContent(answer).map((content) => ({ role: "assistant" as const, content, timestamp: outputTime })));
+  return result;
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+  return chunks;
+}
+
+export function assignMonotonicRecordedAt(messages: MemoryMessage[]): MemoryMessage[] {
+  let previousMs = -1;
+  return messages.map((message) => {
+    const parsedMs = Date.parse(message.timestamp);
+    const candidateMs = Number.isFinite(parsedMs) ? parsedMs : previousMs + 1;
+    const recordedAtMs = Math.max(candidateMs, previousMs + 1);
+    previousMs = recordedAtMs;
+    return { ...message, recordedAt: new Date(recordedAtMs).toISOString() };
+  });
+}
+
+function stableHash(value: unknown, length = 20): string {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, length);
+}
+
+function buildSessionId(project: OpikProject, trace: OpikTrace): string {
+  const source = trace.thread_id?.trim() || trace.id;
+  const readable = source.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 48) || "trace";
+  return `opik:${project.id}:${readable}:${stableHash(source, 12)}`;
+}
+
+export interface TraceImportEntry {
+  traceId: string;
+  sessionId: string;
+  messages: MemoryMessage[];
+}
+
+export interface LargeSessionPlan {
+  sourceSessionId: string;
+  targetSessionId: string;
+  traceIds: string[];
+  sourceMessageCount: number;
+  uniqueMessageCount: number;
+  droppedMessageCount: number;
+  messages: MemoryMessage[];
+}
+
+export function buildLargeSessionPlans(
+  entries: TraceImportEntry[],
+  maxSessionMessages: number,
+  strategy: "tail" | "error",
+): LargeSessionPlan[] {
+  if (maxSessionMessages === 0) return [];
+  const grouped = new Map<string, TraceImportEntry[]>();
+  for (const entry of entries) {
+    const group = grouped.get(entry.sessionId) ?? [];
+    group.push(entry);
+    grouped.set(entry.sessionId, group);
+  }
+
+  const plans: LargeSessionPlan[] = [];
+  for (const [sourceSessionId, group] of grouped) {
+    const sourceMessageCount = group.reduce((total, entry) => total + entry.messages.length, 0);
+    if (sourceMessageCount <= maxSessionMessages) continue;
+
+    let uniqueMessages: MemoryMessage[] = [];
+    for (const entry of group) uniqueMessages = mergeMessages(uniqueMessages, entry.messages);
+    if (strategy === "error") {
+      throw new Error(
+        `Session ${sourceSessionId} expected to write ${sourceMessageCount} L0 messages (${uniqueMessages.length} after cross-Trace dedup), `
+        + `exceeds safety limit ${maxSessionMessages}`,
+      );
+    }
+
+    const tailMessages = uniqueMessages.slice(-maxSessionMessages);
+    const snapshotHash = stableHash(tailMessages.map((message) => [message.role, message.content, message.timestamp]), 8);
+    plans.push({
+      sourceSessionId,
+      targetSessionId: `${sourceSessionId}:t${maxSessionMessages}:${snapshotHash}`,
+      traceIds: group.map((entry) => entry.traceId),
+      sourceMessageCount,
+      uniqueMessageCount: uniqueMessages.length,
+      droppedMessageCount: Math.max(0, uniqueMessages.length - tailMessages.length),
+      messages: assignMonotonicRecordedAt(tailMessages),
+    });
+  }
+  return plans;
+}
+
+function loadState(path: string, resume: boolean): ImportState {
+  if (!resume || !existsSync(path)) return { version: 1, completed: {} };
+  const parsed = JSON.parse(readFileSync(path, "utf8")) as Partial<ImportState>;
+  if (parsed.version !== 1 || !isRecord(parsed.completed)) throw new Error(`unsupported checkpoint file format: ${path}`);
+  return parsed as ImportState;
+}
+
+function saveState(path: string, state: ImportState): void {
+  const tmp = `${path}.tmp-${process.pid}`;
+  writeFileSync(tmp, `${JSON.stringify(state, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
+  renameSync(tmp, path);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+class NonRetryableHttpError extends Error {}
+
+class HttpClient {
+  constructor(private readonly opts: Pick<CliOptions, "timeoutMs" | "retries">) {}
+
+  async json<T>(url: string, init: RequestInit): Promise<T> {
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= this.opts.retries; attempt++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), this.opts.timeoutMs);
+      try {
+        const response = await fetch(url, { ...init, signal: controller.signal });
+        const text = await response.text();
+        if (!response.ok) {
+          const message = `HTTP ${response.status} ${response.statusText}: ${text.slice(0, 500)}`;
+          if (response.status !== 429 && response.status < 500) throw new NonRetryableHttpError(message);
+          lastError = new Error(message);
+        } else {
+          try {
+            return JSON.parse(text) as T;
+          } catch {
+            throw new Error(`HTTP ${response.status} returned non-JSON: ${text.slice(0, 500)}`);
+          }
+        }
+      } catch (error) {
+        if (error instanceof NonRetryableHttpError) throw error;
+        lastError = error;
+        if (attempt >= this.opts.retries) break;
+      } finally {
+        clearTimeout(timer);
+      }
+      const delay = Math.min(1000 * 2 ** attempt, 10_000) + Math.floor(Math.random() * 250);
+      console.warn(`[retry] ${attempt + 1}/${this.opts.retries}, retrying in ${delay}ms: ${String(lastError)}`);
+      await sleep(delay);
+    }
+    throw lastError instanceof Error ? lastError : new Error(String(lastError));
+  }
+}
+
+class OpikClient {
+  constructor(private readonly opts: CliOptions, private readonly http: HttpClient) {}
+
+  private headers(): Record<string, string> {
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+      "Comet-Workspace-Name": this.opts.workspace,
+    };
+    const apiKey = process.env.OPIK_API_KEY?.trim();
+    if (apiKey) {
+      const scheme = process.env.OPIK_AUTH_SCHEME?.trim();
+      headers.Authorization = scheme ? `${scheme} ${apiKey}` : apiKey;
+    }
+    return headers;
+  }
+
+  private async getPage<T>(path: string, params: URLSearchParams): Promise<Page<T>> {
+    const url = `${this.opts.opikApiBase}${path}?${params.toString()}`;
+    const page = await this.http.json<Page<T>>(url, { headers: this.headers() });
+    if (!Array.isArray(page.content) || typeof page.total !== "number") {
+      throw new Error(`Unexpected Opik pagination response format: ${url}`);
+    }
+    return page;
+  }
+
+  async projects(): Promise<OpikProject[]> {
+    const result: OpikProject[] = [];
+    for (let pageNo = 1; ; pageNo++) {
+      const page = await this.getPage<OpikProject>("/projects", new URLSearchParams({ page: String(pageNo), size: String(this.opts.pageSize) }));
+      result.push(...page.content.filter((item) => typeof item.id === "string" && typeof item.name === "string"));
+      if (result.length >= page.total || page.content.length === 0) break;
+    }
+    return result;
+  }
+
+  async traces(project: OpikProject): Promise<OpikTrace[]> {
+    const result: OpikTrace[] = [];
+    for (let pageNo = 1; ; pageNo++) {
+      const page = await this.getPage<OpikTrace>("/traces", new URLSearchParams({
+        page: String(pageNo),
+        size: String(this.opts.pageSize),
+        project_id: project.id,
+        truncate: "false",
+        strip_attachments: "true",
+      }));
+      result.push(...page.content.filter((item) => typeof item.id === "string"));
+      if (result.length >= page.total || page.content.length === 0) break;
+    }
+    return result.sort((a, b) => {
+      const ta = Date.parse(a.start_time ?? a.created_at ?? "") || 0;
+      const tb = Date.parse(b.start_time ?? b.created_at ?? "") || 0;
+      return ta - tb || a.id.localeCompare(b.id);
+    });
+  }
+}
+
+class MemoryCoreClient {
+  constructor(private readonly opts: CliOptions, private readonly http: HttpClient) {}
+
+  private headers(): Record<string, string> {
+    return {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${required(process.env.MEMORY_CORE_API_KEY, "MEMORY_CORE_API_KEY")}`,
+      "x-wamf-service-id": this.opts.serviceId,
+    };
+  }
+
+  private async post<T>(path: string, body: unknown): Promise<ApiEnvelope<T>> {
+    const response = await this.http.json<ApiEnvelope<T>>(`${this.opts.memoryUrl}${path}`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify(body),
+    });
+    if (response.code !== 0) throw new Error(`${path} failed: code=${response.code} message=${response.message} request_id=${response.request_id ?? "-"}`);
+    return response;
+  }
+
+  async add(sessionId: string, messages: MemoryMessage[]): Promise<number> {
+    const response = await this.post<{ accepted_ids: string[]; total_count: number }>("/v3/conversation/add", {
+      team_id: this.opts.teamId,
+      agent_id: this.opts.agentId,
+      user_id: this.opts.userId,
+      ...(this.opts.taskId ? { task_id: this.opts.taskId } : {}),
+      session_id: sessionId,
+      messages: messages.map((message) => ({
+        role: message.role,
+        content: message.content,
+        timestamp: message.timestamp,
+        recorded_at: message.recordedAt ?? message.timestamp,
+      })),
+    });
+    return response.data?.accepted_ids?.length ?? response.data?.total_count ?? 0;
+  }
+
+  async waitForIdle(mode: "l1" | "all", label: string): Promise<void> {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt <= this.opts.maxWaitMs) {
+      const response = await this.post<{
+        l1: { idle: boolean; queued: number; running: number };
+        l2: { idle: boolean; queued: number; running: number };
+        l3: { idle: boolean; queued: number; running: number };
+      }>("/v2/pipeline/status", {});
+      const status = response.data;
+      if (!status) throw new Error("/v2/pipeline/status missing data");
+      const idle = mode === "l1" ? status.l1.idle : status.l1.idle && status.l2.idle && status.l3.idle;
+      if (idle) {
+        console.log(`[pipeline] ${label} is idle`);
+        return;
+      }
+      await sleep(this.opts.pollMs);
+    }
+    console.warn(`[pipeline] ${label} waited more than ${this.opts.maxWaitMs}ms; imported data is already in L0 and background processing will continue`);
+  }
+}
+
+async function main(): Promise<void> {
+  const opts = parseCli(process.argv.slice(2));
+  const http = new HttpClient(opts);
+  const opik = new OpikClient(opts, http);
+  const memory = new MemoryCoreClient(opts, http);
+  const state = loadState(opts.stateFile, opts.resume);
+
+  console.log(`[config] opik=${opts.opikApiBase} workspace=${opts.workspace} memory=${opts.memoryUrl}`);
+  console.log(`[config] target team=${opts.teamId} agent=${opts.agentId} user=${opts.userId} service=${opts.serviceId} dryRun=${opts.dryRun}`);
+
+  const allProjects = await opik.projects();
+  const selected = opts.projects.length === 0
+    ? allProjects
+    : allProjects.filter((project) => opts.projects.includes(project.name) || opts.projects.includes(project.id));
+  const missingProjects = opts.projects.filter((name) => !selected.some((project) => project.name === name || project.id === name));
+  if (missingProjects.length > 0) throw new Error(`Opik project not found: ${missingProjects.join(", ")}`);
+  console.log(`[opik] found ${allProjects.length} projects, processing ${selected.length} this run`);
+
+  let seenTraces = 0;
+  let importedTraces = 0;
+  let skippedTraces = 0;
+  let importedMessages = 0;
+  let writeCount = 0;
+
+  for (const project of selected) {
+    const traces = await opik.traces(project);
+    const remainingTraceCount = opts.maxTraces > 0 ? Math.max(0, opts.maxTraces - seenTraces) : traces.length;
+    const selectedTraces = traces.slice(0, remainingTraceCount);
+    if (selectedTraces.length === 0) {
+      if (opts.maxTraces > 0 && seenTraces >= opts.maxTraces) break;
+      continue;
+    }
+    seenTraces += selectedTraces.length;
+    console.log(`[project] ${project.name} (${project.id}) traces=${traces.length} selected=${selectedTraces.length}`);
+
+    const entries: TraceImportEntry[] = [];
+    for (const trace of selectedTraces) {
+      const messages = extractMessages(trace, opts.includeSystem);
+      if (messages.length === 0) {
+        skippedTraces++;
+        console.warn(`[skip] project=${project.name} trace=${trace.id} no importable conversation in the raw input/output`);
+        continue;
+      }
+      entries.push({ traceId: trace.id, sessionId: buildSessionId(project, trace), messages });
+    }
+
+    const largeSessionPlans = buildLargeSessionPlans(entries, opts.maxSessionMessages, opts.largeSessionStrategy);
+    const largeSessionIds = new Set(largeSessionPlans.map((plan) => plan.sourceSessionId));
+
+    // For oversized Sessions, first write the latest deduplicated tail into a separate snapshot Session so a single Session does not exceed the L1 safety threshold.
+    for (const plan of largeSessionPlans) {
+      console.warn(
+        `[large-session] source=${plan.sourceSessionId} target=${plan.targetSessionId} traces=${plan.traceIds.length} `
+        + `projected=${plan.sourceMessageCount} unique=${plan.uniqueMessageCount} kept=${plan.messages.length} dropped=${plan.droppedMessageCount}`,
+      );
+      const batches = chunk(plan.messages, MAX_MESSAGES_PER_REQUEST);
+      let wrotePlan = false;
+      for (let index = 0; index < batches.length; index++) {
+        const batch = batches[index]!;
+        const checkpointKey = `large:v1:${project.id}:${stableHash(plan.targetSessionId)}:${stableHash(batch)}:${index}`;
+        if (opts.resume && state.completed[checkpointKey]) continue;
+        if (opts.dryRun) {
+          console.log(`[dry-run] project=${project.name} session=${plan.targetSessionId} batch=${index + 1}/${batches.length} messages=${batch.length}`);
+          continue;
+        }
+
+        const accepted = await memory.add(plan.targetSessionId, batch);
+        if (accepted !== batch.length) {
+          throw new Error(`Memory Core accepted count mismatch: session=${plan.targetSessionId} expected=${batch.length} accepted=${accepted}`);
+        }
+        state.completed[checkpointKey] = { imported_at: new Date().toISOString(), accepted };
+        saveState(opts.stateFile, state);
+        importedMessages += accepted;
+        writeCount++;
+        wrotePlan = true;
+        console.log(`[import] project=${project.name} session=${plan.targetSessionId} batch=${index + 1}/${batches.length} accepted=${accepted}`);
+        if (opts.waitEvery > 0 && writeCount % opts.waitEvery === 0) {
+          await memory.waitForIdle("l1", `write-${writeCount}`);
+        }
+      }
+      if (wrotePlan) importedTraces += plan.traceIds.length;
+    }
+
+    // Sessions within the limit keep the original per-Trace writes and checkpoint keys, staying compatible with existing import state.
+    for (const entry of entries) {
+      if (largeSessionIds.has(entry.sessionId)) continue;
+      const sourceBatches = chunk(entry.messages, MAX_MESSAGES_PER_REQUEST);
+      const batches = chunk(assignMonotonicRecordedAt(entry.messages), MAX_MESSAGES_PER_REQUEST);
+      let wroteTrace = false;
+      for (let index = 0; index < batches.length; index++) {
+        const batch = batches[index]!;
+        const checkpointKey = `${project.id}:${entry.traceId}:${stableHash(sourceBatches[index]!)}:${index}`;
+        if (opts.resume && state.completed[checkpointKey]) continue;
+        if (opts.dryRun) {
+          console.log(`[dry-run] project=${project.name} trace=${entry.traceId} session=${entry.sessionId} batch=${index + 1}/${batches.length} messages=${batch.length}`);
+          continue;
+        }
+
+        const accepted = await memory.add(entry.sessionId, batch);
+        if (accepted !== batch.length) throw new Error(`Memory Core accepted count mismatch: trace=${entry.traceId} expected=${batch.length} accepted=${accepted}`);
+        state.completed[checkpointKey] = { imported_at: new Date().toISOString(), accepted };
+        saveState(opts.stateFile, state);
+        importedMessages += accepted;
+        writeCount++;
+        wroteTrace = true;
+        console.log(`[import] project=${project.name} trace=${entry.traceId} batch=${index + 1}/${batches.length} accepted=${accepted}`);
+        if (opts.waitEvery > 0 && writeCount % opts.waitEvery === 0) {
+          await memory.waitForIdle("l1", `write-${writeCount}`);
+        }
+      }
+      if (wroteTrace) importedTraces++;
+    }
+
+    if (opts.maxTraces > 0 && seenTraces >= opts.maxTraces) break;
+  }
+
+  if (!opts.dryRun && opts.finalWait && writeCount > 0) await memory.waitForIdle("all", "final");
+  console.log(`[done] seen_traces=${seenTraces} imported_traces=${importedTraces} skipped_traces=${skippedTraces} writes=${writeCount} imported_messages=${importedMessages}`);
+  if (!opts.dryRun) console.log(`[done] checkpoint file: ${opts.stateFile}`);
+}
+
+const entry = process.argv[1] ? pathToFileURL(resolvePath(process.argv[1])).href : "";
+if (import.meta.url === entry) {
+  main().catch((error) => {
+    console.error(`[fatal] ${error instanceof Error ? error.stack ?? error.message : String(error)}`);
+    process.exitCode = 1;
+  });
+}

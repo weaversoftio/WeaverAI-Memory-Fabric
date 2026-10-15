@@ -1,0 +1,322 @@
+/**
+ * LoginGate login page styles -- single-column centered, bright minimalist style.
+ *
+ * Visual tone: near-white soft gradient background + dot-matrix ripple animation (Canvas) + centered frosted-glass card.
+ * Goal is "simple and bright": downplay decoration, strengthen content hierarchy (logo -> title -> form -> primary button).
+ *
+ * Note: the login page is a standalone full-screen scene, not wrapped in ConsoleLayout, so bright base colors are hardcoded here
+ * instead of the console's Tea background tokens; text and strokes still use Tea tokens where possible for consistency.
+ * In dark mode everything switches to dark background with light text (see the .dark branch at the end of the file).
+ */
+
+._wamf-login {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  overflow-y: auto;
+  /* Soft gradient from slightly cool white at top to slightly warm white at bottom, creating a "light from above" brightness */
+  background:
+    radial-gradient(120% 80% at 50% -10%, #ffffff 0%, #f7f9fc 45%, #eef2f7 100%);
+}
+
+/* ===== Animated background layer ===== */
+._wamf-login-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+._wamf-login-bg-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Add a soft glow in the center so the card area is brighter and the surroundings converge naturally (avoid the dot matrix stealing attention) */
+/* Add a soft glow in the center so the card area is brighter and the surroundings converge naturally.
+      Note: the pseudo-element is drawn above the canvas; too high an opacity directly covers the dot-matrix animation
+      (previously the center used 0.92 white and the dots were almost invisible). Form readability is guaranteed by the card's own
+      frosted-glass background color; here we only add a very weak highlight. */
+._wamf-login-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    56% 44% at 50% 44%,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(255, 255, 255, 0.24) 45%,
+    rgba(255, 255, 255, 0) 76%
+  );
+}
+
+/* ===== Content area ===== */
+._wamf-login-main {
+  position: relative;
+  z-index: 1;
+  margin: auto;
+  width: 100%;
+  max-width: 440px;
+  padding: 48px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+._wamf-login-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 36px 36px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(12px) saturate(1.1);
+  -webkit-backdrop-filter: blur(12px) saturate(1.1);
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.04),
+    0 12px 32px -8px rgba(16, 24, 40, 0.1),
+    0 32px 64px -24px rgba(16, 24, 40, 0.12);
+}
+
+._wamf-login-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+._wamf-login-title {
+  margin: 20px 0 0;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 32px;
+  letter-spacing: -0.01em;
+  color: #0f172a;
+  text-align: center;
+}
+
+._wamf-login-subtitle {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: #64748b;
+  text-align: center;
+}
+
+/* ===== Form ===== */
+._wamf-login-form {
+  width: 100%;
+  margin-top: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  /* Elements inside the form are uniformly left-aligned (the card itself is center-aligned) */
+  align-items: stretch;
+  text-align: start;
+}
+
+._wamf-login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+._wamf-login-label {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  color: #334155;
+}
+
+._wamf-login-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: #94a3b8;
+}
+
+._wamf-login-alert .tea-alert {
+  margin: 0;
+}
+
+/* Primary button: taller, rounded, solid dark fill, matching the "large primary action button" of the reference design */
+._wamf-login-submit.tea-btn {
+  width: 100%;
+  height: 42px;
+  margin-top: 2px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+._wamf-login-field-label {
+  margin: 18px 0 6px;
+  color: #172033;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+._wamf-login-pending-title {
+  margin: 20px 0 10px;
+  color: #172033;
+  font-size: 20px;
+  font-weight: 600;
+  text-align: center;
+}
+
+._wamf-login-pending ._wamf-login-submit.tea-btn {
+  width: 100%;
+}
+
+/*
+ * Login method switch links (user_key page -> Enterprise SSO, Enterprise SSO confirm page -> user_key).
+ *
+ * Use a link rather than a full-width button: it is a side entry for "switch method" and must not
+ * compete for visual weight with the primary action (login / confirm creation), otherwise it turns back into an implicit method-selection page.
+ */
+._wamf-login-switch {
+  margin-top: 16px;
+  text-align: center;
+}
+
+/* SSO sign-in button(s) above the user_key form, and the "or" line between login options. */
+._wamf-login-sso {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+._wamf-login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0 10px;
+  font-size: 12px;
+  line-height: 18px;
+  color: #94a3b8;
+}
+
+._wamf-login-divider::before,
+._wamf-login-divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid #e2e8f0;
+}
+
+.dark ._wamf-login-divider {
+  color: #64748b;
+}
+
+.dark ._wamf-login-divider::before,
+.dark ._wamf-login-divider::after {
+  border-top-color: #334155;
+}
+
+._wamf-login-switch ._wamf-login-switch-link.tea-btn {
+  height: auto;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+._wamf-login-footer {
+  margin: 20px 0 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+/* Tea form controls on this page uniformly fill the width (a Select's button appearance defaults to content width) */
+._wamf-login-form .tea-form-control,
+._wamf-login-form .tea-dropdown,
+._wamf-login-form .tea-select {
+  width: 100%;
+}
+
+._wamf-login-form .tea-input {
+  width: 100%;
+}
+
+/* ===== Narrow-screen adaptation ===== */
+@media (max-width: 480px) {
+  ._wamf-login-main {
+    padding: 24px 16px;
+  }
+
+  ._wamf-login-card {
+    padding: 32px 20px 28px;
+    border-radius: 14px;
+  }
+
+  ._wamf-login-title {
+    font-size: 21px;
+    line-height: 28px;
+  }
+}
+
+/* ===== Dark mode ===== */
+.dark ._wamf-login {
+  background: radial-gradient(120% 80% at 50% -10%, #131c2e 0%, #0f172a 45%, #0b1120 100%);
+}
+
+.dark ._wamf-login-bg::after {
+  background: radial-gradient(
+    56% 44% at 50% 44%,
+    rgba(15, 23, 42, 0.5) 0%,
+    rgba(15, 23, 42, 0.24) 45%,
+    rgba(15, 23, 42, 0) 76%
+  );
+}
+
+.dark ._wamf-login-card {
+  border-color: rgba(148, 163, 184, 0.16);
+  background: rgba(23, 33, 54, 0.72);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 12px 32px -8px rgba(0, 0, 0, 0.36),
+    0 32px 64px -24px rgba(0, 0, 0, 0.44);
+}
+
+.dark ._wamf-login-title {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.dark ._wamf-login-subtitle {
+  color: #94a3b8;
+}
+
+.dark ._wamf-login-label {
+  color: #cbd5e1;
+}
+
+.dark ._wamf-login-hint,
+.dark ._wamf-login-footer {
+  color: #64748b;
+}
+
+._wamf-login-switch-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+._wamf-login-switch-label {
+  color: #172033;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+._wamf-login-copy {
+  margin-top: 8px;
+  width: 100%;
+}
+
+._wamf-login-warn {
+  color: #d54941;
+}

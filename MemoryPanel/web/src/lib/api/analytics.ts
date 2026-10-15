@@ -1,0 +1,540 @@
+/**
+ * api/analytics.ts - client for the "observability" query-plane API.
+ *
+ * Goes through the Panel's /api/v1/analytics/* transparent proxy -> kernel /v3/analytics/* (iwiki 4036925405).
+ * Same as meta: injects X-Wamf-Service-Id + X-Wamf-User-Key, and envelope unwrapping reuses base's
+ * unwrapEnvelope (keeping the same error semantics as meta).
+ *
+ * The page consumes only the "metrics" query plane: config / session-init (summary, timeseries,
+ * bypass-reasons) / tool-calls (endpoint-share, top-bodies). watermark / detail-fetch
+ * are recall incremental data interfaces, outside the page's scope; spaces (the full space_id list) contradicts the
+ * "isolated by logged-in instance" data-plane semantics and has been taken offline.
+ *
+ * All interfaces are idempotent read-only queries, uniformly deduplicated via dedupeInFlight: this both removes the double effect invocation of React 18 StrictMode
+ * in development, and avoids piling up duplicate requests when the 60s timed refresh overlaps with a manual refresh.
+ */
+
+import { ApiError, dedupeInFlight, request, unwrapEnvelope } from './base';
+import { getPanelSession } from '../panelSession';
+import type { MetaEnvelope } from './types';
+
+/** Time window (the kernel schema accepts only 1/7/30/90). */
+export type AnalyticsRangeDays = 1 | 7 | 30 | 90;
+
+export interface AnalyticsConfig {
+  configured: boolean;
+  reachable: boolean;
+  database: string;
+  tables: Record<string, boolean>;
+}
+
+/** Period-over-period object (shared by penetration rate / bypass rate). */
+export interface PctWithDelta {
+  current_pct: number;
+  previous_pct: number;
+  delta_pp: number;
+}
+
+export interface SessionInitSummary {
+  tool_call_rate: PctWithDelta;
+  avg_calls: { current_avg: number; previous_avg: number; delta: number };
+  bypass_rate: PctWithDelta & { bypass_sessions: number; non_bypass_sessions: number };
+  distinct_init_sessions: number;
+  total_bridge_calls: number;
+}
+
+/** session-init/timeseries row: three lines: init / with calls / bypass. */
+export interface SessionTrendRow {
+  day: string;
+  init_sessions: number;
+  called_sessions: number;
+  bypass_sessions: number;
+}
+
+export interface EndpointShareRow {
+  executed_endpoint: string;
+  calls: number;
+  pct: number;
+}
+
+export interface TopBodyRow {
+  executed_endpoint: string;
+  request_body_hash: string;
+  sample_body: string;
+  occurrences: number;
+  pct: number;
+}
+
+export interface BypassReasonRow {
+  bypass_reason: string;
+  sessions: number;
+  pct: number;
+}
+
+/** A single call detail in tool-calls/list (shared by the trace view and member aggregation). */
+export interface ToolCallRow {
+  timestamp: string;
+  session_key: string;
+  turn_seq: number;
+  user_id: string;
+  agent_source: string;
+  kind: string;
+  bridge_source: string;
+  initiated_tool: string;
+  executed_endpoint: string;
+  request_body: string;
+  request_body_hash: string;
+  upstream_status: number;
+  elapsed_ms: number;
+  reject_reason: string;
+}
+
+export interface ToolCallListResult {
+  total: number;
+  offset: number;
+  limit: number;
+  items: ToolCallRow[];
+}
+
+/** tool-calls/list filters (the four dimensions the kernel supports). */
+export interface ToolCallListQuery extends AnalyticsQueryBody {
+  kind?: 'bridge_call' | 'model_intent';
+  user_id?: string;
+  bridge_source?: string;
+  /** Fuzzy match (the kernel uses LIKE %value%). */
+  executed_endpoint?: string;
+  offset?: number;
+  limit?: number;
+}
+
+/** Page size per fetch during panel-side aggregation (kernel schema max 200). */
+export const TOOL_CALL_PAGE_MAX = 200;
+
+// -- usage (cost view: token / credit / model distribution) --------------------------
+
+/**
+ * usage/summary aggregation.
+ *
+ * Warning: `cache_hit_rate` is `sum(cache_hit_tokens)*100/nullIf(sum(prompt_tokens),0)` in the kernel SQL,
+ * and returns **null** (cannot be computed) when the sum of prompt_tokens is 0, which differs from the "hit rate 0%" semantics,
+ * so null is kept here instead of normalizing to 0. Likewise: with no data the kernel returns `{}` and every field is undefined.
+ */
+export interface UsageSummary {
+  total_requests: number;
+  total_prompt_tokens: number;
+  total_completion_tokens: number;
+  total_tokens: number;
+  total_cache_hit_tokens: number;
+  /** null = no prompt tokens, cannot be computed */
+  cache_hit_rate: number | null;
+  total_credit: number;
+  total_credit_saved: number;
+  total_compress_tokens_saved: number;
+  distinct_sessions: number;
+  distinct_users: number;
+  distinct_models: number;
+}
+
+export interface UsageTrendRow {
+  day: string;
+  requests: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  cache_hit_tokens: number;
+  credit: number;
+  credit_saved: number;
+}
+
+export interface UsageModelRow {
+  model_id: string;
+  model_name: string;
+  requests: number;
+  total_tokens: number;
+  credit: number;
+  /** null = global request count is 0, share cannot be computed */
+  pct_requests: number | null;
+  /** null = global credit is 0, share cannot be computed */
+  pct_credit: number | null;
+  /** Number of requests routed to this model from other models (routed_from non-empty). */
+  routed_to_count: number;
+}
+
+export interface UsageLogRow {
+  timestamp: string;
+  session_key: string;
+  turn_seq: number;
+  model_id: string;
+  model_name: string;
+  user_id: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  cache_hit_tokens: number;
+  credit: number;
+  credit_saved: number;
+  /** Non-empty means this request was routed from this model. */
+  routed_from: string;
+  stream: boolean;
+}
+
+/** Reasons for usage_raw anomaly reports (kernel zod enum; other values cause a 400). */
+export const USAGE_RAW_REASONS = [
+  'non_tokenhub',
+  'unknown_model',
+  'invalid_format',
+  'invalid_credit',
+  'report_failed',
+] as const;
+
+export type UsageRawReason = (typeof USAGE_RAW_REASONS)[number];
+
+export interface UsageRawRow {
+  timestamp: string;
+  model_id: string;
+  key_id: string;
+  user_id: string;
+  session_key: string;
+  /** Raw reported payload (string or JSON text). */
+  usage: string;
+  reason: string;
+  space_id: string;
+}
+
+export interface UsageListQuery extends AnalyticsQueryBody {
+  user_id?: string;
+  model_id?: string;
+  offset?: number;
+  limit?: number;
+}
+
+export interface UsageRawListQuery extends AnalyticsQueryBody {
+  reason?: UsageRawReason;
+  offset?: number;
+  limit?: number;
+}
+
+export interface PagedResult<T> {
+  total: number;
+  offset: number;
+  limit: number;
+  items: T[];
+}
+
+/** Unified time-window body for panel requests. */
+export interface AnalyticsQueryBody {
+  days?: AnalyticsRangeDays;
+  space_id?: string;
+}
+
+const EMPTY_MESSAGE = 'empty analytics response';
+
+function sessionHeaders(): Record<string, string> {
+  const session = getPanelSession();
+  if (!session) throw new ApiError(401, 'Unauthorized', 'no active panel session');
+  return {
+    'X-Wamf-Service-Id': session.instanceId,
+    'X-Wamf-User-Key': session.userKey,
+  };
+}
+
+/**
+ * Call an analytics action and unwrap the envelope.
+ *
+ * body is passed only for POST (GET actions pass undefined, request does not attach a body - the kernel
+ * declares config / spaces as GET, and a body would make the proxy layer judge the method as mismatched).
+ * content-type is set automatically by request() when there is a body, so it is not set again here.
+ */
+async function call<T>(
+  method: 'GET' | 'POST',
+  action: string,
+  body?: unknown,
+): Promise<T> {
+  const dedupeKey = `analytics:${method}:${action}:${body === undefined ? '' : JSON.stringify(body)}`;
+  return dedupeInFlight(dedupeKey, async () => {
+    const envelope = await request<MetaEnvelope<T>>(
+      method,
+      `/api/v1/analytics/${action}`,
+      body,
+      sessionHeaders(),
+    );
+    return unwrapEnvelope(envelope, EMPTY_MESSAGE);
+  });
+}
+
+/** CH numeric columns may become strings after HTTP JSON (UInt64); normalize them all to number. */
+const toNumber = (v: unknown): number => {
+  const n = Number(v ?? 0);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const toText = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
+
+/**
+ * Numeric normalization that preserves null semantics.
+ *
+ * Ratio columns that use `nullIf(divisor, 0)` in the kernel SQL (cache_hit_rate / pct_requests /
+ * pct_credit) return null when the denominator is 0 - meaning "cannot be computed", which differs from "equals 0".
+ * Null must be preserved here and left to the UI to show a placeholder; it must not silently become 0 and be misread.
+ */
+const toNullableNumber = (v: unknown): number | null => {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+/** CH boolean columns may be 0/1, '0'/'1' or true/false. */
+const toBool = (v: unknown): boolean => {
+  if (typeof v === 'boolean') return v;
+  if (typeof v === 'number') return v !== 0;
+  if (typeof v === 'string') return v !== '' && v !== '0' && v.toLowerCase() !== 'false';
+  return false;
+};
+
+export const analyticsApi = {
+  /** Kernel CH config status probe (GET). */
+  config: (): Promise<AnalyticsConfig> => call('GET', 'config'),
+
+  // Note: spaces (/analytics/spaces full space_id list) is not provided - that interface returns the space_ids of all instances
+  // on the shared CH, which contradicts the observability page's "isolated by logged-in instance" data-plane semantics;
+  // the page's Space is fixed to auth.instance_id and no longer consumes this endpoint.
+
+  sessionSummary: (body: AnalyticsQueryBody): Promise<SessionInitSummary> =>
+    call('POST', 'session-init/summary', body),
+
+  sessionTimeseries: async (body: AnalyticsQueryBody): Promise<SessionTrendRow[]> => {
+    const data = await call<{ series: Array<Record<string, unknown>> }>(
+      'POST',
+      'session-init/timeseries',
+      body,
+    );
+    return (data.series ?? []).map((r) => ({
+      day: toText(r.day),
+      init_sessions: toNumber(r.init_sessions),
+      called_sessions: toNumber(r.called_sessions),
+      bypass_sessions: toNumber(r.bypass_sessions),
+    }));
+  },
+
+  endpointShare: async (body: AnalyticsQueryBody): Promise<EndpointShareRow[]> => {
+    const data = await call<{ endpoints: Array<Record<string, unknown>> }>(
+      'POST',
+      'tool-calls/endpoint-share',
+      body,
+    );
+    return (data.endpoints ?? []).map((r) => ({
+      executed_endpoint: toText(r.executed_endpoint),
+      calls: toNumber(r.calls),
+      pct: toNumber(r.pct),
+    }));
+  },
+
+  topBodies: async (body: AnalyticsQueryBody & { top_n?: number }): Promise<TopBodyRow[]> => {
+    const data = await call<{ items: Array<Record<string, unknown>> }>(
+      'POST',
+      'tool-calls/top-bodies',
+      body,
+    );
+    return (data.items ?? []).map((r) => ({
+      executed_endpoint: toText(r.executed_endpoint),
+      request_body_hash: toText(r.request_body_hash),
+      sample_body: toText(r.sample_body),
+      occurrences: toNumber(r.occurrences),
+      pct: toNumber(r.pct),
+    }));
+  },
+
+  bypassReasons: async (body: AnalyticsQueryBody): Promise<BypassReasonRow[]> => {
+    const data = await call<{ reasons: Array<Record<string, unknown>> }>(
+      'POST',
+      'session-init/bypass-reasons',
+      body,
+    );
+    return (data.reasons ?? []).map((r) => ({
+      bypass_reason: toText(r.bypass_reason),
+      sessions: toNumber(r.sessions),
+      pct: toNumber(r.pct),
+    }));
+  },
+
+  /** Tool call details (trace view). Kernel ORDER BY timestamp DESC. */
+  toolCallList: async (query: ToolCallListQuery): Promise<ToolCallListResult> => {
+    const data = await call<{
+      total: number;
+      offset: number;
+      limit: number;
+      items: Array<Record<string, unknown>>;
+    }>('POST', 'tool-calls/list', query);
+    return {
+      total: toNumber(data.total),
+      offset: toNumber(data.offset),
+      limit: toNumber(data.limit),
+      items: (data.items ?? []).map((r) => ({
+        timestamp: toText(r.timestamp),
+        session_key: toText(r.session_key),
+        turn_seq: toNumber(r.turn_seq),
+        user_id: toText(r.user_id),
+        agent_source: toText(r.agent_source),
+        kind: toText(r.kind),
+        bridge_source: toText(r.bridge_source),
+        initiated_tool: toText(r.initiated_tool),
+        executed_endpoint: toText(r.executed_endpoint),
+        request_body: toText(r.request_body),
+        request_body_hash: toText(r.request_body_hash),
+        upstream_status: toNumber(r.upstream_status),
+        elapsed_ms: toNumber(r.elapsed_ms),
+        reject_reason: toText(r.reject_reason),
+      })),
+    };
+  },
+
+  /**
+   * Fetch multiple pages of call details in succession, for panel-side per-member aggregation.
+   *
+   * The kernel offers no "aggregate by user" display API (watermark is for the recall incremental pipeline,
+   * and its structure is unsuitable for display), and Core is not changed in this phase, so aggregation can only happen on the panel side.
+   *
+   * Warning: this is **sampling**, not the full set: max 200 per page, at most maxPages pages are fetched. The caller must surface the returned
+   * sampled/total in the UI, and must not present sampled results as the full-set basis.
+   */
+  toolCallSample: async (
+    body: AnalyticsQueryBody,
+    maxPages: number,
+  ): Promise<{ rows: ToolCallRow[]; total: number; truncated: boolean }> => {
+    const rows: ToolCallRow[] = [];
+    let total = 0;
+    let truncated = false;
+
+    for (let page = 0; page < maxPages; page++) {
+      const offset = page * TOOL_CALL_PAGE_MAX;
+      const res = await analyticsApi.toolCallList({
+        ...body,
+        kind: 'bridge_call',
+        offset,
+        limit: TOOL_CALL_PAGE_MAX,
+      });
+      total = res.total;
+      rows.push(...res.items);
+
+      if (res.items.length < TOOL_CALL_PAGE_MAX || rows.length >= total) break;
+      if (page === maxPages - 1 && rows.length < total) truncated = true;
+    }
+
+    return { rows, total, truncated };
+  },
+
+  // -- usage (cost view) --------------------------------------------------
+
+  /** Aggregate totals of token / credit. With no data the kernel returns {}; here it is normalized to all 0 + ratio null. */
+  usageSummary: async (body: AnalyticsQueryBody): Promise<UsageSummary> => {
+    const d = await call<Record<string, unknown>>('POST', 'usage/summary', body);
+    return {
+      total_requests: toNumber(d.total_requests),
+      total_prompt_tokens: toNumber(d.total_prompt_tokens),
+      total_completion_tokens: toNumber(d.total_completion_tokens),
+      total_tokens: toNumber(d.total_tokens),
+      total_cache_hit_tokens: toNumber(d.total_cache_hit_tokens),
+      cache_hit_rate: toNullableNumber(d.cache_hit_rate),
+      total_credit: toNumber(d.total_credit),
+      total_credit_saved: toNumber(d.total_credit_saved),
+      total_compress_tokens_saved: toNumber(d.total_compress_tokens_saved),
+      distinct_sessions: toNumber(d.distinct_sessions),
+      distinct_users: toNumber(d.distinct_users),
+      distinct_models: toNumber(d.distinct_models),
+    };
+  },
+
+  usageTimeseries: async (body: AnalyticsQueryBody): Promise<UsageTrendRow[]> => {
+    const d = await call<{ series: Array<Record<string, unknown>> }>(
+      'POST',
+      'usage/timeseries',
+      body,
+    );
+    return (d.series ?? []).map((r) => ({
+      day: toText(r.day),
+      requests: toNumber(r.requests),
+      prompt_tokens: toNumber(r.prompt_tokens),
+      completion_tokens: toNumber(r.completion_tokens),
+      cache_hit_tokens: toNumber(r.cache_hit_tokens),
+      credit: toNumber(r.credit),
+      credit_saved: toNumber(r.credit_saved),
+    }));
+  },
+
+  usageByModel: async (body: AnalyticsQueryBody): Promise<UsageModelRow[]> => {
+    const d = await call<{ models: Array<Record<string, unknown>> }>(
+      'POST',
+      'usage/by-model',
+      body,
+    );
+    return (d.models ?? []).map((r) => ({
+      model_id: toText(r.model_id),
+      model_name: toText(r.model_name),
+      requests: toNumber(r.requests),
+      total_tokens: toNumber(r.total_tokens),
+      credit: toNumber(r.credit),
+      pct_requests: toNullableNumber(r.pct_requests),
+      pct_credit: toNullableNumber(r.pct_credit),
+      routed_to_count: toNumber(r.routed_to_count),
+    }));
+  },
+
+  /** Per-request usage details (supports user_id / model_id filters). */
+  usageList: async (query: UsageListQuery): Promise<PagedResult<UsageLogRow>> => {
+    const d = await call<{
+      total: number;
+      offset: number;
+      limit: number;
+      items: Array<Record<string, unknown>>;
+    }>('POST', 'usage/list', query);
+    return {
+      total: toNumber(d.total),
+      offset: toNumber(d.offset),
+      limit: toNumber(d.limit),
+      items: (d.items ?? []).map((r) => ({
+        timestamp: toText(r.timestamp),
+        session_key: toText(r.session_key),
+        turn_seq: toNumber(r.turn_seq),
+        model_id: toText(r.model_id),
+        model_name: toText(r.model_name),
+        user_id: toText(r.user_id),
+        prompt_tokens: toNumber(r.prompt_tokens),
+        completion_tokens: toNumber(r.completion_tokens),
+        total_tokens: toNumber(r.total_tokens),
+        cache_hit_tokens: toNumber(r.cache_hit_tokens),
+        credit: toNumber(r.credit),
+        credit_saved: toNumber(r.credit_saved),
+        routed_from: toText(r.routed_from),
+        stream: toBool(r.stream),
+      })),
+    };
+  },
+
+  /**
+   * Billing anomaly report details (usage_raw).
+   *
+   * reason must come from USAGE_RAW_REASONS - the kernel validates with a zod enum, and other values get a 400 directly.
+   */
+  usageRawList: async (query: UsageRawListQuery): Promise<PagedResult<UsageRawRow>> => {
+    const d = await call<{
+      total: number;
+      offset: number;
+      limit: number;
+      items: Array<Record<string, unknown>>;
+    }>('POST', 'usage-raw/list', query);
+    return {
+      total: toNumber(d.total),
+      offset: toNumber(d.offset),
+      limit: toNumber(d.limit),
+      items: (d.items ?? []).map((r) => ({
+        timestamp: toText(r.timestamp),
+        model_id: toText(r.model_id),
+        key_id: toText(r.key_id),
+        user_id: toText(r.user_id),
+        session_key: toText(r.session_key),
+        usage: toText(r.usage),
+        reason: toText(r.reason),
+        space_id: toText(r.space_id),
+      })),
+    };
+  },
+};

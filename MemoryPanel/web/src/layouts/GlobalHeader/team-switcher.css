@@ -1,0 +1,295 @@
+/**
+ * TeamSwitcher styles (top-bar inline pill version)
+ *
+ * The list part is drawn by hand with native ul/li/button, not depending on Tea List's class names and built-in styles
+ * (Tea List.Item selected automatically inserts a checkmark and changes padding, and split="divide" injects
+ * padding/border-top, which repeatedly conflict with the card-style row styling).
+ * Colors all go through Tea Design Tokens (--tea-color-*).
+ */
+
+._memory-team-switcher-dropdown.tea-dropdown {
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+/* ===== Trigger button: inline pill in the top bar, not full width ===== */
+._memory-team-switcher-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 8px 0 4px;
+  border: 1px solid var(--tea-color-border-primary-default);
+  border-radius: 6px;
+  background: var(--tea-color-bg-primary-default);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+  color: var(--tea-color-text-primary);
+  max-width: 220px;
+}
+
+._memory-team-switcher-trigger:hover {
+  background: var(--tea-color-bg-secondary-hover);
+  border-color: var(--tea-color-border-secondary-default);
+}
+
+._memory-team-switcher-avatar,
+._memory-team-switcher-item-avatar {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  color: var(--tea-color-text-on-bg-brand-default);
+  font-weight: 600;
+  border-radius: 4px;
+}
+
+._memory-team-switcher-avatar {
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+}
+
+._memory-team-switcher-meta {
+  flex: 1;
+  min-width: 0;
+  text-align: start;
+}
+
+._memory-team-switcher-name {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tea-color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 16px;
+}
+
+._memory-team-switcher-id {
+  display: block;
+  font-size: 12px;
+  color: var(--tea-color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 14px;
+}
+
+._memory-team-switcher-chevron {
+  flex-shrink: 0;
+  color: var(--tea-color-text-tertiary);
+}
+
+/* ===== Dropdown panel ===== */
+._memory-team-switcher-box.tea-dropdown-box {
+  width: 320px;
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+  border-radius: 4px;
+}
+
+._memory-team-switcher-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 120px);
+}
+
+._memory-team-switcher-panel-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--tea-color-border-primary-default);
+}
+
+._memory-team-switcher-panel-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tea-color-text-primary);
+  line-height: 20px;
+}
+
+._memory-team-switcher-panel-desc {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--tea-color-text-secondary);
+  line-height: 18px;
+}
+
+._memory-team-switcher-panel-label {
+  flex-shrink: 0;
+  padding: 10px 12px 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--tea-color-text-tertiary);
+}
+
+._memory-team-switcher-list-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* Leave 8px on the left and right so the selected row's border is fully visible (previously the border was clipped by the container) */
+  padding: 0 8px 8px;
+}
+
+._memory-team-switcher-empty {
+  padding: 12px 8px;
+  font-size: 12px;
+  color: var(--tea-color-text-tertiary);
+  line-height: 18px;
+}
+
+/* ===== Team list (native ul/li) ===== */
+._memory-team-switcher-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Row container: relatively positioned, to host the absolutely positioned action button overlay on the right.
+   The action buttons do not take part in the row's flex layout, so they do not squeeze the team name/member count, and do not cause
+   "row elements jumping when shown/hidden". */
+._memory-team-switcher-row {
+  position: relative;
+}
+
+/* Clickable whole row (switch team). Uses a button rather than li to carry the click, for better semantics and keyboard accessibility. */
+._memory-team-switcher-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+}
+
+._memory-team-switcher-item:hover {
+  background: var(--tea-color-bg-secondary-hover);
+}
+
+._memory-team-switcher-item:focus-visible {
+  outline: 2px solid var(--tea-color-border-brand-default);
+  outline-offset: -1px;
+}
+
+/* Selected state: light brand background + brand color border (no longer relies on Tea's is-selected, and no longer shows a checkmark) */
+._memory-team-switcher-item.is-active {
+  background: var(--tea-color-bg-brand-lighten-default);
+  border-color: var(--tea-color-border-brand-default);
+}
+
+._memory-team-switcher-item-avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+}
+
+._memory-team-switcher-item-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+._memory-team-switcher-item-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--tea-color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 18px;
+}
+
+._memory-team-switcher-item-count {
+  display: block;
+  font-size: 12px;
+  color: var(--tea-color-text-tertiary);
+  line-height: 16px;
+}
+
+/* ===== Edit/delete action buttons on the right of the row (absolutely positioned overlay) =====
+   Hidden by default, fading in on hover / keyboard focus of that row; since absolutely positioned, showing and hiding
+   do not change the row layout, avoiding text shifts. */
+._memory-team-switcher-item-ops {
+  position: absolute;
+  top: 50%;
+  inset-inline-end: 8px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease-in-out;
+}
+
+._memory-team-switcher-row:hover ._memory-team-switcher-item-ops,
+._memory-team-switcher-row:focus-within ._memory-team-switcher-item-ops {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+._memory-team-switcher-item-op {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: var(--tea-color-bg-primary-default);
+  color: var(--tea-color-text-secondary);
+  cursor: pointer;
+  transition: background-color 0.12s ease-in-out, color 0.12s ease-in-out;
+}
+
+._memory-team-switcher-item-op:hover {
+  background: var(--tea-color-bg-secondary-hover);
+  color: var(--tea-color-text-primary);
+}
+
+._memory-team-switcher-item-op:focus-visible {
+  outline: 2px solid var(--tea-color-border-brand-default);
+  outline-offset: 1px;
+}
+
+/* Delete button: gives danger color feedback on hover */
+._memory-team-switcher-item-op-danger:hover {
+  background: rgba(226, 45, 45, 0.1);
+  color: #e22d2d;
+}
+
+/* ===== New team ===== */
+._memory-team-switcher-footer {
+  flex-shrink: 0;
+  padding: 8px;
+  border-top: 1px solid var(--tea-color-border-primary-default);
+}
+
+._memory-team-switcher-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+._memory-team-switcher-create-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+._memory-team-switcher-create-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}

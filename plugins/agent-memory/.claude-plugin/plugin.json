@@ -1,0 +1,44 @@
+{
+  "name": "agent-memory",
+  "version": "0.4.0",
+  "description": "Team memory for Claude Code: search, add, edit and delete memory through the memory MCP, save every turn to the agent's raw history (L0), and load the agent's profile and scenes at session start.",
+  "author": {
+    "name": "Weaversoft"
+  },
+  "repository": "https://github.com/weaversoftio/WeaverAI-Memory-Fabric",
+  "license": "MIT",
+  "keywords": [
+    "memory",
+    "mcp",
+    "team"
+  ],
+  "userConfig": {
+    "memory_url": {
+      "type": "string",
+      "title": "Memory server URL",
+      "description": "Base URL of the memory server, without /mcp. Production (WAIP): https://weaverai-api.platform.weaversoft.io/api/mcp-proxy/memory-mcp. Local stack: http://localhost:8097.",
+      "default": "https://weaverai-api.platform.weaversoft.io/api/mcp-proxy/memory-mcp",
+      "required": true
+    },
+    "memory_key": {
+      "type": "string",
+      "title": "Your memory key (local server only)",
+      "description": "Leave empty in production: through the WAIP MCP proxy, Agent Memory knows who you are from your WAIP token. Only a local server needs your sk-mem key (WeaverAI Memory Fabric panel, API Key page).",
+      "sensitive": true,
+      "default": ""
+    },
+    "agent_id": {
+      "type": "string",
+      "title": "Agent ID (optional)",
+      "description": "Which of your agents to use. Leave empty if you own only one agent.",
+      "default": ""
+    },
+    "platform_token": {
+      "type": "string",
+      "title": "WAIP token",
+      "description": "Your own WAIP token from the memory-mcp entry's Connection tab in the WAIP MCP store. It tells Agent Memory who you are. For a local server, enter local.",
+      "sensitive": true,
+      "required": true
+    }
+  }
+}

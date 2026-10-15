@@ -1,0 +1,28 @@
+/**
+ * Styles for the dialog that allocates memory blocks to an Agent.
+ *
+ * Fix: when there is no Agent to allocate to, the warning text was squeezed into a vertical "one character per line" layout.
+ * Root cause: Alert as a non-Form.Item child of Form did not get the parent's width,
+ * so the content container collapsed to width 0 and long text was forced to wrap per character.
+ * Here the Alert wrapper and the inner text container explicitly declare block + 100% width to restore normal horizontal layout.
+ */
+
+._alloc-memory-alert {
+  width: 100%;
+}
+
+._alloc-memory-alert .tea-alert {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Tea Alert uses flex (icon __decoration + content __info);
+   the content column needs min-width:0 + flex:1 so it does not collapse into per-character vertical text */
+._alloc-memory-alert .tea-alert__info {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.6;
+}

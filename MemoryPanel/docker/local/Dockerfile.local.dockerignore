@@ -1,0 +1,66 @@
+# Ignore list just for Dockerfile.local (BuildKit: <dockerfile>.dockerignore takes precedence over the root .dockerignore)
+# Purpose: shrink the build context and keep host build output out of the image
+#   especially node_modules (better-sqlite3's native binary is compiled for the host platform and crashes in the image;
+#   the image runs npm install again and recompiles), and data/ (contains real user SQLite data).
+
+# dependencies (reinstalled in the image)
+**/node_modules
+.pnpm-store/
+
+# build output (rebuilt in the image)
+**/dist
+**/build
+**/*.js.map
+**/*.tsbuildinfo
+frontend/src/**/*.js
+frontend/src/**/*.js.map
+
+# environment and local data (never in the image)
+# ⚠️ config/*.json contains the real kernel api_key (bearer token); it must be mounted at runtime or
+#    injected from a K8s Secret, never baked into the image. Runtime mapping example:
+#      -v /path/to/metadata-instances.json:/app/config/metadata-instances.json:ro
+.env
+.env.*
+config/*.json
+config/*.yaml
+config/*.yml
+data/
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/*.sqlite
+
+# logs / coverage / e2e output
+**/logs
+**/*.log
+coverage/
+frontend/test-results/
+frontend/playwright-report/
+
+# version control and tool metadata
+.git
+.gitignore
+.idea/
+.vscode/
+.iwiki
+.codebuddy
+
+# OS / editor clutter
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# temporary directories
+tmp/
+.tmp/
+
+# docs aren't used at runtime (optional, shrinks the context further)
+docs/
+
+# test scripts aren't used at runtime (the shell scripts hard-code the internal path `/root/git.example.com/cloud_nosql/wamf`;
+# baking them into the image would leak the internal GitLab domain and deployment habits)
+tests/
+**/*.e2e.sh
+e2e-*.sh

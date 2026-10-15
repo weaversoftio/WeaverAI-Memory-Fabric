@@ -1,0 +1,1184 @@
+/**
+ * ChatMemoryPanel - styles specific to the Memory page.
+ *
+ * The generic list container / split layout / skeleton are already provided uniformly by
+ * ResourcePage/components/asset-list-panel.css.
+ * Here:
+ *   1. Under the _asset-memory-page scope, restyle the generic ALP list items as "borderless plain-background cards"
+ *      (aligned with the mature Skills page style: no border + rounded corners + plain background, light gray on hover, light blue when selected)
+ *   2. Provide the Memory-specific 4-row inner card structure styles (title + count / id / author + time + unbind / shared + private)
+ */
+
+._asset-memory-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ============================================================
+ * Under the Memory page: restyle the generic ALP list items as "borderless plain-background cards"
+ * (aligned with the project's mature Skills page `_memory-personal-asset` style:
+ *   no border + rounded corners + plain background; light gray on hover, light blue when selected)
+ * Applies only to this page; does not affect pages such as Skills that reuse the same panel.
+ *
+ * Key: AssetListPanel's structure is li > button, so the visuals must land only on the button
+ * (li stays transparent), otherwise the button's square-cornered background covers the li's rounded corners and the four corners get overpainted.
+ * ============================================================ */
+._asset-memory-page ._alp-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+/* li: remove ALP's default bottom divider, only handle rounded positioning, carry no background/border */
+._asset-memory-page ._alp-item {
+  border-bottom: none;
+  border-radius: 8px;
+}
+
+/* All visuals land on the button: rounded corners + plain background; hover/selected colors are all presented by the button */
+._asset-memory-page ._alp-item-btn {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background-color: var(--tea-color-bg-primary-default);
+  transition: background-color 0.15s ease-in-out;
+}
+
+._asset-memory-page ._alp-item-btn:hover {
+  background-color: var(--tea-color-bg-secondary-default);
+}
+
+._asset-memory-page ._alp-item--selected ._alp-item-btn {
+  background-color: var(--tea-color-bg-brand-lighten-default);
+}
+
+._asset-memory-page ._alp-item--selected ._alp-item-btn:hover {
+  background-color: var(--tea-color-bg-brand-lighten-default);
+}
+
+._asset-memory-page ._alp-item--disabled {
+  opacity: 0.6;
+}
+
+/* ============================================================
+ * Inner 4-row structure of the Memory card
+ * ============================================================ */
+
+/* Row 1: title + blue count badge */
+._memory-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 22px;
+}
+
+._memory-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tea-color-text-primary);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Blue count badge at the top right (e.g. L0 message count) */
+._memory-card-count {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--tea-color-text-brand-default);
+  background-color: var(--tea-color-bg-brand-lighten-default);
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+/* Row 2: the asset's real id, monospace gray */
+._memory-card-id {
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--tea-color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Row 3: username + time / unbind (reuses the generic AssetItemBadges container, same structure as the Skills page)
+   The timestamp uses the generic ._alp-item-time (already declares 12px / secondary + margin-left:auto to push right),
+   so here only the memory-specific parts are overridden. */
+
+/* Username badge: same font size as the timestamp (overrides the generic ._alp-badge's 11px) */
+._memory-card ._alp-badge {
+  font-size: 12px;
+}
+
+/* "Unbind" red link-style text button: right-aligned (aligned with AssetItemTime's margin-left:auto) */
+._memory-card-unbind {
+  margin-inline-start: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--tea-color-text-warning-default);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s ease-in-out;
+}
+
+._memory-card-unbind:hover {
+  opacity: 0.75;
+  text-decoration: underline;
+}
+
+/* Row 4: shared/private toggle */
+._memory-card-scope {
+  margin-top: 10px;
+}
+
+/* ===== Memory-specific: already-private warning badge ===== */
+._memory-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--tea-color-text-secondary);
+  white-space: nowrap;
+}
+
+._memory-badge svg {
+  flex-shrink: 0;
+}
+
+._memory-badge--warning {
+  color: var(--tea-color-text-warning-default);
+  font-weight: 500;
+  margin-inline-start: 6px;
+}
+
+/* ===== Detail panel container ===== */
+._memory-detail-panel {
+  min-height: 480px;
+  padding: 16px;
+  border: 1px solid var(--tea-color-border-primary-default);
+  border-radius: 6px;
+  background: var(--tea-color-bg-primary-default);
+  box-shadow: var(--tea-shadow-xs);
+}
+
+/* ===== Memory detail area ===== */
+._memory-detail-head {
+  border-bottom: 1px solid var(--tea-color-border-secondary-default);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+/* ===== BlockDetail header ===== */
+._memory-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+/* Left title + meta info column, takes the remaining width */
+._memory-detail-header-info {
+  min-width: 0;
+  flex: 1;
+}
+
+/* Right action area: manual refresh + mode switch laid out horizontally, right-aligned and top-aligned.
+   Refresh sits right next to the left of the mode switch; when L2 / L3 have no mode switch only the refresh button remains. */
+._memory-detail-header-actions {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+/* Manual refresh button: top-aligned with the right mode-switch area, icon centered */
+._memory-detail-refresh {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  color: var(--tea-color-text-secondary);
+}
+
+._memory-detail-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--tea-color-text-primary);
+  line-height: 1.4;
+  word-break: break-all;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+._memory-detail-title-name {
+  font-weight: 600;
+}
+
+/* De-emphasized real id next to the name */
+._memory-detail-title-id {
+  font-size: 12px;
+  font-weight: 400;
+  font-family: var(--font-mono);
+  color: var(--tea-color-text-tertiary);
+}
+
+._memory-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--tea-color-text-tertiary);
+}
+
+._memory-detail-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+._memory-detail-mono {
+  font-family: var(--font-mono);
+  color: var(--tea-color-text-secondary);
+}
+
+/* ===== Layer selector ===== */
+._memory-detail-layers {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 768px) {
+  ._memory-detail-layers {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+._memory-detail-layer-btn {
+  display: block;
+  text-align: start;
+  padding: 10px 12px;
+  border: 1px solid var(--tea-color-border-primary-default);
+  border-radius: 6px;
+  background: var(--tea-color-bg-primary-default);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease-in-out,
+    border-color 0.15s ease-in-out;
+  font: inherit;
+  color: inherit;
+}
+
+._memory-detail-layer-btn:hover {
+  background-color: var(--tea-color-bg-secondary-default);
+}
+
+._memory-detail-layer-btn--active {
+  border-color: var(--tea-color-border-brand-default);
+  background-color: var(--tea-color-bg-brand-lighten-default);
+}
+
+._memory-detail-layer-btn--active:hover {
+  background-color: var(--tea-color-bg-brand-lighten-default);
+}
+
+._memory-detail-layer-btn-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+._memory-detail-layer-label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+._memory-detail-layer-count {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--tea-color-text-tertiary);
+}
+
+._memory-detail-layer-desc {
+  font-size: 11px;
+  color: var(--tea-color-text-tertiary);
+  margin-top: 2px;
+}
+
+/* ===== Detail height chain: let the L0 scroll area fill the remaining space of the right column ===== */
+/* Equal height left and right within the split row (overrides ResourcePage's align-items: start) */
+._asset-memory-page ._asset-split {
+  align-items: stretch;
+}
+
+._asset-memory-page ._asset-split-detail {
+  display: flex;
+  flex-direction: column;
+}
+
+._memory-detail {
+  display: flex;
+  flex-direction: column;
+  /* Fill the right column height (the outer _asset-split-detail already limits the viewport height), body scrolls inside, header stays fixed */
+  height: 100%;
+  min-height: 0;
+  /* Card frame: visually consistent with the left list (_alp) and the Skills right-column detail (_memory-skill-detail-card) */
+  padding: 16px;
+  border: 1px solid var(--tea-color-border-primary-default);
+  border-radius: 6px;
+  background: var(--tea-color-bg-primary-default);
+  box-shadow: var(--tea-shadow-xs);
+}
+
+/* Detail empty state: also wrapped in the card frame and filling the height, avoiding a "flush gray background" and blank space */
+._memory-detail-empty-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 480px;
+  padding: 16px;
+  border: 1px solid var(--tea-color-border-primary-default);
+  border-radius: 6px;
+  background: var(--tea-color-bg-primary-default);
+  box-shadow: var(--tea-shadow-xs);
+  font-size: 13px;
+  color: var(--tea-color-text-tertiary);
+}
+
+/* In the narrow-screen stacked layout (AssetSplitLayout removes the height limit), the card also returns to document-flow height */
+@media (max-width: 960px) {
+  ._memory-detail {
+    height: auto;
+    min-height: 480px;
+  }
+
+  ._memory-detail-empty-card {
+    height: auto;
+  }
+}
+
+/* ===== Layer content area ===== */
+/* The only scroll container: L1/L2/L3 lists scroll here; L0 manages its own scroll anchor via the inner _memory-chat-scroll,
+   the two never appear at the same time (mutually exclusive rendering), so there are no double scrollbars */
+._memory-detail-body {
+  flex: 1;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* L0 chat scroll container: must manage the "scroll to bottom / load earlier" anchor itself, as an independent scroll container */
+._memory-chat-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+._memory-detail-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+._memory-detail-skeleton-row {
+  height: 56px;
+  border-radius: 6px;
+  background: var(--tea-color-bg-secondary-default);
+  animation: _memory-detail-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes _memory-detail-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Generic skeleton element: rounded rectangle + breathing animation (for row-level text skeletons) */
+._memory-detail-skel-line {
+  height: 12px;
+  border-radius: 4px;
+  background: var(--tea-color-bg-secondary-default);
+  animation: _memory-detail-pulse 1.5s ease-in-out infinite;
+}
+
+._memory-detail-skel-line--xs {
+  width: 60px;
+  height: 10px;
+}
+
+/* ===== Loading skeleton when entering L0 (chat stream) ===== */
+._memory-detail-skeleton--l0 {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 4px;
+}
+
+._memory-detail-skel-chat-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+._memory-detail-skel-chat-row--user {
+  flex-direction: row-reverse;
+}
+
+._memory-detail-skel-chat-avatar {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--tea-color-bg-secondary-default);
+  animation: _memory-detail-pulse 1.5s ease-in-out infinite;
+}
+
+._memory-detail-skel-chat-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 220px;
+  max-width: 70%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--tea-color-bg-secondary-default);
+  animation: _memory-detail-pulse 1.5s ease-in-out infinite;
+}
+
+/* Children of a flex column shrink to content size by default (no text content -> 0 width),
+   an explicit width: 100% makes skeleton lines fill the bubble column width, preventing bubbles from being squeezed into vertical bars. */
+._memory-detail-skel-chat-bubble ._memory-detail-skel-line {
+  width: 100%;
+}
+
+._memory-detail-skel-chat-row--user ._memory-detail-skel-chat-bubble {
+  background: var(--tea-color-bg-brand-lighten-default);
+}
+
+/* system row (centered full-width capsule) */
+._memory-detail-skel-chat-system {
+  align-self: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--tea-color-bg-secondary-default);
+  animation: _memory-detail-pulse 1.5s ease-in-out infinite;
+}
+
+/* ===== Loading skeleton when entering L1/L2/L3 (atomic memory) ===== */
+._memory-detail-skeleton--l1,
+._memory-detail-skeleton--l2,
+._memory-detail-skeleton--l3 {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+._memory-detail-skel-atomic {
+  /* Same as the real _memory-detail-atomic-item: padding 12px 14px, 8px radius, light border + subtle shadow */
+  padding: 12px 14px;
+  border: 1px solid var(--tea-color-border-primary-default);
+  border-radius: 8px;
+  background: var(--tea-color-bg-primary-default);
+  box-shadow: var(--tea-shadow-xs);
+}
+
+/* When entering L2 there is only the title row: remove bottom padding / shadow so the card height fits the actual head height */
+._memory-detail-skel-atomic--headonly {
+  padding-bottom: 12px;
+}
+
+._memory-detail-skel-atomic--headonly ._memory-detail-skel-atomic-head {
+  padding-bottom: 0;
+  box-shadow: none;
+}
+
+._memory-detail-skel-atomic-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* head no longer takes margin-bottom; spacing is provided by the body's padding-top + head's box-shadow 1px,
+     aligned with the 16px breathing space of the real item's head (padding-bottom: 8px) + body (margin-top: 8px) */
+  padding-bottom: 8px;
+  box-shadow: 0 1px 0 var(--tea-color-border-secondary-default);
+}
+
+._memory-detail-skel-block {
+  background: var(--tea-color-bg-secondary-default);
+  animation: _memory-detail-pulse 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+._memory-detail-skel-block--layer {
+  flex-shrink: 0;
+  /* Real _memory-detail-atomic-layer height ~ 16px (10px font size + 3+3 padding + 2 line-height) */
+  width: 24px;
+  height: 16px;
+}
+
+/* Header layer badge colors (aligned with the real atomic item's _memory-detail-atomic-layer--*) */
+._memory-detail-skel-block--layer._memory-detail-skel-block--brand {
+  background: var(--tea-color-bg-brand-lighten-default);
+}
+._memory-detail-skel-block--layer._memory-detail-skel-block--success {
+  background: var(--tea-color-bg-success-lighten-default);
+}
+._memory-detail-skel-block--layer._memory-detail-skel-block--warning {
+  background: var(--tea-color-bg-warning-lighten-default);
+}
+
+._memory-detail-skel-block--title {
+  flex: 1;
+  min-width: 60px;
+  /* Real title is 13px font size + 1.5 line-height ~ 19.5px; the skeleton uses 16px, centered */
+  height: 16px;
+}
+
+._memory-detail-skel-block--time {
+  flex-shrink: 0;
+  width: 56px;
+  height: 12px;
+}
+
+._memory-detail-skel-block--more {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+
+._memory-detail-skel-block--chevron {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+}
+
+._memory-detail-skel-body {
+  /* Aligned with the real body area: margin-top: 8px + padding-top: 8px = 16px spacing (the top divider is provided by head's box-shadow) */
+  margin-top: 8px;
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* The first line of the L3 body skeleton is a bit taller, to match MarkdownView's heading-level font size */
+._memory-detail-skeleton--l3 ._memory-detail-skel-body {
+  padding-top: 8px;
+}
+
+._memory-detail-empty {
+  padding: 32px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--tea-color-text-tertiary);
+}
+
+._memory-detail-empty--warn {
+  color: var(--tea-color-text-warning, #e6a23c);
+}
+
+/* ===== Time filter (L0 / L1, uses Tea RangePicker) ===== */
+/* Placed at the top right of the detail header, top-aligned with the title row, does not shrink with content width */
+._memory-detail-timefilter {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* ===== Browse / Search mode switch (top right of the detail header) ===== */
+._memory-detail-mode {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+/* Segmented control container: two mutually exclusive buttons */
+._memory-detail-mode-switch {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 6px;
+  background: var(--tea-color-bg-secondary, #f2f3f5);
+  border: 1px solid var(--tea-color-border, #e5e6eb);
+}
+
+._memory-detail-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 12px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--tea-color-text-secondary, #86909c);
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+._memory-detail-mode-btn:hover:not(:disabled):not(._memory-detail-mode-btn--active) {
+  color: var(--tea-color-text-primary, #1d2129);
+}
+
+._memory-detail-mode-btn--active {
+  background: var(--tea-color-bg-primary, #fff);
+  color: var(--tea-color-primary, #0052d9);
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+._memory-detail-mode-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== L0 conversation text (IM chat layout: avatar + bubble) ===== */
+/* Top "Load earlier" area */
+._memory-chat-more {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0 14px;
+}
+
+._memory-chat-more-btn {
+  padding: 4px 14px;
+  border: 1px solid var(--tea-color-border-primary-default);
+  border-radius: 999px;
+  background: var(--tea-color-bg-primary-default);
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--tea-color-text-secondary);
+  transition:
+    background-color 0.15s ease-in-out,
+    color 0.15s ease-in-out,
+    border-color 0.15s ease-in-out;
+}
+
+._memory-chat-more-btn:hover {
+  color: var(--tea-color-text-brand-default);
+  border-color: var(--tea-color-border-brand-default);
+  background: var(--tea-color-bg-brand-lighten-default);
+}
+
+._memory-chat-more-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--tea-color-text-tertiary);
+}
+
+._memory-chat-more-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--tea-color-border-primary-default);
+  border-top-color: var(--tea-color-text-brand-default);
+  border-radius: 50%;
+  animation: _memory-chat-spin 0.7s linear infinite;
+}
+
+@keyframes _memory-chat-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+._memory-chat-more-end {
+  font-size: 11px;
+  color: var(--tea-color-text-tertiary);
+}
+
+/* Message stream: laid out vertically as a whole, with slightly larger row spacing so the bubbles can breathe */
+._memory-chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 4px 2px;
+}
+
+/* Single row: body split left and right, assistant on the left, user on the right */
+._memory-chat-row {
+  display: flex;
+  align-items: flex-start;
+  max-width: 100%;
+}
+
+._memory-chat-row--user {
+  justify-content: flex-end;
+}
+
+/* Body: meta (role + time) above the bubble, the bubble aligns left/right with the row */
+._memory-chat-main {
+  min-width: 0;
+  max-width: 85%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+._memory-chat-row--user ._memory-chat-main {
+  align-items: flex-end;
+}
+
+._memory-chat-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 2px;
+}
+
+._memory-chat-row--user ._memory-chat-meta {
+  flex-direction: row-reverse;
+}
+
+._memory-chat-role {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: var(--tea-color-text-secondary);
+}
+
+._memory-chat-time {
+  font-size: 11px;
+  color: var(--tea-color-text-tertiary);
+  white-space: nowrap;
+}
+
+/* Bubble: soft rounded corners + thin border + light shadow + lift on hover; a small cut corner at the tail next to the avatar side */
+._memory-chat-bubble {
+  position: relative;
+  max-width: 100%;
+  padding: 9px 13px;
+  border-radius: 10px;
+  border: 1px solid var(--tea-color-border-primary-default);
+  background: var(--tea-color-bg-primary-default);
+  box-shadow: var(--tea-shadow-xs);
+  transition: box-shadow 0.15s ease-in-out;
+}
+
+._memory-chat-bubble:hover {
+  box-shadow: var(--tea-shadow-sm);
+}
+
+/* assistant / tool: on the left, the top-left corner is pointed toward the avatar */
+._memory-chat-bubble--assistant,
+._memory-chat-bubble--tool {
+  border-top-left-radius: 3px;
+}
+
+/* user: on the right, light brand background, no border, top-right corner pointed */
+._memory-chat-bubble--user {
+  border-top-right-radius: 3px;
+  border-color: transparent;
+  background: var(--tea-color-bg-brand-lighten-default);
+}
+
+._memory-chat-body {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--tea-color-text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+}
+
+/* system: centered full-width capsule hint */
+._memory-chat-system {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 90%;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--tea-color-bg-secondary-default);
+  color: var(--tea-color-text-tertiary);
+  font-size: 12px;
+}
+
+._memory-chat-system svg {
+  flex-shrink: 0;
+}
+
+._memory-chat-system-text {
+  min-width: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+._memory-chat-system-time {
+  flex-shrink: 0;
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+/* ===== L1/L2/L3 atomic list ===== */
+._memory-detail-atomic-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Item card: the title row and body share one white card, avoiding the disjointed feel of "title floating on gray, body in a separate white box".
+   The li itself has no padding - spacing is handled entirely by the head (12px) and the body area (expand-inner / md),
+   so in the collapsed state (head only) the card height fits the head exactly, without the title sticking to the top or the card being too short
+   because li padding and head margin add up or cancel out badly. */
+._memory-detail-atomic-item {
+  padding: 0;
+  border: 1px solid var(--tea-color-border-primary-default);
+  border-radius: 8px;
+  background: var(--tea-color-bg-primary-default);
+  box-shadow: var(--tea-shadow-xs);
+  /* Do not set overflow:hidden here - it would break the head's position:sticky pinning
+     (overflow turns the li into sticky's scroll container, and the li has no extra scroll space, so it cannot stick).
+     The head is now aligned with the card edges with no overflow, so no clipping is needed; the rounded corners are guaranteed by the head's own border-radius. */
+  transition:
+    border-color 0.15s ease-in-out,
+    box-shadow 0.15s ease-in-out;
+}
+
+._memory-detail-atomic-item:hover {
+  border-color: var(--tea-color-border-brand-default);
+  box-shadow: var(--tea-shadow-sm);
+}
+
+/* Title row: layer badge + title + right side (loading/time/expand arrow).
+   Pinned as the item header with sticky: while scrolling, the title row of the currently visible memory sticks to the top, helping locate in long lists.
+   The sticky range is constrained by each memory card (li) - when that memory scrolls out of the viewport the header is released with it and is not held by the next one.
+   The li has no padding, and the head has its own 12px padding aligned with the card edges, so no negative margin is needed.
+   The top rounded corners inherit the li's 8px, so a white square does not cover the card's top-left/top-right corners.
+   The divider (bottom box-shadow) is not drawn here - it is shown only when there is body text (--with-body);
+   when L2 is not expanded there is no content below, so the title is shown directly with no line.
+   Note: the L0 chat stream uses an independent scroll container (_memory-chat-scroll) and does not go through this list, so it is naturally unaffected. */
+._memory-detail-atomic-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  background: var(--tea-color-bg-primary-default);
+  border-radius: 8px 8px 0 0;
+}
+
+/* With body: draw a 1px divider at the bottom of the head, connecting to the body below (or the loading skeleton).
+   When L2 is not expanded (no body) this class is not added, so there is no line; it is added when expanded / loading. */
+._memory-detail-atomic-head--with-body {
+  box-shadow: 0 1px 0 var(--tea-color-border-secondary-default);
+}
+
+._memory-detail-atomic-head--btn {
+  border: none;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+._memory-detail-atomic-head--btn:disabled {
+  cursor: default;
+}
+
+._memory-detail-atomic-layer {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 5px;
+  border-radius: 4px;
+}
+
+._memory-detail-atomic-layer--default {
+  color: var(--tea-color-text-secondary);
+  background-color: var(--tea-color-bg-secondary-default);
+}
+
+._memory-detail-atomic-layer--brand {
+  color: var(--tea-color-text-brand-default);
+  background-color: var(--tea-color-bg-brand-lighten-default);
+}
+
+._memory-detail-atomic-layer--success {
+  color: var(--tea-color-text-success-default);
+  background-color: var(--tea-color-bg-success-lighten-default);
+}
+
+._memory-detail-atomic-layer--warning {
+  color: var(--tea-color-text-warning-default);
+  background-color: var(--tea-color-bg-warning-lighten-default);
+}
+
+._memory-detail-atomic-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tea-color-text-primary);
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+._memory-detail-atomic-head-right {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+._memory-detail-atomic-loading {
+  font-size: 11px;
+  color: var(--tea-color-text-tertiary);
+}
+
+/* Body-line skeleton (multiple stacked lines, imitating the text-line shape of MarkdownView).
+   Used when L2 expands and loads the body / L1, L3 load the body; the title stays real and only the body area becomes a skeleton.
+   The divider is carried by the head's box-shadow, not repeated here. */
+._memory-detail-atomic-body-skel {
+  margin-top: 8px;
+  padding: 8px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+._memory-detail-atomic-body-skel-line {
+  height: 12px;
+  border-radius: 4px;
+  background-color: var(--tea-color-bg-secondary-default);
+  animation: _memory-detail-pulse 1.5s ease-in-out infinite;
+}
+
+._memory-detail-atomic-time {
+  font-size: 11px;
+  color: var(--tea-color-text-tertiary);
+  white-space: nowrap;
+}
+
+._memory-detail-atomic-chevron {
+  color: var(--tea-color-text-tertiary);
+  transition: transform 0.15s ease-in-out;
+}
+
+/* Chevron independent clickable area: enlarge the hit area, give a pointer cursor and hover feedback */
+._memory-detail-atomic-chevron-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+._memory-detail-atomic-chevron-btn:hover {
+  background-color: var(--tea-color-bg-secondary-default);
+}
+
+._memory-detail-atomic-chevron-btn:hover ._memory-detail-atomic-chevron {
+  color: var(--tea-color-text-secondary);
+}
+
+._memory-detail-atomic-chevron--open {
+  transform: rotate(180deg);
+}
+
+/* Body area: belongs to the same card as the title row. The head's box-shadow 1px already serves as the divider above the body,
+   so border-top is not repeated here, avoiding a double line. */
+._memory-detail-atomic-body {
+  margin: 8px 0 0;
+  padding: 8px 12px 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--tea-color-text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+}
+
+/* L2 body expands/collapses gradually: the outer grid 0fr<->1fr transitions the height, together with an opacity fade in/out.
+   Content stays in the DOM (height is 0 at 0fr when not expanded); when expanded, height and opacity transition smoothly together. */
+._memory-detail-atomic-expand {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.25s ease-out,
+    opacity 0.25s ease-out;
+}
+
+._memory-detail-atomic-expand--open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+/* Inner clipping container: clips content at 0fr, ensuring zero height and no body overflow */
+._memory-detail-atomic-expand-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* L2/L3 body uses the shared MarkdownView (bare variant); the head already draws the divider, so border-top is not repeated here.
+   The li has no padding; the body brings its own left/right/bottom 12px padding, and the top 8px leaves whitespace from the head divider. */
+._memory-detail-atomic-md {
+  margin-top: 8px;
+  padding: 8px 12px 12px;
+}
+
+._memory-detail-atomic-no-body {
+  margin-top: 8px;
+  padding: 8px 12px 12px;
+  font-size: 11px;
+  color: var(--tea-color-text-tertiary);
+}
+
+._memory-detail-atomic-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 0 12px 12px;
+  font-size: 11px;
+  color: var(--tea-color-text-tertiary);
+}
+
+._memory-detail-atomic-ref {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+
+._memory-detail-atomic-tag {
+  font-weight: 500;
+}
+
+/* ===== Paginator (same as the task board, centered Tea Pagination) ===== */
+._memory-detail-pager {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+/* ===== L1 semantic search box ===== */
+._memory-detail-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+._memory-detail-search-input {
+  flex: 1;
+  min-width: 0;
+}
+
+._memory-detail-search-count {
+  font-size: 12px;
+  color: var(--tea-color-text-tertiary);
+  white-space: nowrap;
+}
+
+._memory-detail-search-score {
+  font-size: 12px;
+  color: var(--tea-color-text-tertiary);
+  margin-inline-start: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== Atomic item action entry (three-dot dropdown: edit / copy) ===== */
+/* Three-dot button container: to the right of the time, stops propagation to avoid triggering L2 collapse */
+._memory-detail-atomic-actions {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Three-dot trigger button (tea Button type=text): compact size, aligned with time/chevron */
+._memory-detail-atomic-more.tea-btn {
+  min-width: auto;
+  height: 20px;
+  padding: 0 4px;
+  line-height: 1;
+  color: var(--tea-color-text-tertiary);
+}
+
+._memory-detail-atomic-more.tea-btn:hover {
+  color: var(--tea-color-text-primary);
+}
+
+/* L2 expanded loading state: reuses the chat spinner animation, takes the same space as the chevron */
+._memory-detail-atomic-spinner {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+/* ===== Edit Modal ===== */
+._memory-detail-edit-name {
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--tea-color-text-tertiary);
+  word-break: break-all;
+}
+
+._memory-detail-edit-textarea,
+._memory-detail-edit-textarea textarea {
+  width: 100%;
+  min-height: 360px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* Content area - borderless, plain background + rounded corners */
+._memory-item-content {
+  padding: 16px;
+  background: var(--tea-color-bg-secondary-default);
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--tea-color-text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}

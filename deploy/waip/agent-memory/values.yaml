@@ -1,0 +1,43 @@
+# Catalog values for the agent-memory chart. WAIP substitutes $VARS from
+# pipeline.yaml at install time; LLM_API_KEY is a sensitive var, never committed.
+images:
+  core: $IMAGE_CORE
+  hub: $IMAGE_HUB
+  proxy: $IMAGE_PROXY
+  pullPolicy: IfNotPresent
+
+llm:
+  baseUrl: $LLM_BASE_URL
+  model: $LLM_MODEL
+  apiKey: "$LLM_API_KEY"
+
+publicUrls:
+  proxy: https://$PROXY_HOSTNAME
+
+gitAuth:
+  urlPrefix: $GIT_AUTH_URL_PREFIX
+  username: $GIT_AUTH_USERNAME
+  token: "$GIT_AUTH_TOKEN"
+
+auth:
+  appUrl: https://$HTTPROUTE_HOSTNAME
+  oidc:
+    enabled: $SSO_ENABLED
+    displayName: "$SSO_DISPLAY_NAME"
+    issuerUrl: $SSO_ISSUER_URL
+    internalIssuerUrl: $SSO_INTERNAL_ISSUER_URL
+    clientId: $SSO_CLIENT_ID
+    clientSecretName: $SSO_CLIENT_SECRET_NAME
+    defaultTeam: $SSO_DEFAULT_TEAM
+    defaultRole: member
+  waipIdentity:
+    jwksUrl: $WAIP_IDENTITY_JWKS_URL
+    audience: $WAIP_IDENTITY_AUDIENCE
+
+memory:
+  l0RetentionDays: $L0_RETENTION_DAYS
+
+storage:
+  className: $STORAGE_CLASS
+  coreSize: $CORE_STORAGE_SIZE
+  hubSize: $HUB_STORAGE_SIZE

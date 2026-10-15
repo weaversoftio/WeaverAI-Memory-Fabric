@@ -1,0 +1,26 @@
+# test files
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+__tests__/
+
+# development docs and helpers
+docs/
+benchmark-runs/
+workspace/
+
+# environment and config
+.env
+.env.*
+.gitignore
+.codebuddy/
+.coding-ci.yaml
+
+# runtime output
+node_modules/
+*.tgz
+*.pyc
+**/*.pyc
+__pycache__/
+**/__pycache__/**
