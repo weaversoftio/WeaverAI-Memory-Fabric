@@ -34,7 +34,11 @@ import { getMetadataClient } from "../meta/client.js";
 import type { ProxyConfig } from "../types.js";
 import { emitBridgeToolCallTelemetry, emitBridgeRejectTelemetry, agentSourceFromSessionKey } from "../memory/bridge-telemetry.js";
 import { getCoreSkillClient, type CoreSkillClient } from "./core-client.js";
-import { BRIDGE_SIG_HEADER, verifyBridgeSession } from "../bridge-signature.js";
+import {
+  BRIDGE_SIG_HEADER,
+  authenticateBridgeRequest,
+  decodeBridgeSessionToken,
+} from "../bridge-signature.js";
 
 /**
  * Either-or pin repo (KvVersionPinRepo or VersionPinRepo) --
@@ -232,13 +236,15 @@ interface SessionIdFields {
  * the L2 fallthrough goes via the flattened (spaceId, sessionId) -> binding.json, stamping directly.
  */
 function deriveSessionId(c: Context): string | null {
-  return (
+  const raw =
     c.req.header("x-conversation-id") ??
     c.req.header("x-session-id") ??
     c.req.header("x-chat-id") ??
     c.req.header("x-thread-id") ??
-    null
-  );
+    null;
+  if (!raw || raw.length === 0) return null;
+  // Recipes send wamf1.<base64url(sessionId)>; decode before sig verify + lookup.
+  return decodeBridgeSessionToken(raw);
 }
 
 function stateToIdFields(
@@ -489,27 +495,32 @@ export function createSkillBridgeHandler(
     }
 
     // Session must be initialized — IdFields come from there.
-    // The curl template carries only two headers (x-conversation-id, x-wamf-service-id);
-    // on an L1 miss, use these two to look up nottl/<spaceId>/<sessionId>/binding.json.
-    const sessionKey = deriveSessionId(c);
-    if (!sessionKey) {
+    // Prefer session id recovered from v1 x-bridge-sig (survives PII-redacted conversation-id).
+    // Fall back to x-conversation-id / siblings when the recipe still uses a legacy bare HMAC.
+    const headerSession = deriveSessionId(c);
+    const spaceIdForAuth = c.req.header("x-wamf-service-id");
+    const auth = authenticateBridgeRequest(
+      c.req.header(BRIDGE_SIG_HEADER),
+      headerSession ?? undefined,
+      spaceIdForAuth,
+    );
+    if (!auth.ok || !auth.sessionId) {
       emitBridgeRejectTelemetry({
-        sessionKey: "", bridgeSource: "skill-bridge",
-        rejectReason: "missing_conversation_id", httpStatus: 401,
+        sessionKey: headerSession ?? "", bridgeSource: "skill-bridge",
+        rejectReason: "bridge_signature_invalid",
+        httpStatus: 401,
         executedEndpoint: sub,
       });
-      return envelope(40101, `${TAG} missing x-conversation-id (or x-session-id / x-chat-id / x-thread-id) header`, 401);
+      if (!headerSession && auth.reason === "missing_sig") {
+        return envelope(40101, `${TAG} missing x-conversation-id (or x-session-id / x-chat-id / x-thread-id) header`, 401);
+      }
+      const hint =
+        auth.reason === "redacted_session"
+          ? `; x-conversation-id looks PII-redacted — use a v1 ${BRIDGE_SIG_HEADER} from the recipe (copy -H headers verbatim)`
+          : `; use the curl recipe from the system prompt (copy -H headers verbatim)`;
+      return envelope(40102, `${TAG} missing or invalid ${BRIDGE_SIG_HEADER}${hint}`, 401);
     }
-    // The session ID alone is not a credential (it appears in logs and upstream headers):
-    // the recipe must also carry the signature this proxy injected for it.
-    if (!verifyBridgeSession(c.req.header(BRIDGE_SIG_HEADER), sessionKey, c.req.header("x-wamf-service-id"))) {
-      emitBridgeRejectTelemetry({
-        sessionKey, bridgeSource: "skill-bridge",
-        rejectReason: "bridge_signature_invalid", httpStatus: 401,
-        executedEndpoint: sub,
-      });
-      return envelope(40102, `${TAG} missing or invalid ${BRIDGE_SIG_HEADER}; use the curl recipe from the system prompt`, 401);
-    }
+    const sessionKey = auth.sessionId;
     const spaceId = c.req.header("x-wamf-service-id")
       ?? config.wamf?.serviceId
       ?? config.coreSkill?.serviceId

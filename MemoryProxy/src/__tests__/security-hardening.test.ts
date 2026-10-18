@@ -7,8 +7,20 @@ vi.mock("../instance-upstream-cache.js", async (importOriginal) => ({
 
 import { DEFAULT_CONFIG } from "../config.js";
 import { createApp } from "../server.js";
-import { BRIDGE_SIG_HEADER, initBridgeSecret, signBridgeSession, verifyBridgeSession } from "../bridge-signature.js";
+import {
+  BRIDGE_SIG_HEADER,
+  BRIDGE_SESSION_TOKEN_PREFIX,
+  authenticateBridgeRequest,
+  decodeBridgeSessionToken,
+  encodeBridgeSessionToken,
+  initBridgeSecret,
+  looksLikeRedactedSessionId,
+  signBridgeSession,
+  signBridgeSessionLegacyHmac,
+  verifyBridgeSession,
+} from "../bridge-signature.js";
 import { renderWamfMemoryToolsBlock } from "../injection/injectors/wamf-tools-injector.js";
+import { renderSkillToolsBlock } from "../injection/injectors/skill-tools-injector.js";
 
 function baseConfig() {
   const config = structuredClone(DEFAULT_CONFIG);
@@ -71,9 +83,10 @@ describe("/direct passthrough", () => {
 });
 
 describe("bridge signature", () => {
-  it("round-trips and binds to session and space", () => {
+  it("round-trips v1 proof and binds to session and space", () => {
     initBridgeSecret("seed-a");
     const sig = signBridgeSession("sess-1", "space-1");
+    expect(sig.startsWith("v1.")).toBe(true);
     expect(verifyBridgeSession(sig, "sess-1", "space-1")).toBe(true);
     expect(verifyBridgeSession(sig, "sess-2", "space-1")).toBe(false);
     expect(verifyBridgeSession(sig, "sess-1", "space-2")).toBe(false);
@@ -82,10 +95,51 @@ describe("bridge signature", () => {
     expect(verifyBridgeSession(sig, "sess-1", "space-1")).toBe(false);
   });
 
-  it("is baked into the injected memory curl recipe", () => {
+  it("recovers session from v1 sig when conversation-id is PII-redacted", () => {
+    initBridgeSecret("seed-a");
+    const raw = "03a1b2c3-6785-4d4d-ad04-600669f26c19";
+    const sig = signBridgeSession(raw, "default");
+    const redacted = "[BR_PHONE_LANDLINE_REDACTED]-6785-4d4d-ad04-600669f26c19";
+    const auth = authenticateBridgeRequest(sig, redacted, "default");
+    expect(auth.ok).toBe(true);
+    expect(auth.sessionId).toBe(raw);
+  });
+
+  it("still accepts legacy bare HMAC when conversation-id is intact", () => {
+    initBridgeSecret("seed-a");
+    const legacy = signBridgeSessionLegacyHmac("sess-legacy", "default");
+    expect(legacy.startsWith("v1.")).toBe(false);
+    const auth = authenticateBridgeRequest(legacy, "sess-legacy", "default");
+    expect(auth.ok).toBe(true);
+    expect(auth.sessionId).toBe("sess-legacy");
+    expect(authenticateBridgeRequest(legacy, "[BR_PHONE_LANDLINE_REDACTED]-xx", "default").ok).toBe(false);
+  });
+
+  it("opaque-encodes session ids so phone-shaped UUIDs survive PII redactors", () => {
+    const raw = "03a1b2c3-6785-4d4d-ad04-600669f26c19";
+    const token = encodeBridgeSessionToken(raw);
+    expect(token.startsWith(BRIDGE_SESSION_TOKEN_PREFIX)).toBe(true);
+    expect(token).not.toContain("03a1b2c3");
+    expect(decodeBridgeSessionToken(token)).toBe(raw);
+    expect(decodeBridgeSessionToken(raw)).toBe(raw);
+    expect(encodeBridgeSessionToken(token)).toBe(token);
+    expect(looksLikeRedactedSessionId("[BR_PHONE_LANDLINE_REDACTED]-6785-4d4d-ad04-600669f26c19")).toBe(true);
+    expect(looksLikeRedactedSessionId(token)).toBe(false);
+  });
+
+  it("is baked into the injected memory curl recipe as opaque session + v1 sig", () => {
     initBridgeSecret("seed-a");
     const block = renderWamfMemoryToolsBlock("http://proxy.test", "sess-1", "space-1");
     expect(block).toContain(`${BRIDGE_SIG_HEADER}: ${signBridgeSession("sess-1", "space-1")}`);
+    expect(block).toContain(`x-conversation-id: ${encodeBridgeSessionToken("sess-1")}`);
+    expect(block).not.toMatch(/x-conversation-id: sess-1'/);
+  });
+
+  it("is baked into the injected skill curl recipe as opaque session + v1 sig", () => {
+    initBridgeSecret("seed-a");
+    const block = renderSkillToolsBlock("http://proxy.test", false, "sess-1", "space-1");
+    expect(block).toContain(`${BRIDGE_SIG_HEADER}: ${signBridgeSession("sess-1", "space-1")}`);
+    expect(block).toContain(`x-conversation-id: ${encodeBridgeSessionToken("sess-1")}`);
   });
 
   it.each(["/memory-bridge/v3/atomic/search", "/skill-bridge/v3/skill/search"])(
@@ -108,6 +162,27 @@ describe("bridge signature", () => {
       });
       expect(forged.status).toBe(401);
       expect(await forged.text()).toContain(BRIDGE_SIG_HEADER);
+    },
+  );
+
+  it.each(["/memory-bridge/v3/atomic/search", "/skill-bridge/v3/skill/search"])(
+    "%s accepts v1 sig even when x-conversation-id is PII-redacted",
+    async (path) => {
+      const config = baseConfig();
+      config.admin.apiKey = "seed-opaque";
+      const app = createApp(config);
+      const rawSession = "chat-uuid-03-9715309-demo";
+      const headers = {
+        "content-type": "application/json",
+        // Simulates Open WebUI / gateway phone redaction on the conversation header.
+        "x-conversation-id": "[BR_PHONE_LANDLINE_REDACTED]-9715309-demo",
+        "x-wamf-service-id": "default",
+        [BRIDGE_SIG_HEADER]: signBridgeSession(rawSession, "default"),
+      };
+      const res = await app.request(`http://localhost${path}`, { method: "POST", headers, body: "{}" });
+      const body = await res.text();
+      expect(body).not.toContain("missing or invalid x-bridge-sig");
+      expect(body).not.toMatch(/PII-redacted/);
     },
   );
 });

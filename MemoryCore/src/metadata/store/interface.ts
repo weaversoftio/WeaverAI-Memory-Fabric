@@ -27,6 +27,7 @@ import type {
   FixedAssetBindingEntity,
   AgentFixedAssetCountRow,
   AclEntity,
+  AgentShareEntity,
   CreateUserInput,
   CreateUserKeyInput,
   CreateTeamInput,
@@ -36,6 +37,7 @@ import type {
   CreateAssetInput,
   FixedAssetBindingInput,
   GrantAclInput,
+  GrantAgentShareInput,
   AgentFilter,
   TaskFilter,
   TeamFilter,
@@ -130,7 +132,12 @@ export interface IMetadataStore {
   getAgentById(agentId: string): MaybePromise<AgentEntity | null>;
   updateAgent(agentId: string, patch: Partial<AgentEntity>): MaybePromise<AgentEntity | null>;
   deleteAgents(agentIds: string[]): MaybePromise<BatchDeleteResult>;
-  listAgentsByTeam(teamId: string, pagination?: PaginationParams | null, filter?: AgentFilter): MaybePromise<ListPage<AgentEntity>>;
+  listAgentsByTeam(
+    teamId: string,
+    pagination?: PaginationParams | null,
+    filter?: AgentFilter,
+    options?: { includeShared?: boolean },
+  ): MaybePromise<ListPage<AgentEntity>>;
   listAgentsByOwner(userId: string, pagination?: PaginationParams | null, filter?: AgentFilter): MaybePromise<ListPage<AgentEntity>>;
 
   // -- Task -- (createTask can linkAgents at the same time)
@@ -197,6 +204,16 @@ export interface IMetadataStore {
   revokeAcl(id: string): MaybePromise<void>;
   listAclByAsset(assetId: string, pagination?: PaginationParams | null): MaybePromise<ListPage<AclEntity>>;
   listAclBySubject(subjectType: string, subjectId: string, pagination?: PaginationParams | null): MaybePromise<ListPage<AclEntity>>;
+
+  // ── AgentShare (cross-team agent grants) ──
+  grantAgentShare(input: GrantAgentShareInput & { home_team_id: string }): MaybePromise<AgentShareEntity>;
+  getAgentShareById(id: string): MaybePromise<AgentShareEntity | null>;
+  getAgentShare(agentId: string, targetTeamId: string): MaybePromise<AgentShareEntity | null>;
+  revokeAgentShare(id: string): MaybePromise<void>;
+  listAgentSharesByAgent(agentId: string, pagination?: PaginationParams | null): MaybePromise<ListPage<AgentShareEntity>>;
+  listAgentSharesByTargetTeam(teamId: string, pagination?: PaginationParams | null): MaybePromise<ListPage<AgentShareEntity>>;
+  /** Agent IDs that have the given asset as a fixed binding (for cross-team share permission checks). */
+  listAgentIdsByFixedAsset(assetId: string): MaybePromise<string[]>;
 
   // ── ConfigParam ──
   getConfigParam(

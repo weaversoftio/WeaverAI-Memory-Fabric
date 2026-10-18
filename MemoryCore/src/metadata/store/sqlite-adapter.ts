@@ -44,6 +44,8 @@ import type {
   CreateAssetInput,
   FixedAssetBindingInput,
   GrantAclInput,
+  GrantAgentShareInput,
+  AgentShareEntity,
   AgentFilter,
   TaskFilter,
   AssetFilter,
@@ -276,6 +278,16 @@ export class SqliteMetadataStore implements IMetadataStore {
         updated_at TEXT NOT NULL,
         UNIQUE(asset_id, subject_type, subject_id, permission)
       );
+      CREATE TABLE IF NOT EXISTS meta_agent_team_shares (
+        id TEXT PRIMARY KEY,
+        agent_id TEXT NOT NULL,
+        home_team_id TEXT NOT NULL,
+        target_team_id TEXT NOT NULL,
+        granted_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE(agent_id, target_team_id)
+      );
       CREATE INDEX IF NOT EXISTS idx_meta_users_created ON meta_users(created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_meta_user_keys_user_created ON meta_user_keys(user_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_meta_teams_created ON meta_teams(created_at DESC);
@@ -291,6 +303,9 @@ export class SqliteMetadataStore implements IMetadataStore {
       CREATE INDEX IF NOT EXISTS idx_meta_fixed_agent_prio_created ON meta_agent_fixed_assets(agent_id, priority DESC, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_meta_acl_asset_created ON meta_asset_acl(asset_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_meta_acl_subject_created ON meta_asset_acl(subject_type, subject_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_meta_agent_shares_agent_created ON meta_agent_team_shares(agent_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_meta_agent_shares_target_created ON meta_agent_team_shares(target_team_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_meta_fixed_asset_id ON meta_agent_fixed_assets(asset_id);
 
       CREATE TABLE IF NOT EXISTS meta_config_params (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -813,6 +828,11 @@ export class SqliteMetadataStore implements IMetadataStore {
     if (result.deleted_ids.length > 0) {
       const ph = result.deleted_ids.map(() => "?").join(",");
       this.run(`DELETE FROM meta_team_members WHERE team_id IN (${ph})`, ...result.deleted_ids);
+      this.run(
+        `DELETE FROM meta_agent_team_shares WHERE target_team_id IN (${ph}) OR home_team_id IN (${ph})`,
+        ...result.deleted_ids,
+        ...result.deleted_ids,
+      );
       this.run(`DELETE FROM meta_agents WHERE team_id IN (${ph})`, ...result.deleted_ids);
       this.run(`DELETE FROM meta_tasks WHERE team_id IN (${ph})`, ...result.deleted_ids);
       this.run(`DELETE FROM meta_assets WHERE team_id IN (${ph})`, ...result.deleted_ids);
@@ -964,6 +984,7 @@ export class SqliteMetadataStore implements IMetadataStore {
       const ph = result.deleted_ids.map(() => "?").join(",");
       this.run(`DELETE FROM meta_task_agents WHERE agent_id IN (${ph})`, ...result.deleted_ids);
       this.run(`DELETE FROM meta_agent_fixed_assets WHERE agent_id IN (${ph})`, ...result.deleted_ids);
+      this.run(`DELETE FROM meta_agent_team_shares WHERE agent_id IN (${ph})`, ...result.deleted_ids);
       const selfMemoryAssetIds = result.deleted_ids
         .map((agentId) => selfMemoryByAgent.get(agentId))
         .filter((assetId): assetId is string => !!assetId);
@@ -974,9 +995,23 @@ export class SqliteMetadataStore implements IMetadataStore {
     return result;
   }
 
-  listAgentsByTeam(teamId: string, pagination?: PaginationParams | null, filter?: AgentFilter): ListPage<AgentEntity> {
-    let where = "WHERE team_id = ?";
-    const params: SQLInputValue[] = [teamId];
+  listAgentsByTeam(
+    teamId: string,
+    pagination?: PaginationParams | null,
+    filter?: AgentFilter,
+    options?: { includeShared?: boolean },
+  ): ListPage<AgentEntity> {
+    const includeShared = !!options?.includeShared;
+    let where: string;
+    const params: SQLInputValue[] = [];
+    if (includeShared) {
+      where =
+        "WHERE (team_id = ? OR agent_id IN (SELECT agent_id FROM meta_agent_team_shares WHERE target_team_id = ?))";
+      params.push(teamId, teamId);
+    } else {
+      where = "WHERE team_id = ?";
+      params.push(teamId);
+    }
     if (filter?.status) {
       where += " AND status = ?";
       params.push(filter.status);
@@ -1578,6 +1613,78 @@ export class SqliteMetadataStore implements IMetadataStore {
       pagination,
       (r) => r as unknown as AclEntity,
     );
+  }
+
+  // ============================================================
+  // AgentShare (cross-team)
+  // ============================================================
+  grantAgentShare(input: GrantAgentShareInput & { home_team_id: string }): AgentShareEntity {
+    const now = nowIso();
+    runWithGeneratedRelationId(input.id, isSqliteRelationIdCollision, (id) => {
+      this.run(
+        `INSERT INTO meta_agent_team_shares
+          (id, agent_id, home_team_id, target_team_id, granted_by, created_at, updated_at)
+         VALUES (?,?,?,?,?,?,?)
+         ON CONFLICT(agent_id, target_team_id)
+         DO UPDATE SET granted_by = excluded.granted_by, home_team_id = excluded.home_team_id, updated_at = excluded.updated_at`,
+        id,
+        input.agent_id,
+        input.home_team_id,
+        input.target_team_id,
+        input.granted_by,
+        now,
+        now,
+      );
+    });
+    return this.getAgentShare(input.agent_id, input.target_team_id)!;
+  }
+
+  getAgentShareById(id: string): AgentShareEntity | null {
+    return this.get<AgentShareEntity>("SELECT * FROM meta_agent_team_shares WHERE id = ?", id);
+  }
+
+  getAgentShare(agentId: string, targetTeamId: string): AgentShareEntity | null {
+    return this.get<AgentShareEntity>(
+      "SELECT * FROM meta_agent_team_shares WHERE agent_id = ? AND target_team_id = ?",
+      agentId,
+      targetTeamId,
+    );
+  }
+
+  revokeAgentShare(id: string): void {
+    this.run("DELETE FROM meta_agent_team_shares WHERE id = ?", id);
+  }
+
+  listAgentSharesByAgent(agentId: string, pagination?: PaginationParams | null): ListPage<AgentShareEntity> {
+    const base = "FROM meta_agent_team_shares WHERE agent_id = ?";
+    return this.selectList(
+      `SELECT COUNT(*) AS c ${base}`,
+      [agentId],
+      `SELECT * ${base} ORDER BY created_at DESC`,
+      [agentId],
+      pagination,
+      (r) => r as unknown as AgentShareEntity,
+    );
+  }
+
+  listAgentSharesByTargetTeam(teamId: string, pagination?: PaginationParams | null): ListPage<AgentShareEntity> {
+    const base = "FROM meta_agent_team_shares WHERE target_team_id = ?";
+    return this.selectList(
+      `SELECT COUNT(*) AS c ${base}`,
+      [teamId],
+      `SELECT * ${base} ORDER BY created_at DESC`,
+      [teamId],
+      pagination,
+      (r) => r as unknown as AgentShareEntity,
+    );
+  }
+
+  listAgentIdsByFixedAsset(assetId: string): string[] {
+    const rows = this.all<{ agent_id: string }>(
+      "SELECT agent_id FROM meta_agent_fixed_assets WHERE asset_id = ?",
+      assetId,
+    );
+    return rows.map((r) => r.agent_id);
   }
 
   // ============================================================

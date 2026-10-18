@@ -135,6 +135,13 @@ stringData:
       # Core's /v3/skill/* routes reject a missing or empty Bearer; with its gate
       # off the value is not checked, so a placeholder is enough.
       serviceToken: "local"
+    # Required for <knowledge_tools> / Wiki injection. injectors lists "knowledge"
+    # but the injector only registers when knowledge.enabled + serviceToken are set.
+    knowledge:
+      enabled: true
+      endpoint: "{{ include "am.coreUrl" . }}"
+      serviceToken: "local"
+      serviceId: "default"
     auth:
       enabled: true
       url: "{{ include "am.coreUrl" . }}"

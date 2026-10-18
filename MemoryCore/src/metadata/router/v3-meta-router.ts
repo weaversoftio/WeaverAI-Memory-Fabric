@@ -193,7 +193,10 @@ const routeTable: Record<string, Handler> = {
       if (d.status) filter.status = d.status;
       if (d.owner_user_id) filter.owner_user_id = d.owner_user_id;
       if (d.name) filter.name = d.name;
-      return s.listAgentsByTeam(d.team_id, pagination, filter);
+      // Default include_shared=true so cross-team shared agents appear in team lists.
+      // When filtering by owner_user_id, keep home-team-only (shared foreign agents are not "mine").
+      const includeShared = d.include_shared ?? !d.owner_user_id;
+      return s.listAgentsByTeam(d.team_id, pagination, filter, { includeShared });
     }
     const ownerId = d.owner_user_id ?? await resolveUserId(s, { user_key: d.owner_user_key });
     const filter2: AgentFilter = {};
@@ -202,6 +205,26 @@ const routeTable: Record<string, Handler> = {
     return s.listAgentsByOwner(ownerId, pagination, Object.keys(filter2).length ? filter2 : undefined);
   }),
   [`${V3_PREFIX}/agent/archive`]: bind(S.agentArchiveSchema, (d, c, s) => s.archiveAgentForCaller(d.agent_id, c)),
+
+  // AgentShare (cross-team)
+  [`${V3_PREFIX}/agent-share/grant`]: bind(S.agentShareGrantSchema, async (d, c, s) => {
+    await requireEntity(s, EntityType.Agent, d.agent_id);
+    await requireEntity(s, EntityType.Team, d.target_team_id);
+    const granted_by = d.granted_by ?? await resolveUserId(s, { user_key: d.granted_by_key });
+    const { granted_by_key: _k, ...rest } = d;
+    return s.grantAgentShareForCaller({ ...rest, granted_by }, c);
+  }),
+  [`${V3_PREFIX}/agent-share/revoke`]: bind(S.agentShareRevokeSchema, async (d, c, s) => {
+    await s.revokeAgentShareForCaller(d.id, c);
+    return OK;
+  }),
+  [`${V3_PREFIX}/agent-share/list`]: bind(S.agentShareListSchema, (d, c, s) =>
+    s.listAgentSharesForCaller(
+      { agent_id: d.agent_id, team_id: d.team_id },
+      c,
+      resolvePagination(d),
+    ),
+  ),
 
   // Task
   [`${V3_PREFIX}/task/create`]: bind(S.taskCreateSchema, (d, c, s) => s.createTaskForCaller(d, c)),

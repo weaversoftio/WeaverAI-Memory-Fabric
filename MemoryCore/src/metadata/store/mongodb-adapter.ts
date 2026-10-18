@@ -48,6 +48,8 @@ import type {
   CreateAssetInput,
   FixedAssetBindingInput,
   GrantAclInput,
+  GrantAgentShareInput,
+  AgentShareEntity,
   AgentFilter,
   TaskFilter,
   AssetFilter,
@@ -250,6 +252,16 @@ export class MongoMetadataStore implements IMetadataStore {
     await this.ensureIndex("meta_asset_acl", { id: 1 }, { unique: true });
     await this.ensureIndex("meta_asset_acl", { asset_id: 1, created_at: -1 });
     await this.ensureIndex("meta_asset_acl", { subject_type: 1, subject_id: 1, created_at: -1 });
+
+    // ── meta_agent_team_shares ──
+    await this.ensureIndex("meta_agent_team_shares",
+      { agent_id: 1, target_team_id: 1 },
+      { unique: true },
+    );
+    await this.ensureIndex("meta_agent_team_shares", { id: 1 }, { unique: true });
+    await this.ensureIndex("meta_agent_team_shares", { agent_id: 1, created_at: -1 });
+    await this.ensureIndex("meta_agent_team_shares", { target_team_id: 1, created_at: -1 });
+    await this.ensureIndex("meta_agent_fixed_assets", { asset_id: 1 });
 
     // ── meta_config_params ──
     await this.ensureIndex("meta_config_params",
@@ -666,6 +678,12 @@ export class MongoMetadataStore implements IMetadataStore {
     const result = await this.batchDelete("meta_teams", "team_id", teamIds);
     if (result.deleted_ids.length > 0) {
       await this.col("meta_team_members").deleteMany({ team_id: { $in: result.deleted_ids } } as Document);
+      await this.col("meta_agent_team_shares").deleteMany({
+        $or: [
+          { target_team_id: { $in: result.deleted_ids } },
+          { home_team_id: { $in: result.deleted_ids } },
+        ],
+      } as Document);
       await this.col("meta_agents").deleteMany({ team_id: { $in: result.deleted_ids } } as Document);
       await this.col("meta_tasks").deleteMany({ team_id: { $in: result.deleted_ids } } as Document);
       await this.col("meta_assets").deleteMany({ team_id: { $in: result.deleted_ids } } as Document);
@@ -812,6 +830,7 @@ export class MongoMetadataStore implements IMetadataStore {
     if (result.deleted_ids.length > 0) {
       await this.col("meta_task_agents").deleteMany({ agent_id: { $in: result.deleted_ids } } as Document);
       await this.col("meta_agent_fixed_assets").deleteMany({ agent_id: { $in: result.deleted_ids } } as Document);
+      await this.col("meta_agent_team_shares").deleteMany({ agent_id: { $in: result.deleted_ids } } as Document);
       const selfMemoryAssetIds = result.deleted_ids
         .map((agentId) => selfMemoryByAgent.get(agentId))
         .filter((assetId): assetId is string => !!assetId);
@@ -822,8 +841,22 @@ export class MongoMetadataStore implements IMetadataStore {
     return result;
   }
 
-  async listAgentsByTeam(teamId: string, pagination?: PaginationParams | null, filter?: AgentFilter): Promise<ListPage<AgentEntity>> {
-    const q: Document = { team_id: teamId };
+  async listAgentsByTeam(
+    teamId: string,
+    pagination?: PaginationParams | null,
+    filter?: AgentFilter,
+    options?: { includeShared?: boolean },
+  ): Promise<ListPage<AgentEntity>> {
+    const q: Document = {};
+    if (options?.includeShared) {
+      const shareRows = await this.col<AgentShareEntity>("meta_agent_team_shares")
+        .find({ target_team_id: teamId } as Document, { projection: { agent_id: 1, _id: 0 } })
+        .toArray();
+      const sharedIds = shareRows.map((r) => r.agent_id);
+      q.$or = [{ team_id: teamId }, { agent_id: { $in: sharedIds } }];
+    } else {
+      q.team_id = teamId;
+    }
     if (filter?.status) q.status = filter.status;
     if (filter?.owner_user_id) q.owner_user_id = filter.owner_user_id;
     if (filter?.name) q.name = filter.name;
@@ -1273,6 +1306,84 @@ export class MongoMetadataStore implements IMetadataStore {
       { created_at: -1 },
       (d) => d as AclEntity,
     );
+  }
+
+  // ============================================================
+  // AgentShare (cross-team)
+  // ============================================================
+  async grantAgentShare(input: GrantAgentShareInput & { home_team_id: string }): Promise<AgentShareEntity> {
+    const now = nowIso();
+    await runWithGeneratedRelationId(input.id, isMongoRelationIdCollision, async (id) => {
+      await this.col("meta_agent_team_shares").updateOne(
+        { agent_id: input.agent_id, target_team_id: input.target_team_id },
+        {
+          $set: {
+            home_team_id: input.home_team_id,
+            granted_by: input.granted_by,
+            updated_at: now,
+          },
+          $setOnInsert: {
+            id,
+            agent_id: input.agent_id,
+            target_team_id: input.target_team_id,
+            created_at: now,
+          },
+        },
+        { upsert: true },
+      );
+    });
+    return (await this.getAgentShare(input.agent_id, input.target_team_id))!;
+  }
+
+  async getAgentShareById(id: string): Promise<AgentShareEntity | null> {
+    return this.col<AgentShareEntity>("meta_agent_team_shares").findOne(
+      { id } as Document,
+      PROJECT_NO_ID,
+    ) as Promise<AgentShareEntity | null>;
+  }
+
+  async getAgentShare(agentId: string, targetTeamId: string): Promise<AgentShareEntity | null> {
+    return this.col<AgentShareEntity>("meta_agent_team_shares").findOne(
+      { agent_id: agentId, target_team_id: targetTeamId } as Document,
+      PROJECT_NO_ID,
+    ) as Promise<AgentShareEntity | null>;
+  }
+
+  async revokeAgentShare(id: string): Promise<void> {
+    await this.col("meta_agent_team_shares").deleteOne({ id });
+  }
+
+  async listAgentSharesByAgent(
+    agentId: string,
+    pagination?: PaginationParams | null,
+  ): Promise<ListPage<AgentShareEntity>> {
+    return this.paginatedFind(
+      "meta_agent_team_shares",
+      { agent_id: agentId },
+      pagination,
+      { created_at: -1 },
+      (d) => d as AgentShareEntity,
+    );
+  }
+
+  async listAgentSharesByTargetTeam(
+    teamId: string,
+    pagination?: PaginationParams | null,
+  ): Promise<ListPage<AgentShareEntity>> {
+    return this.paginatedFind(
+      "meta_agent_team_shares",
+      { target_team_id: teamId },
+      pagination,
+      { created_at: -1 },
+      (d) => d as AgentShareEntity,
+    );
+  }
+
+  async listAgentIdsByFixedAsset(assetId: string): Promise<string[]> {
+    const rows = await this.col<{ agent_id: string }>("meta_agent_fixed_assets")
+      .find({ asset_id: assetId } as Document, { projection: { agent_id: 1, _id: 0 } })
+      .toArray();
+    return rows.map((r) => r.agent_id);
   }
 
   // ============================================================

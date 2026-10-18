@@ -37,7 +37,11 @@ import type {
   PrewarmInput,
 } from "../types.js";
 import { HOOK_PRIORITY } from "../types.js";
-import { BRIDGE_SIG_HEADER, signBridgeSession } from "../../bridge-signature.js";
+import {
+  BRIDGE_SIG_HEADER,
+  encodeBridgeSessionToken,
+  signBridgeSession,
+} from "../../bridge-signature.js";
 
 export interface SkillToolsInjectorConfig {
   /**
@@ -68,7 +72,9 @@ export function renderSkillToolsBlock(
 
   // The gateway requires `x-wamf-service-id: <spaceId>` to let the request through; `x-conversation-id`
   // lets the proxy reuse the identity in the session (user_id / team_id / agent_id).
-  const sessionHeader = sessionId ? ` -H 'x-conversation-id: ${sessionId}'` : "";
+  // Session id is opaque-encoded so PII/phone redactors cannot mutate it and break x-bridge-sig.
+  const sessionToken = sessionId ? encodeBridgeSessionToken(sessionId) : undefined;
+  const sessionHeader = sessionToken ? ` -H 'x-conversation-id: ${sessionToken}'` : "";
   const tenantHeader = spaceId ? ` -H 'x-wamf-service-id: ${spaceId}'` : "";
   const sigHeader = sessionId ? ` -H '${BRIDGE_SIG_HEADER}: ${signBridgeSession(sessionId, spaceId)}'` : "";
   const authHeader = `${tenantHeader}${sessionHeader}${sigHeader}`;
@@ -188,6 +194,7 @@ export function renderSkillToolsBlock(
     "Call template:",
     `  curl -sSk -X POST <bridge>/<action> -H 'content-type: application/json'${authHeader} -d '{...business fields...}'`,
     `  where <bridge> = ${bridge}`,
+    "  Copy the -H headers from this recipe verbatim (including the wamf1.* x-conversation-id). Never substitute another chat UUID — that breaks x-bridge-sig.",
     "",
     "Available tools:",
     "",

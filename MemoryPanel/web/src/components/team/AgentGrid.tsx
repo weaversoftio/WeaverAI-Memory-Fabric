@@ -113,21 +113,35 @@ export default function AgentGrid({
     );
   }
 
+  function isSharedIn(agent: StoreAgent): boolean {
+    return agent.team_id !== activeTeam.team_id;
+  }
+
   function renderName(agent: StoreAgent, compact = false) {
     const editable = canEdit(agent);
+    const shared = isSharedIn(agent);
+    // Shared-in agents are viewable by every member of the receiving team; home-team edit stays owner/admin-gated.
     return (
       <button
         type="button"
-        className={`_memory-agents-name-trigger${editable ? ' _memory-agents-name-trigger--editable' : ''}`}
+        className={`_memory-agents-name-trigger _memory-agents-name-trigger--editable`}
         data-guide={editable ? 'agent-name-editable' : undefined}
-        onClick={() => editable && onEditAgent(agent)}
-        disabled={!editable}
-        title={editable
-          ? t('agentGrid.card.edit.tooltip.can')
-          : t('agentGrid.card.edit.tooltip.cannot', { owner: agent.owner_user_id ? resolveUserName(agent.owner_user_id) : t('agentGrid.card.ownerUnset') })}
+        onClick={() => onEditAgent(agent)}
+        title={
+          shared
+            ? t('agentGrid.card.edit.tooltip.shared')
+            : editable
+              ? t('agentGrid.card.edit.tooltip.can')
+              : t('agentGrid.card.edit.tooltip.cannot', { owner: agent.owner_user_id ? resolveUserName(agent.owner_user_id) : t('agentGrid.card.ownerUnset') })
+        }
       >
         <span className="_memory-agents-name" title={agent.name}>{agent.name}</span>
-        {editable && <ChevronRightIcon size={compact ? 12 : 14} className="_memory-agents-chevron" />}
+        {shared && (
+          <span className="_memory-agents-shared-badge" title={t('agentGrid.card.shared.tooltip')}>
+            {t('agentGrid.card.shared')}
+          </span>
+        )}
+        <ChevronRightIcon size={compact ? 12 : 14} className="_memory-agents-chevron" />
       </button>
     );
   }
@@ -282,7 +296,12 @@ export default function AgentGrid({
                 <div className="_memory-agents-owner-row">
                   <span>{t('agentGrid.card.owner')}</span>
                   {renderOwner(agent)}
-                  {!editable && <span className="_memory-agents-readonly">{t('agentGrid.card.readonly')}</span>}
+                  {isSharedIn(agent) && (
+                    <span className="_memory-agents-readonly">{t('agentGrid.card.shared')}</span>
+                  )}
+                  {!editable && !isSharedIn(agent) && (
+                    <span className="_memory-agents-readonly">{t('agentGrid.card.readonly')}</span>
+                  )}
                 </div>
                 {/* Asset count area: while counts are still loading only the 4 numbers are replaced by small skeleton placeholders; the body is visible immediately */}
                 {renderAssets(agent, countsLoading)}

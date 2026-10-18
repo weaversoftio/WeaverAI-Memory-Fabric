@@ -42,6 +42,7 @@ export {
   agentsApi,
   type AgentTemplateConfig,
   type AgentTemplateAssetIds,
+  type AgentShare,
 } from './api/agents';
 
 // ── Tasks + Participation Logs ──

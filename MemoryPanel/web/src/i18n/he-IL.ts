@@ -982,6 +982,13 @@ export const heIL = {
   'agentEdit.notify.saved': 'פרטי ה-Agent נשמרו.',
   'agentEdit.notify.saveFailed': 'שמירת פרטי ה-Agent נכשלה: {{msg}}',
   'agentEdit.notify.loadAssetsFailed': 'טעינת שיוכי הנכסים של ה-Agent נכשלה: {{msg}}',
+  'agentEdit.share.label': 'שיתוף עם צוותים אחרים',
+  'agentEdit.share.hint':
+    'חברי הצוותים שנבחרו יוכלו להשתמש ב-Agent הזה (ובזיכרון/skills המשויכים). הבעלות נשארת בצוות הבית.',
+  'agentEdit.share.empty': 'הצטרף לצוות נוסף כדי לשתף את ה-Agent בין צוותים.',
+  'agentEdit.share.loading': 'טוען שיתופי צוות…',
+  'agentEdit.share.notify.failed': 'עדכון שיתוף הצוות נכשל: {{msg}}',
+  'agentEdit.share.readonly': 'משותף מצוות אחר — לצפייה בלבד כאן. ניהול השיתוף מבוצע בצוות הבית.',
 
   // ===== AgentGrid =====
   'agentGrid.title': 'Agents',
@@ -1005,6 +1012,9 @@ export const heIL = {
   'agentGrid.card.delete.tooltip.cannot': 'אין לך הרשאה למחוק Agent זה',
   'agentGrid.card.edit.tooltip.can': 'לחץ כדי לצפות ב-Agent זה ולערוך אותו',
   'agentGrid.card.edit.tooltip.cannot': 'רק הבעלים ({{owner}}) או מנהל הצוות יכולים לערוך',
+  'agentGrid.card.edit.tooltip.shared': 'משותף מצוות אחר — לחץ לצפייה',
+  'agentGrid.card.shared': 'משותף',
+  'agentGrid.card.shared.tooltip': 'ה-Agent הזה משותף לצוות הזה מצוות הבית שלו',
   'agentGrid.card.ownerUnset': 'לא הוגדר',
   'agentGrid.table.name': 'שם',
   'agentGrid.table.owner': 'בעלים',
@@ -1524,7 +1534,9 @@ export const heIL = {
   'guide.manual.collapse': 'כיווץ ההגדרה הידנית',
   'guide.manual.title': 'הגדרה ידנית',
   'guide.manual.model': 'מזהה מודל',
-  'guide.manual.modelHint': 'חייב להיות באותיות קטנות',
+  'guide.manual.modelHint': 'חייב להיות באותיות קטנות — שם המודל ב-LiteLLM / gateway',
+  'guide.manual.prefix': 'מזהה Prefix',
+  'guide.manual.prefixHint': 'שדה Prefix ID ב-Open WebUI Connections (השתמש ב-proxy עבור /proxy/{instance}/v1)',
   'guide.manual.fileHint': 'לכתוב אל',
 
   // Best practices
@@ -1689,6 +1701,14 @@ export const heIL = {
   'guide.manual.note.openclaw.0': 'נדרשת בחירה מראש בכותרות: team-id / agent-id / task-id / conversation-id',
   'guide.manual.note.openclaw.1': 'x-conversation-id מזהה את הסשן הנוכחי – יש לשנות אותו בכל שיחה חדשה',
   'guide.manual.note.openclaw.2': 'x-task-id נדרש בגרסה הנוכחית; אם אין משימה, השתמש ב-"no-task"',
+  'guide.manual.note.weaveraiOne.0':
+    'ב-WeaverAI One (Open WebUI): Admin → Settings → Connections → הוסף חיבור תואם OpenAI',
+  'guide.manual.note.weaveraiOne.1':
+    'API Base URL הוא /proxy/{instance}/v1. מפתח ה-API הוא מפתח משתמש מ-Memory Fabric תחת Team → API Keys',
+  'guide.manual.note.weaveraiOne.2':
+    'הגדר Prefix ID + Model ID בחיבור, ואז הוסף כותרות x-team-id / x-agent-id / x-task-id / x-conversation-id',
+  'guide.manual.note.weaveraiOne.3':
+    'השתמש ב-{{CHAT_ID}} (או מזהה הצ\'אט) עבור x-conversation-id כדי שכל שיחת OWUI תמופה לסשן זיכרון נפרד',
 
   // ===== Analytics (Observability) =====
   'menu.analytics': 'ניטור',

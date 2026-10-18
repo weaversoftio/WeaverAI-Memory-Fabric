@@ -982,6 +982,13 @@ export const enUS = {
   'agentEdit.notify.saved': 'Agent info saved.',
   'agentEdit.notify.saveFailed': 'Failed to save Agent info: {{msg}}',
   'agentEdit.notify.loadAssetsFailed': 'Failed to load Agent asset bindings: {{msg}}',
+  'agentEdit.share.label': 'Share with other teams',
+  'agentEdit.share.hint':
+    'Members of selected teams can use this agent (and its bound memory/skills). The agent stays owned by its home team.',
+  'agentEdit.share.empty': 'Join another team first to share this agent across teams.',
+  'agentEdit.share.loading': 'Loading team shares…',
+  'agentEdit.share.notify.failed': 'Failed to update team share: {{msg}}',
+  'agentEdit.share.readonly': 'Shared from another team — view only here. Manage shares from the home team.',
 
   // ===== AgentGrid =====
   'agentGrid.title': 'Agents',
@@ -1005,6 +1012,9 @@ export const enUS = {
   'agentGrid.card.delete.tooltip.cannot': 'You do not have permission to delete this Agent',
   'agentGrid.card.edit.tooltip.can': 'Click to view and edit this Agent',
   'agentGrid.card.edit.tooltip.cannot': 'Only owner ({{owner}}) or team admin can edit',
+  'agentGrid.card.edit.tooltip.shared': 'Shared from another team — click to view',
+  'agentGrid.card.shared': 'Shared',
+  'agentGrid.card.shared.tooltip': 'This agent is shared into this team from its home team',
   'agentGrid.card.ownerUnset': 'Not set',
   'agentGrid.table.name': 'Name',
   'agentGrid.table.owner': 'Owner',
@@ -1524,7 +1534,9 @@ export const enUS = {
   'guide.manual.collapse': 'Collapse manual config',
   'guide.manual.title': 'Manual Configuration',
   'guide.manual.model': 'Model ID',
-  'guide.manual.modelHint': 'Must be lowercase',
+  'guide.manual.modelHint': 'Must be lowercase — the upstream LiteLLM / gateway model name',
+  'guide.manual.prefix': 'Prefix ID',
+  'guide.manual.prefixHint': 'Open WebUI Connections “Prefix ID” (use proxy for /proxy/{instance}/v1)',
   'guide.manual.fileHint': 'Write to',
 
   // Best practices
@@ -1689,6 +1701,14 @@ export const enUS = {
   'guide.manual.note.openclaw.0': 'Header preselect required: team-id / agent-id / task-id / conversation-id',
   'guide.manual.note.openclaw.1': 'x-conversation-id identifies the current session — change it for each new conversation',
   'guide.manual.note.openclaw.2': 'x-task-id is required in the current version; use "no-task" when there is none',
+  'guide.manual.note.weaveraiOne.0':
+    'In WeaverAI One (Open WebUI): Admin → Settings → Connections → add an OpenAI-compatible connection',
+  'guide.manual.note.weaveraiOne.1':
+    'API Base URL is /proxy/{instance}/v1. API Key is a Memory Fabric user key from Team → API Keys',
+  'guide.manual.note.weaveraiOne.2':
+    'Set Prefix ID + Model ID on the connection, then add headers x-team-id / x-agent-id / x-task-id / x-conversation-id',
+  'guide.manual.note.weaveraiOne.3':
+    'Use {{CHAT_ID}} (or the chat id) for x-conversation-id so each OWUI chat maps to its own memory session',
 
   // ===== Analytics (Observability) =====
   'menu.analytics': 'Observability',

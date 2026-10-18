@@ -80,7 +80,7 @@ export default function TeamManagementPanel({
   const showMembers = section === 'members' || section === 'all';
   const showAgents = section === 'agents' || section === 'all';
   const { activeTeamId, activeTeam, loading: teamsLoading } = useTeams();
-  // Take only agents of the current team - agents strictly belong to a team and never display across teams
+  // Agents of the current team, plus agents shared into this team from other teams (include_shared on agent/list).
   const { agents: allAgents, loading: agentsLoading } = useAgents(activeTeamId);
   const { t } = useTranslation();
   // Agent visibility: agents are created with visibility=team, so every team member

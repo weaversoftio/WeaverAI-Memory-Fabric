@@ -590,6 +590,47 @@ export function runMetadataStoreContract(
       });
     });
 
+    // ── AgentShare (cross-team) ──
+    describe("AgentShare", () => {
+      it("grant / list / includeShared list / revoke / cascade on deleteAgents", async () => {
+        const owner = await store.createUser(uniqueUserInput());
+        const home = await store.createTeam(teamInput(owner.user_id));
+        const other = await store.createTeam({ name: `other-${Date.now()}`, owner_user_id: owner.user_id });
+        const agent = await store.createAgent({
+          team_id: home.team_id,
+          owner_user_id: owner.user_id,
+          name: "SharedA",
+        });
+
+        const share = await store.grantAgentShare({
+          agent_id: agent.agent_id,
+          home_team_id: home.team_id,
+          target_team_id: other.team_id,
+          granted_by: owner.user_id,
+        });
+        expect(share.target_team_id).toBe(other.team_id);
+        expect((await store.listAgentSharesByAgent(agent.agent_id, P)).items).toHaveLength(1);
+        expect((await store.listAgentSharesByTargetTeam(other.team_id, P)).items).toHaveLength(1);
+
+        const homeOnly = (await store.listAgentsByTeam(other.team_id, P)).items;
+        expect(homeOnly.map((a) => a.agent_id)).not.toContain(agent.agent_id);
+        const withShared = (await store.listAgentsByTeam(other.team_id, P, undefined, { includeShared: true })).items;
+        expect(withShared.map((a) => a.agent_id)).toContain(agent.agent_id);
+
+        await store.revokeAgentShare(share.id);
+        expect((await store.listAgentSharesByAgent(agent.agent_id, P)).items).toHaveLength(0);
+
+        await store.grantAgentShare({
+          agent_id: agent.agent_id,
+          home_team_id: home.team_id,
+          target_team_id: other.team_id,
+          granted_by: owner.user_id,
+        });
+        await store.deleteAgents([agent.agent_id]);
+        expect((await store.listAgentSharesByTargetTeam(other.team_id, P)).items).toHaveLength(0);
+      });
+    });
+
     // ── Delete Cascade (N1) ──
     describe("Delete Cascade", () => {
       it("deleteUsers cascades cleanup of team_members + ACL", async () => {

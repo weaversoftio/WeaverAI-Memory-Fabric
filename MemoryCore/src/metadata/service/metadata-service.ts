@@ -61,6 +61,7 @@ import type {
   FixedAssetTypeCounts,
   SummarizeAgentFixedAssetsParams,
   AclEntity,
+  AgentShareEntity,
   CreateUserInput,
   InitAdminInput,
   InitAdminResult,
@@ -72,6 +73,7 @@ import type {
   CreateAssetInput,
   FixedAssetBindingInput,
   GrantAclInput,
+  GrantAgentShareInput,
   AgentFilter,
   TaskFilter,
   AssetFilter,
@@ -974,8 +976,9 @@ export class MetadataService {
     teamId: string,
     pagination: PaginationParams = DEFAULT_PAGINATION,
     filter?: AgentFilter,
+    options?: { includeShared?: boolean },
   ): Promise<PaginatedResult<AgentEntity>> {
-    const page = await this.store.listAgentsByTeam(teamId, pagination, filter);
+    const page = await this.store.listAgentsByTeam(teamId, pagination, filter, options);
     const items = page.items;
     return formatListResult({ items, total: page.total }, pagination);
   }
@@ -1613,6 +1616,121 @@ export class MetadataService {
   }
 
   // ============================================================
+  // AgentShare (cross-team)
+  // ============================================================
+  async grantAgentShare(input: GrantAgentShareInput): Promise<AgentShareEntity> {
+    const agent = await this.getAgentById(input.agent_id);
+    if (!agent) throw new MetadataError("agent_not_found", `agent not found: ${input.agent_id}`);
+    if (agent.team_id === input.target_team_id) {
+      throw new MetadataError("invalid_argument", "cannot share an agent to its home team");
+    }
+    await this.assertTeamExists(input.target_team_id);
+    return this.store.grantAgentShare({
+      ...input,
+      home_team_id: agent.team_id,
+    });
+  }
+
+  async revokeAgentShare(id: string): Promise<void> {
+    const share = await this.store.getAgentShareById(id);
+    if (!share) throw new MetadataError("agent_share_not_found", `agent share not found: ${id}`);
+    await this.store.revokeAgentShare(id);
+  }
+
+  async listAgentSharesByAgent(
+    agentId: string,
+    pagination: PaginationParams = DEFAULT_PAGINATION,
+  ): Promise<PaginatedResult<AgentShareEntity>> {
+    if (!(await this.getAgentById(agentId))) {
+      throw new MetadataError("agent_not_found", `agent not found: ${agentId}`);
+    }
+    const page = await this.store.listAgentSharesByAgent(agentId, pagination);
+    return formatListResult(page, pagination);
+  }
+
+  async listAgentSharesByTargetTeam(
+    teamId: string,
+    pagination: PaginationParams = DEFAULT_PAGINATION,
+  ): Promise<PaginatedResult<AgentShareEntity>> {
+    await this.assertTeamExists(teamId);
+    const page = await this.store.listAgentSharesByTargetTeam(teamId, pagination);
+    return formatListResult(page, pagination);
+  }
+
+  async grantAgentShareForCaller(input: GrantAgentShareInput, ctx: V3AuthContext): Promise<AgentShareEntity> {
+    const agent = await this.assertCallerIsAgentOwnerOrTeamAdmin(ctx, input.agent_id);
+    const callerId = this.requireCallerId(ctx);
+    if (input.granted_by !== callerId) {
+      throw new MetadataError("permission_denied", "granted_by must match caller");
+    }
+    // Caller must also be an active member of the target team (avoids sharing into teams they don't belong to).
+    await this.requireActiveTeamMember(ctx, input.target_team_id);
+    return this.grantAgentShare({ ...input, agent_id: agent.agent_id });
+  }
+
+  async revokeAgentShareForCaller(id: string, ctx: V3AuthContext): Promise<void> {
+    const share = await this.store.getAgentShareById(id);
+    if (!share) throw new MetadataError("agent_share_not_found", `agent share not found: ${id}`);
+    await this.assertCallerIsAgentOwnerOrTeamAdmin(ctx, share.agent_id);
+    await this.store.revokeAgentShare(id);
+  }
+
+  async listAgentSharesForCaller(
+    params: { agent_id?: string; team_id?: string },
+    ctx: V3AuthContext,
+    pagination: PaginationParams = DEFAULT_PAGINATION,
+  ): Promise<PaginatedResult<AgentShareEntity>> {
+    if (params.agent_id) {
+      await this.assertCallerIsAgentOwnerOrTeamAdmin(ctx, params.agent_id);
+      return this.listAgentSharesByAgent(params.agent_id, pagination);
+    }
+    if (params.team_id) {
+      await this.requireActiveTeamMember(ctx, params.team_id);
+      return this.listAgentSharesByTargetTeam(params.team_id, pagination);
+    }
+    throw new MetadataError("invalid_argument", "agent_id or team_id required");
+  }
+
+  /**
+   * True when the user is an active member of a team that has been granted
+   * access to an agent that has this asset as a fixed binding (or as its self chat_memory).
+   */
+  private async callerHasAgentShareAccessToAsset(
+    userId: string,
+    assetId: string,
+    agentId?: string,
+  ): Promise<boolean> {
+    let candidateAgentIds: string[];
+    if (agentId) {
+      const binding = await this.store.getAgentFixedAsset(agentId, assetId);
+      if (!binding) {
+        const agent = await this.getAgentById(agentId);
+        if (!agent || buildChatMemoryAssetId(agent.team_id, agentId) !== assetId) {
+          return false;
+        }
+      }
+      candidateAgentIds = [agentId];
+    } else {
+      candidateAgentIds = await this.store.listAgentIdsByFixedAsset(assetId);
+    }
+
+    for (const aid of candidateAgentIds) {
+      let offset = 0;
+      const limit = 100;
+      while (true) {
+        const page = await this.store.listAgentSharesByAgent(aid, { limit, offset });
+        for (const share of page.items) {
+          const member = await this.store.getTeamMember(share.target_team_id, userId);
+          if (member && member.status === "active") return true;
+        }
+        if (offset + page.items.length >= page.total) break;
+        offset += limit;
+      }
+    }
+    return false;
+  }
+
+  // ============================================================
   // ACL
   // ============================================================
   async grantAcl(input: GrantAclInput): Promise<AclEntity> {
@@ -1660,12 +1778,24 @@ export class MetadataService {
     });
     if (fast.allowed) return fast;
 
+    // Cross-team agent share: members of a granted team may read/use the agent's fixed assets.
+    if (
+      (action === "read" || action === "use") &&
+      (fast.reason === "not_team_member" ||
+        fast.reason === "visibility_restricted" ||
+        fast.reason === "no_permission")
+    ) {
+      if (await this.callerHasAgentShareAccessToAsset(userId, params.asset_id, params.agent_id)) {
+        return { allowed: true, reason: "agent_share" };
+      }
+    }
+
     // Only when "passed the preconditions but role defaults do not cover it" (no_permission) is the ACL lazily loaded for a re-decision
     if (fast.reason !== "no_permission") return fast;
     if (membership && roleDefaultCovers(membership.role, action)) return fast;
 
     const aclRecords = await this.allAclRecords(params.asset_id);
-    return checkPermission({
+    const aclResult = checkPermission({
       user: { user_id: userId },
       asset,
       membership,
@@ -1674,6 +1804,15 @@ export class MetadataService {
       agentId: params.agent_id,
       logger: this.logger,
     });
+    if (aclResult.allowed) return aclResult;
+
+    if (
+      (action === "read" || action === "use") &&
+      (await this.callerHasAgentShareAccessToAsset(userId, params.asset_id, params.agent_id))
+    ) {
+      return { allowed: true, reason: "agent_share" };
+    }
+    return aclResult;
   }
 
   /** Filter by user the list of assets they have permission to access (offset pagination after permission aggregation). */

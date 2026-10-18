@@ -284,6 +284,21 @@ export interface AclEntity {
   updated_at: string;
 }
 
+/**
+ * Cross-team agent share: grants members of `target_team_id` the right to
+ * list/use an agent that still lives in its home `team_id`.
+ */
+export interface AgentShareEntity {
+  id: string;
+  agent_id: string;
+  /** Home team of the agent at grant time (denormalized for listing/revoke UX). */
+  home_team_id: string;
+  target_team_id: string;
+  granted_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // ============================
 // Input types (create/update)
 // ============================
@@ -427,6 +442,13 @@ export interface GrantAclInput {
   subject_id: string;
   permission: Permission;
   effect?: AclEffect;
+  granted_by: string;
+}
+
+export interface GrantAgentShareInput {
+  id?: string;
+  agent_id: string;
+  target_team_id: string;
   granted_by: string;
 }
 

@@ -43,7 +43,11 @@ import type {
 } from "../types.js";
 import { HOOK_PRIORITY } from "../types.js";
 import { getWamfIdentity } from "../../wamf/identity.js";
-import { BRIDGE_SIG_HEADER, signBridgeSession } from "../../bridge-signature.js";
+import {
+  BRIDGE_SIG_HEADER,
+  encodeBridgeSessionToken,
+  signBridgeSession,
+} from "../../bridge-signature.js";
 
 export interface WamfMemoryToolsInjectorConfig {
   /**
@@ -63,7 +67,9 @@ export function renderWamfMemoryToolsBlock(
   const bridge = `${base}/memory-bridge/v3`;
   // The gateway requires `x-wamf-service-id: <spaceId>` to let the request through; `x-conversation-id`
   // lets the proxy reuse the identity in the session (user_id / team_id / agent_id).
-  const sessionHeader = sessionId ? ` -H 'x-conversation-id: ${sessionId}'` : "";
+  // Session id is opaque-encoded so PII/phone redactors cannot mutate it and break x-bridge-sig.
+  const sessionToken = sessionId ? encodeBridgeSessionToken(sessionId) : undefined;
+  const sessionHeader = sessionToken ? ` -H 'x-conversation-id: ${sessionToken}'` : "";
   const tenantHeader = spaceId ? ` -H 'x-wamf-service-id: ${spaceId}'` : "";
   const sigHeader = sessionId ? ` -H '${BRIDGE_SIG_HEADER}: ${signBridgeSession(sessionId, spaceId)}'` : "";
   const authHeader = `${tenantHeader}${sessionHeader}${sigHeader}`;
@@ -127,8 +133,10 @@ export function renderWamfMemoryToolsBlock(
     "- Retries: HTTP 5xx may be retried once; never retry HTTP 4xx.",
     "- Every curl must send: " +
       (spaceId ? `x-wamf-service-id: ${spaceId}, ` : "x-wamf-service-id (the current memory instance, see the example), ") +
-      (sessionId ? `x-conversation-id: ${sessionId}, ${BRIDGE_SIG_HEADER}: ${signBridgeSession(sessionId, spaceId)}` : "x-conversation-id (from the current session)") +
-      "; Content-Type: application/json.",
+      (sessionToken
+        ? `x-conversation-id: ${sessionToken}, ${BRIDGE_SIG_HEADER}: ${signBridgeSession(sessionId!, spaceId)}`
+        : "x-conversation-id (from the current session)") +
+      "; Content-Type: application/json. Copy these -H headers verbatim from the recipe — never substitute another chat/session UUID.",
     "",
     "## Full example",
     "```bash",

@@ -14,11 +14,23 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
-import { Button, Input, Modal } from '@/components/ui';
+import { Button, Checkbox, Input, Modal } from '@/components/ui';
 import { useTranslation } from 'react-i18next';
 import { ToolsIcon, CodeIcon, LibraryIcon, ChatIcon } from '@/components/ui/icons';
-import { type Agent as StoreAgent, invalidateBackendCache, writeAgentUiMeta } from '@/services';
-import { agentsApi, skillApi, chatMemoryApi } from '@/lib/teamApi';
+import {
+  type Agent as StoreAgent,
+  canManageAsset,
+  invalidateBackendCache,
+  useTeams,
+  writeAgentUiMeta,
+} from '@/services';
+import { useAuthStore } from '@/stores/auth';
+import {
+  agentsApi,
+  skillApi,
+  chatMemoryApi,
+  type AgentShare,
+} from '@/lib/teamApi';
 import { knowledgeApi } from '@/lib/api/knowledge-api';
 import { feedback } from '@/lib/feedback';
 import { useTeamAssets, syncChatMemoryBindings } from './useAgentAssets';
@@ -32,11 +44,28 @@ export default function AgentEditDialog({
   onClose: () => void;
 }) {
   const selfChatMemoryId = `chat_memory-${agent.team_id}-${agent.agent_id}`;
+  const currentUser = useAuthStore((s) => s.auth?.user_id ?? '');
+  const { teams, activeTeam } = useTeams();
+  const homeTeam = teams.find((t) => t.team_id === agent.team_id) ?? activeTeam;
+  const canManage = canManageAsset(
+    { owner_user_id: agent.owner_user_id, team_id: agent.team_id },
+    homeTeam,
+    currentUser,
+    false,
+  );
+  const isSharedIn = !!activeTeam && agent.team_id !== activeTeam.team_id;
+  const shareableTeams = useMemo(
+    () => teams.filter((t) => t.team_id !== agent.team_id),
+    [teams, agent.team_id],
+  );
   const [name, setName] = useState(agent.name);
   const [description, setDescription] = useState(agent.description);
   const [rolePrompt, setRolePrompt] = useState(agent.role_prompt);
   const [rulesPrompt, setRulesPrompt] = useState(agent.rules_prompt);
   const [savingPrompt, setSavingPrompt] = useState(false);
+  const [shares, setShares] = useState<AgentShare[]>([]);
+  const [sharesLoading, setSharesLoading] = useState(false);
+  const [shareBusyTeamId, setShareBusyTeamId] = useState<string | null>(null);
 
   const [codeGraphOpen, setCodeGraphOpen] = useState(false);
   const [wikiOpen, setWikiOpen] = useState(false);
@@ -168,8 +197,37 @@ export default function AgentEditDialog({
     }
   }
 
+  async function toggleTeamShare(targetTeamId: string, enabled: boolean) {
+    if (!canManage || shareBusyTeamId) return;
+    setShareBusyTeamId(targetTeamId);
+    try {
+      if (enabled) {
+        const share = await agentsApi.grantShare(agent.agent_id, targetTeamId);
+        setShares((prev) => {
+          const without = prev.filter((s) => s.target_team_id !== targetTeamId);
+          return [...without, share];
+        });
+      } else {
+        const existing = shares.find((s) => s.target_team_id === targetTeamId);
+        if (existing) {
+          await agentsApi.revokeShare(existing.id);
+          setShares((prev) => prev.filter((s) => s.id !== existing.id));
+        }
+      }
+      invalidateBackendCache();
+    } catch (error) {
+      feedback.notify.error(
+        t('agentEdit.share.notify.failed', {
+          msg: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    } finally {
+      setShareBusyTeamId(null);
+    }
+  }
+
   async function saveAgent() {
-    if (!agentChanged || saving) return;
+    if (!canManage || !agentChanged || saving) return;
     const nextName = name.trim();
     const nextDescription = description.trim();
     const nextRolePrompt = rolePrompt.trim();
@@ -210,6 +268,36 @@ export default function AgentEditDialog({
       setSavingAssets(false);
     }
   }
+
+  useEffect(() => {
+    if (!canManage) {
+      setShares([]);
+      setSharesLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setSharesLoading(true);
+    agentsApi
+      .listShares(agent.agent_id)
+      .then((items) => {
+        if (!cancelled) setShares(items);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          feedback.notify.error(
+            t('agentEdit.share.notify.failed', {
+              msg: err instanceof Error ? err.message : String(err),
+            }),
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setSharesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [agent.agent_id, canManage, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -288,7 +376,7 @@ export default function AgentEditDialog({
         <div className="_memory-form-stack">
           <div className="_memory-modal-description">{agent.agent_id}</div>
           <LightField label={t('agentEdit.name')}>
-            <Input size="full" value={name} onChange={setName} disabled={saving} />
+            <Input size="full" value={name} onChange={setName} disabled={saving || !canManage} />
           </LightField>
 
           <LightField label={t('agentEdit.descLabel')}>
@@ -297,7 +385,7 @@ export default function AgentEditDialog({
               value={description}
               onChange={setDescription}
               rows={2}
-              disabled={saving}
+              disabled={saving || !canManage}
             />
           </LightField>
 
@@ -307,7 +395,7 @@ export default function AgentEditDialog({
               value={rolePrompt}
               onChange={setRolePrompt}
               rows={3}
-              disabled={saving}
+              disabled={saving || !canManage}
               placeholder={t('agentEdit.rolePlaceholder')}
             />
           </LightField>
@@ -318,10 +406,42 @@ export default function AgentEditDialog({
               value={rulesPrompt}
               onChange={setRulesPrompt}
               rows={4}
-              disabled={saving}
+              disabled={saving || !canManage}
               className="_memory-mono-textarea"
               placeholder={t('agentEdit.rulesPlaceholder')}
             />
+          </LightField>
+
+          <LightField label={t('agentEdit.share.label')}>
+            {isSharedIn ? (
+              <div className="_memory-modal-description">{t('agentEdit.share.readonly')}</div>
+            ) : !canManage ? (
+              <div className="_memory-modal-description">{t('agentEdit.share.readonly')}</div>
+            ) : sharesLoading ? (
+              <div className="_memory-modal-description">{t('agentEdit.share.loading')}</div>
+            ) : shareableTeams.length === 0 ? (
+              <div className="_memory-modal-description">{t('agentEdit.share.empty')}</div>
+            ) : (
+              <>
+                <div className="_memory-modal-description">{t('agentEdit.share.hint')}</div>
+                <div className="_memory-agent-share-list">
+                  {shareableTeams.map((team) => {
+                    const checked = shares.some((s) => s.target_team_id === team.team_id);
+                    const busy = shareBusyTeamId === team.team_id;
+                    return (
+                      <Checkbox
+                        key={team.team_id}
+                        value={checked}
+                        disabled={busy || !!shareBusyTeamId}
+                        onChange={(next) => void toggleTeamShare(team.team_id, next)}
+                      >
+                        {team.name}
+                      </Checkbox>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </LightField>
 
           <div className="_memory-asset-section">
@@ -368,6 +488,7 @@ export default function AgentEditDialog({
                       assets={wikiAssets}
                       checkedKeys={llmWikis}
                       onToggle={(k) => toggle(llmWikis, setLlmWikis, k)}
+                      readOnly={!canManage}
                     />
                   </CollapseGroup>
                   <CollapseGroup
@@ -382,6 +503,7 @@ export default function AgentEditDialog({
                       assets={codeGraphAssets}
                       checkedKeys={codeGraphs}
                       onToggle={(k) => toggle(codeGraphs, setCodeGraphs, k)}
+                      readOnly={!canManage}
                     />
                   </CollapseGroup>
                   <CollapseGroup
@@ -397,6 +519,7 @@ export default function AgentEditDialog({
                       checkedKeys={chatMemories}
                       onToggle={(k) => toggle(chatMemories, setChatMemories, k)}
                       disabledKeys={new Set([selfChatMemoryId])}
+                      readOnly={!canManage}
                     />
                   </CollapseGroup>
                   {/* Skill is still read-only: its binding is a forked independent copy, and the edit dialog does not add/remove (see the file header) */}
@@ -429,14 +552,16 @@ export default function AgentEditDialog({
         <Button onClick={onClose} disabled={saving}>
           {t('agentEdit.cancel')}
         </Button>
-        <Button
-          type="primary"
-          onClick={() => void saveAgent()}
-          disabled={!agentChanged || saving}
-          loading={saving}
-        >
-          {t('agentEdit.save')}
-        </Button>
+        {canManage && (
+          <Button
+            type="primary"
+            onClick={() => void saveAgent()}
+            disabled={!agentChanged || saving}
+            loading={saving}
+          >
+            {t('agentEdit.save')}
+          </Button>
+        )}
       </Modal.Footer>
     </Modal>
   );

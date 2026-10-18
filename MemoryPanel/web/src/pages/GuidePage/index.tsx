@@ -18,6 +18,12 @@ import { resetOnboarding } from '@/layouts/OnboardingGuide';
 import { metaInstancesApi } from '@/lib/teamApi';
 import { getPanelSession } from '@/lib/panelSession';
 import { feedback } from '@/lib/feedback';
+import {
+  WEAVERAI_ONE_DEFAULT_PREFIX,
+  WEAVERAI_ONE_KEY_PLACEHOLDER,
+  weaveraiOneConnectionConfig,
+  weaveraiOneProxyUrl,
+} from '@/lib/weaverai-one-connection';
 import { CopyButton } from './CopyButton';
 import { MemCommands } from './MemCommands';
 import './style.css';
@@ -25,7 +31,15 @@ import './style.css';
 type MainTab = 'quick' | 'practice' | 'commands';
 type QuickTab = 'download' | 'ide' | 'history';
 type PracticeId = 'team' | 'personal';
-type ManualIdeId = 'claude' | 'codebuddy' | 'codex' | 'workbuddy' | 'dsh' | 'hermes' | 'openclaw';
+type ManualIdeId =
+  | 'claude'
+  | 'codebuddy'
+  | 'codex'
+  | 'workbuddy'
+  | 'dsh'
+  | 'hermes'
+  | 'openclaw'
+  | 'weaverai-one';
 type ProxyMode = 'default' | 'analyse';
 
 interface PracticeStep {
@@ -50,12 +64,16 @@ const QUICK_SETUP_SKILL_PROMPT =
   'Read ~/agents/skills/setup-proxy/SKILL.md, then follow its steps to guide me through connecting my Agent to Memory Proxy.';
 const HISTORY_IMPORT_SCRIPT = 'tsx agents/asset-import.ts --source <agent> --agent-id <id> --team-id <tid>';
 const HISTORY_SOURCES = 'claude-code, codebuddy, codex, workbuddy, dsh, hermes, openclaw';
-const KEY_PLACEHOLDER = '<your-team-memory-api-key>';
+const KEY_PLACEHOLDER = WEAVERAI_ONE_KEY_PLACEHOLDER;
 
 /** Integration address: {base}/{agent}/{instanceId}(/analyse), matching the Proxy whitelist shape.
  * Note Claude Code's proxy route segment is `claude-code` (see AGENT_PREFIX_RE in MemoryProxy whitelist.ts
- * and setup-proxy.sh), while this page's IDE id is `claude`, so it needs normalizing. */
+ * and setup-proxy.sh), while this page's IDE id is `claude`, so it needs normalizing.
+ * WeaverAI One uses the legacy OpenAI path `/proxy/{instanceId}/v1`. */
 function proxyEndpoint(base: string, agent: ManualIdeId, instanceId: string, mode: ProxyMode) {
+  if (agent === 'weaverai-one') {
+    return weaveraiOneProxyUrl(base, instanceId);
+  }
   const pathAgent = agent === 'claude' ? 'claude-code' : agent;
   return `${base}/${pathAgent}/${instanceId}${mode === 'analyse' ? '/analyse' : ''}`;
 }
@@ -145,6 +163,28 @@ const MANUAL_IDES: ManualIde[] = [
       'guide.manual.note.openclaw.0',
       'guide.manual.note.openclaw.1',
       'guide.manual.note.openclaw.2',
+    ],
+  },
+  {
+    id: 'weaverai-one',
+    name: 'WeaverAI One',
+    file: 'Open WebUI → Admin → Settings → Connections → OpenAI',
+    protocol: 'OpenAI Chat + header preselect',
+    config: (base, instanceId, _mode, model) =>
+      weaveraiOneConnectionConfig({
+        proxyBase: base,
+        instanceId,
+        teamId: '<team-id>',
+        agentId: '<agent-id>',
+        taskId: 'no-task',
+        modelId: model,
+        prefixId: WEAVERAI_ONE_DEFAULT_PREFIX,
+      }),
+    notes: [
+      'guide.manual.note.weaveraiOne.0',
+      'guide.manual.note.weaveraiOne.1',
+      'guide.manual.note.weaveraiOne.2',
+      'guide.manual.note.weaveraiOne.3',
     ],
   },
 ];
@@ -283,6 +323,7 @@ export function GuidePage() {
   const [manualOpen, setManualOpen] = useState(false);
   const [manualIdeId, setManualIdeId] = useState<ManualIdeId>('claude');
   const [modelId, setModelId] = useState('claude-sonnet-4-5');
+  const [prefixId, setPrefixId] = useState(WEAVERAI_ONE_DEFAULT_PREFIX);
 
   useEffect(() => {
     const session = getPanelSession();
@@ -326,10 +367,20 @@ export function GuidePage() {
   const manualIde = MANUAL_IDES.find((item) => item.id === manualIdeId) ?? MANUAL_IDES[0];
   const proxyFallback = t('guide.proxyFallback');
   const modelFallback = t('guide.modelFallback');
-  const manualConfig = useMemo(
-    () => manualIde.config(proxyBase || proxyFallback, instanceId, proxyMode, modelId || modelFallback),
-    [manualIde, modelId, proxyBase, proxyMode, instanceId, proxyFallback, modelFallback],
-  );
+  const manualConfig = useMemo(() => {
+    if (manualIde.id === 'weaverai-one') {
+      return weaveraiOneConnectionConfig({
+        proxyBase: proxyBase || proxyFallback,
+        instanceId,
+        teamId: '<team-id>',
+        agentId: '<agent-id>',
+        taskId: 'no-task',
+        modelId: modelId || modelFallback,
+        prefixId: prefixId || WEAVERAI_ONE_DEFAULT_PREFIX,
+      });
+    }
+    return manualIde.config(proxyBase || proxyFallback, instanceId, proxyMode, modelId || modelFallback);
+  }, [manualIde, modelId, prefixId, proxyBase, proxyMode, instanceId, proxyFallback, modelFallback]);
   const practiceSteps = PRACTICE_STEPS[practice];
   const activePracticeStep = practiceSteps[practiceStep] ?? practiceSteps[0];
 
@@ -549,6 +600,16 @@ export function GuidePage() {
                     ))}
                   </div>
                   <div className="guide-manual-fields">
+                    {manualIde.id === 'weaverai-one' && (
+                      <label>
+                        <b>{t('guide.manual.prefix')}</b>
+                        <input
+                          value={prefixId}
+                          onChange={(event) => setPrefixId(event.target.value.trim().toLowerCase())}
+                        />
+                        <small>{t('guide.manual.prefixHint')}</small>
+                      </label>
+                    )}
                     <label>
                       <b>{t('guide.manual.model')}</b>
                       <input

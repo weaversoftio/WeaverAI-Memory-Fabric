@@ -18,6 +18,7 @@ export const META_LIST_ACTIONS = new Set([
   'agent-fixed-asset/list-with-detail',
   // summary-by-agents is a non-paginated list envelope, not in META_LIST_ACTIONS
   'acl/list',
+  'agent-share/list',
   'participation-log/list',
 ]);
 
@@ -50,6 +51,9 @@ export const META_ACTIONS = [
   'agent/archive',
   'agent/set-default-template',
   'agent/get-default-template',
+  'agent-share/grant',
+  'agent-share/revoke',
+  'agent-share/list',
   'task/create',
   'task/get',
   'task/update',

@@ -1116,6 +1116,27 @@
   color: var(--wf-color-text-tertiary);
 }
 
+._memory-agents-shared-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-start: 6px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--wf-color-text-brand-default);
+  background-color: var(--wf-color-bg-brand-lighten-default);
+  white-space: nowrap;
+}
+
+._memory-agent-share-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 /* Owner tag: compact pill, same style as the Memory detail badge (light background + same-color text) */
 ._memory-agents-owner-tag {
   display: inline-flex;

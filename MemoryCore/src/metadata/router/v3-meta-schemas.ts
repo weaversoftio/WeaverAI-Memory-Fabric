@@ -184,6 +184,12 @@ const agentListFields = z.object({
   owner_user_key: z.string().optional(),
   status: agentStatus.optional(),
   name: z.string().min(1).optional(),
+  /**
+   * When listing by team_id, also include agents shared to this team from other teams.
+   * Default true so the panel shows cross-team shared agents without an extra flag.
+   * Ignored when listing by owner only.
+   */
+  include_shared: z.boolean().optional(),
 });
 const requireAgentListFilter = (v: {
   team_id?: string;
@@ -197,6 +203,28 @@ export const agentListSchema = agentListFields
     message: "either team_id, owner_user_id, or owner_user_key is required",
   });
 export const agentArchiveSchema = z.object({ agent_id: nonEmpty });
+
+// ── AgentShare (cross-team) ──
+export const agentShareGrantSchema = z
+  .object({
+    agent_id: nonEmpty,
+    target_team_id: nonEmpty,
+    granted_by: nonEmpty.optional(),
+    granted_by_key: z.string().min(1).optional(),
+  })
+  .refine((v) => !!v.granted_by || !!v.granted_by_key, {
+    message: "granted_by or granted_by_key is required",
+  });
+export const agentShareRevokeSchema = z.object({ id: nonEmpty });
+export const agentShareListSchema = z
+  .object({
+    agent_id: nonEmpty.optional(),
+    team_id: nonEmpty.optional(),
+  })
+  .merge(paginationInputSchema)
+  .refine((v) => !!v.agent_id || !!v.team_id, {
+    message: "agent_id or team_id required",
+  });
 
 // ── Task ──
 const linkedAgent = z.object({ agent_id: nonEmpty, role_in_task: z.string().optional() });
@@ -487,6 +515,9 @@ export const V3_SCHEMAS = {
   "/v3/meta/agent/delete": agentDeleteSchema,
   "/v3/meta/agent/list": agentListSchema,
   "/v3/meta/agent/archive": agentArchiveSchema,
+  "/v3/meta/agent-share/grant": agentShareGrantSchema,
+  "/v3/meta/agent-share/revoke": agentShareRevokeSchema,
+  "/v3/meta/agent-share/list": agentShareListSchema,
   "/v3/meta/task/create": taskCreateSchema,
   "/v3/meta/task/get": taskGetSchema,
   "/v3/meta/task/update": taskUpdateSchema,

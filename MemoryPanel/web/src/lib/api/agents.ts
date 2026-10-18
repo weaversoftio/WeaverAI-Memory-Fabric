@@ -196,4 +196,34 @@ export const agentsApi = {
    */
   setDefaultTemplate: (teamId: string, template: AgentTemplateConfig) =>
     metaPost<{ ok: boolean }>('agent/set-default-template', { team_id: teamId, template }),
+
+  // ── Cross-team agent share ──
+
+  /** List teams this agent has been shared to. */
+  listShares: (agentId: string) =>
+    metaListAll<AgentShare>('agent-share/list', { agent_id: agentId }),
+
+  /** Grant another team access to use this agent (caller must be owner/home-team admin and a member of the target team). */
+  grantShare: async (agentId: string, targetTeamId: string) => {
+    const me = await getCurrentUser();
+    return metaPost<AgentShare>('agent-share/grant', {
+      agent_id: agentId,
+      target_team_id: targetTeamId,
+      granted_by: me.user_id,
+    });
+  },
+
+  /** Revoke a cross-team share by share id. */
+  revokeShare: (shareId: string) =>
+    metaPost<{ ok: boolean }>('agent-share/revoke', { id: shareId }),
 };
+
+export interface AgentShare {
+  id: string;
+  agent_id: string;
+  home_team_id: string;
+  target_team_id: string;
+  granted_by: string;
+  created_at: string;
+  updated_at: string;
+}
