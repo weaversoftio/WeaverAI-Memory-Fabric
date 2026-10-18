@@ -28,6 +28,7 @@ auth:
     internalIssuerUrl: $SSO_INTERNAL_ISSUER_URL
     clientId: $SSO_CLIENT_ID
     clientSecretName: $SSO_CLIENT_SECRET_NAME
+    # Empty = SSO users create an account with no team; admin adds them later with a role.
     defaultTeam: $SSO_DEFAULT_TEAM
     defaultRole: member
   waipIdentity:

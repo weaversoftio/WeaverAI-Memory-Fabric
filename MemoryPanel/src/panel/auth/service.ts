@@ -367,7 +367,11 @@ export class PanelAuthService {
   /** Where to send the browser after the panel session is gone: the IdP's logout for OIDC sessions, else the panel. */
   async buildIdpLogoutUrl(session: IdpSession | null): Promise<string> {
     const home = `${this.config.appUrl}/`;
-    const provider = session ? this.providers.get(session.providerId) : null;
+    // Prefer the session's provider; if the panel session is already gone (second click,
+    // hub restart, cookie cleared), still end the IdP SSO session via the configured OIDC provider.
+    const provider = session
+      ? this.providers.get(session.providerId)
+      : this.providers.listByKind('redirect-oauth2')[0];
     if (provider?.kind !== 'redirect-oauth2') return '/';
     try {
       return (await (provider as RedirectOAuth2Provider).buildLogoutUrl({ returnTo: home, idToken: session?.idToken })) ?? '/';

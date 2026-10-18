@@ -390,13 +390,21 @@ export function AddMemberDialog({
       <Form.Item label={t('addMember.role')}>
         <Select
           size="full"
-          value="member"
-          disabled
-          options={[
-            { value: 'member', text: t('addMember.role.default') },
-          ]}
+          value={role}
+          disabled={!canGrantAdmin}
+          onChange={(v) => setRole((v as 'admin' | 'member') || 'member')}
+          options={
+            canGrantAdmin
+              ? [
+                  { value: 'member', text: t('addMember.role.member') },
+                  { value: 'admin', text: t('addMember.role.admin') },
+                ]
+              : [{ value: 'member', text: t('addMember.role.member') }]
+          }
         />
-        <div className="_memory-field-hint">{t('addMember.role.hint')}</div>
+        <div className="_memory-field-hint">
+          {canGrantAdmin ? t('addMember.role.hintAdmin') : t('addMember.role.hint')}
+        </div>
       </Form.Item>
           {error && <Form.Item><Alert type="error">{error}</Alert></Form.Item>}
         </Form>

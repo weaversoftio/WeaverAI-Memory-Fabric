@@ -52,11 +52,11 @@ export const useAuthStore = create<AuthStore>((set) => ({
     // straight back in, so hand off to the backend, which also ends the IdP session.
     const idp = getPanelSession()?.authMethod === 'idp';
     clearAuth();
+    // Drop UI auth immediately so a slow/stuck IdP redirect cannot leave the console looking logged-in.
+    set({ auth: undefined });
     if (idp) {
       authMethodsApi.logoutIdp();
-      return;
     }
-    set({ auth: undefined });
   },
 
   checkSession: async () => {

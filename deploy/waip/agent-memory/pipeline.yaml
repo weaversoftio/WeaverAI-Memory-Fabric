@@ -88,8 +88,8 @@ vars:
     default: "agent-memory-oidc"
     required: true
   SSO_DEFAULT_TEAM:
-    description: "Team that new SSO accounts join as members (created on first use)"
-    default: "weaversoft"
+    description: "Optional team name that new SSO accounts auto-join as members; leave empty so admins add users to teams with a role"
+    default: ""
     required: false
   WAIP_IDENTITY_JWKS_URL:
     description: "Platform public keys for the MCP proxy's signed caller identity (agents act as their WAIP user without an sk-mem key); empty = off"

@@ -442,7 +442,11 @@ describe('OIDC login', () => {
     expect(`${url.origin}${url.pathname}`).toBe(`${PUBLIC_ISSUER}/protocol/openid-connect/logout`);
     expect(url.searchParams.get('post_logout_redirect_uri')).toBe(`${APP_URL}/`);
     expect(url.searchParams.get('client_id')).toBe('agent-memory');
-    expect(await service.buildIdpLogoutUrl(null)).toBe('/');
+    // Even with no panel session, still send the browser to the IdP so SSO cannot survive a second logout click.
+    const nullSessionUrl = new URL(await service.buildIdpLogoutUrl(null));
+    expect(`${nullSessionUrl.origin}${nullSessionUrl.pathname}`).toBe(`${PUBLIC_ISSUER}/protocol/openid-connect/logout`);
+    expect(nullSessionUrl.searchParams.get('client_id')).toBe('agent-memory');
+    expect(nullSessionUrl.searchParams.get('id_token_hint')).toBeNull();
   });
 
   it('admin-only calls fail without the admin key file (placeholder api_key only)', async () => {
