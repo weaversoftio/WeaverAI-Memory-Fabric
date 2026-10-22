@@ -1,12 +1,13 @@
 /**
  * Knowledge Tools Injector — injects a `<knowledge_tools>` block listing
  * team knowledge resources (wiki / code-graph) with a two-step self-discovery
- * flow (tools/list → tools/call).
+ * flow (tools/list → tools/call) via the proxy knowledge-bridge.
  *
  * v7 progressive exposure: prompt only contains resource list + discovery
- * entry points. Agent calls tools/list to discover available tools, then
- * tools/call to execute. Tool definitions live in the knowledge service,
- * not in the proxy.
+ * entry points. The LLM curls `<proxy>/knowledge-bridge/v3/tools/{list,call}`
+ * (same pattern as skill-bridge / memory-bridge). The proxy injects session
+ * identity and forwards to MemoryKnowledge. Direct ClusterIP curls are not
+ * used — Open Terminal cannot reach hub:8424.
  *
  * Strategy:
  *   - cacheStrategy: "session_init" — knowledge list fetched once at prewarm,
@@ -37,12 +38,22 @@ import {
   type KnowledgeItem,
 } from "../../knowledge/core-client.js";
 import type { CoreSkillConfig } from "../../types.js";
+import {
+  BRIDGE_SIG_HEADER,
+  encodeBridgeSessionToken,
+  signBridgeSession,
+} from "../../bridge-signature.js";
 
 const TAG = "[knowledge-tools-injector]";
 
 export interface KnowledgeToolsInjectorConfig {
   /** Core kernel config (same endpoint as skill — 8420). */
   coreSkill: CoreSkillConfig;
+  /**
+   * Public proxy base the LLM should curl (e.g. https://…-proxy… or
+   * http://127.0.0.1:8096). Trailing slash trimmed.
+   */
+  proxyBaseUrl: string;
 }
 
 export interface KnowledgeTelemetryContext {
@@ -73,16 +84,9 @@ function toCompositeSessionKey(sessionKey?: string, agentSource?: string): strin
  * Render the `<knowledge_tools>` block from a list of knowledge resources.
  * Pure function for ease of testing.
  *
- * `service_url` is the tools self-discovery base (already includes the API
- * prefix, e.g. `http://host:8421/v3`). The tools endpoints are service-level
- * (`{service_url}/tools/list` | `/tools/call`); the target resource is selected
- * via the `knowledge_id` field in the body, NOT via the URL path.
- *
- * `serviceId` is the tenant identity (= `x-wamf-service-id`, unified with the
- * kernel routing key). The knowledge service REQUIRES it as a header on every
- * tools call, so we bake it into the curl examples the agent runs. Optional
- * telemetry context headers let the service attribute calls without embedding
- * secrets; all header values are shell-quoted before rendering.
+ * Curl recipes hit the **proxy knowledge-bridge** (`{proxy}/knowledge-bridge/v3`),
+ * not MemoryKnowledge ClusterIP. The proxy injects tenant + session identity;
+ * `knowledge_id` in the body selects the resource.
  */
 function filterResourcesByCapabilities(
   resources: KnowledgeItem[],
@@ -138,58 +142,59 @@ function deriveRepoSlug(repoUrl: string | undefined): string | undefined {
 
 export function renderKnowledgeToolsBlock(
   resources: KnowledgeItem[],
-  serviceId: string,
-  telemetryContext: KnowledgeTelemetryContext = {},
+  proxyBaseUrl: string,
+  sessionId?: string,
+  spaceId?: string,
 ): string | null {
   if (!resources || resources.length === 0) return null;
 
-  const telemetryHeaders: Array<[string, string | undefined]> = [
-    ["x-conversation-id", telemetryContext.sessionKey],
-    ["x-wamf-user-id", telemetryContext.userId],
-    ["x-wamf-team-id", telemetryContext.teamId],
-    ["x-wamf-agent-id", telemetryContext.agentId],
-    ["x-wamf-agent-source", telemetryContext.agentSource],
-    ["x-wamf-space-id", telemetryContext.spaceId],
-  ];
+  const base = proxyBaseUrl.replace(/\/$/, "");
+  const bridge = `${base}/knowledge-bridge/v3`;
+  const sessionToken = sessionId ? encodeBridgeSessionToken(sessionId) : undefined;
+  const sessionHeader = sessionToken ? ` -H 'x-conversation-id: ${sessionToken}'` : "";
+  const tenantHeader = spaceId ? ` -H 'x-wamf-service-id: ${spaceId}'` : "";
+  const sigHeader = sessionId ? ` -H '${BRIDGE_SIG_HEADER}: ${signBridgeSession(sessionId, spaceId)}'` : "";
+  const authHeader = `${tenantHeader}${sessionHeader}${sigHeader}`;
+
   const requestHeaderLines = [
-    renderHeader("x-wamf-service-id", serviceId),
-    ...telemetryHeaders
-      .filter((entry): entry is [string, string] => Boolean(entry[1]))
-      .map(([name, value]) => renderHeader(name, value)),
+    renderHeader("content-type", "application/json"),
+    ...(spaceId ? [renderHeader("x-wamf-service-id", spaceId)] : []),
+    ...(sessionToken ? [renderHeader("x-conversation-id", sessionToken)] : []),
+    ...(sessionId ? [renderHeader(BRIDGE_SIG_HEADER, signBridgeSession(sessionId, spaceId))] : []),
   ];
 
   const resourceTags = resources
     .map((r) => {
-      // `match` is the anchor criterion for code-graph: the agent compares it against the current workspace's git
-      // remote and only calls on a hit. Prefer the repo_slug sent by the backend; when missing, degrade by
-      // extracting `<org>/.../<repo>` from repo_url. wikis have no repo, so this attribute is not rendered.
+      // `match` is the repo slug (org/repo) so the agent can recognise the bound
+      // index by name / git remote / user wording. It is a hint, not a gate:
+      // if the user asks about this repo, call the index even when cwd is elsewhere.
       const matchAttr = attr("match", r.repo_slug ?? deriveRepoSlug(r.repo_url));
       const branchAttr = attr("branch", r.repo_url ? (r.branch ?? "main") : undefined);
       // A wiki's summary is a content overview generated by the LLM from page titles, and is the agent's only clue for deciding "whether to
       // look up this wiki", so it must be kept. A code-graph summary is just a count such as
       // "N files, M symbol nodes", which doesn't help the call decision, so it is not injected.
       const summaryAttr = r.type === "wiki" ? attr("about", r.summary) : "";
-      return `<knowledge type="${r.type}" id="${r.knowledge_id}"\n  url="${r.service_url}"\n  name="${xmlAttrEscape(r.name)}"${matchAttr}${branchAttr}${summaryAttr} />`;
+      return `<knowledge type="${r.type}" id="${r.knowledge_id}"\n  url="${bridge}"\n  name="${xmlAttrEscape(r.name)}"${matchAttr}${branchAttr}${summaryAttr} />`;
     })
     .join("\n\n");
 
   return [
     "<knowledge_tools>",
     "**Team knowledge resources**: code-graph is a pre-built index of a repository (symbols / call graph / structure); wiki is engineering design documentation. Each has its own criteria, below.",
+    "These are **not local tools**. Call them with curl against the proxy knowledge-bridge (copy the -H headers from the recipe verbatim).",
     "",
     "## code-graph: when to call it",
-    "**Precondition**: the resource's match must fit the current workspace (compare git remote / repository name). If it doesn't → the index is not for this repository; use local search and don't call it speculatively.",
+    "**Call it whenever the user's question is about a bound repo** (by name, slug, URL, \"the code graph\", or \"what code do I have in X\"), even if the current workspace is a different project or has no git remote.",
+    "If the workspace git remote matches the resource's match attribute, prefer this index for structure / symbols / impact instead of local search.",
     "",
-    "When it matches, **use it whenever you need cross-file structure / relationships / breadth**. Typical cases:",
-    "- getting to know a project, understanding module architecture, finding entry points (cold start)",
+    "Typical cases:",
+    "- summarizing what a bound repository contains, getting to know a project, finding entry points",
     "- locating a symbol, a file, or where a concept is implemented",
     "- following call chains, dependencies, data flow",
-    "- assessing the impact of a change, refactoring scope, whether something can be safely deleted (**use it for these even while you're already editing code**)",
-    "- finding suspicious code paths when debugging production issues, finding related implementations during review",
-    "- when you can't remember what a capability is called, or aren't sure it already exists (avoid reinventing it)",
+    "- assessing the impact of a change, refactoring scope, whether something can be safely deleted",
+    "- finding related implementations during review or when debugging",
     "",
-    "**There is only one case not to use it**: when you need the **exact current content** of some code — editing by line/character, code you just changed, or reviewing uncommitted changes. The index is a branch snapshot and lags behind the workspace; then the workspace source wins.",
-    "Using it first for the big picture and then confirming details in specific files is the normal combination; they don't conflict.",
+    "**Do not use it** when you need the **exact current content** of files in the **current** workspace (uncommitted edits, code you just changed). The index is a branch snapshot. You can still use it for the bound repo's snapshot.",
     "",
     "## wiki: when to call it",
     "wiki is design documentation, **not tied to the workspace, so no anchor match is needed** (having no match attribute is normal and does not mean it doesn't fit). Judge relevance by the about attribute.",
@@ -197,20 +202,22 @@ export function renderKnowledgeToolsBlock(
     "How the code is written → code-graph; what some code says right now → read the source.",
     "",
     "## Intent → first call",
-    "Architecture / getting to know a project → explore (returns the source along the way in one call); where is X → search; just one symbol's definition → node; who calls X / what X calls → callers / callees; impact of changing X → search, then impact; why it was designed this way → wiki search, then read_page.",
+    "Architecture / getting to know a project / what is in this repo → explore (returns the source along the way in one call); where is X → search; just one symbol's definition → node; who calls X / what X calls → callers / callees; impact of changing X → search, then impact; why it was designed this way → wiki search, then read_page.",
     "Combination: refactoring assessment = search → callers → impact.",
-    "The source returned by explore / node is verbatim; **no need to Read the same place again** (except the case above where you need the latest content).",
+    "The source returned by explore / node is verbatim; **no need to Read the same place again** (except the case above where you need the latest workspace content).",
     "",
     "## Bound resources",
     resourceTags,
     "",
-    "## How to call (one service-level endpoint; build the URL from the resource's url)",
+    "## How to call",
+    `Call template: curl -sSk -X POST <bridge>/<action> -H 'content-type: application/json'${authHeader} -d '{...}'`,
+    `where <bridge> = ${bridge}`,
     "The target resource is set by knowledge_id in the body; **don't** put knowledge_id into the URL path.",
-    `**Every request must send the header** \`x-wamf-service-id: ${serviceId}\` (tenant id; requests without it are rejected).`,
+    "Copy the -H headers from this recipe verbatim (including the wamf1.* x-conversation-id). Never substitute another chat UUID — that breaks x-bridge-sig.",
+    "Never curl the knowledge ClusterIP / hub:8424 / a github.com URL — those are not reachable from this sandbox. Always use the knowledge-bridge URL above.",
     "",
     "### Step 1: get the tool list (once per resource, on **first** use)",
-    "curl -sSk -X POST <url>/tools/list \\",
-    "  -H 'content-type: application/json' \\",
+    `curl -sSk -X POST ${bridge}/tools/list \\`,
     ...requestHeaderLines,
     "  -d '{\"knowledge_id\":\"<knowledge id>\"}'",
     "",
@@ -218,8 +225,7 @@ export function renderKnowledgeToolsBlock(
     "Remember the returned tool names / params and **reuse them in this session**; don't call list again for the same resource (only if you've forgotten).",
     "",
     "### Step 2: run a tool",
-    "curl -sSk -X POST <url>/tools/call \\",
-    "  -H 'content-type: application/json' \\",
+    `curl -sSk -X POST ${bridge}/tools/call \\`,
     ...requestHeaderLines,
     "  -d '{\"knowledge_id\":\"<knowledge id>\", \"tool_name\":\"<name from Step 1>\", \"params\":{...}}'",
     "",
@@ -267,6 +273,7 @@ export class KnowledgeToolsInjector implements InjectionHook {
       ids.agentId,
       ids.userKey,
       ids.spaceId,
+      ids.sessionId,
       ids.assetCapabilities,
       "execute",
       {
@@ -288,6 +295,7 @@ export class KnowledgeToolsInjector implements InjectionHook {
       input.sessionInfo.agent_id ?? null,
       input.callerUserKey ?? null,
       input.sessionInfo.space_id ?? null,
+      input.sessionInfo.session_id ?? null,
       input.assetCapabilities,
       "prewarm",
       {
@@ -307,6 +315,7 @@ export class KnowledgeToolsInjector implements InjectionHook {
     userId: string | null;
     userKey: string | null;
     spaceId: string | null;
+    sessionId: string | null;
     assetCapabilities?: AssetCapabilityFlags;
   } {
     const custom = ctx.metadata.custom as Record<string, unknown> | undefined;
@@ -316,8 +325,9 @@ export class KnowledgeToolsInjector implements InjectionHook {
     const userId = typeof session?.user_id === "string" && session.user_id.length > 0 ? session.user_id : null;
     const userKey = typeof custom?.userKey === "string" && custom.userKey.length > 0 ? custom.userKey : null;
     const spaceId = typeof session?.space_id === "string" && session.space_id.length > 0 ? session.space_id : null;
+    const sessionId = typeof session?.session_id === "string" && session.session_id.length > 0 ? session.session_id : null;
     const assetCapabilities = custom?.assetCapabilities as AssetCapabilityFlags | undefined;
-    return { teamId, agentId, userId, userKey, spaceId, assetCapabilities };
+    return { teamId, agentId, userId, userKey, spaceId, sessionId, assetCapabilities };
   }
 
   private async fetchBlocks(
@@ -325,6 +335,7 @@ export class KnowledgeToolsInjector implements InjectionHook {
     agentId: string | null,
     userKey: string | null,
     spaceId: string | null,
+    sessionId: string | null,
     assetCapabilities: AssetCapabilityFlags | undefined,
     phase: "prewarm" | "execute",
     telemetryContext: KnowledgeTelemetryContext,
@@ -332,7 +343,7 @@ export class KnowledgeToolsInjector implements InjectionHook {
     try {
       const client = this.clientOverride ?? getCoreKnowledgeClient(this.config.coreSkill);
 
-      console.log(`${TAG} ${phase} team=${teamId} agent=${agentId ?? "(none)"} userKey=${userKey ? "(set)" : "(none)"} space=${spaceId ?? "(none)"}`);
+      console.log(`${TAG} ${phase} team=${teamId} agent=${agentId ?? "(none)"} userKey=${userKey ? "(set)" : "(none)"} space=${spaceId ?? "(none)"} session=${telemetryContext.sessionKey ?? "(none)"}`);
 
       // Per-agent (preferred): meta binding -> asset_ids -> join details by id.
       // serviceId passes spaceId through (same as SkillInjector: `/{agent}/{spaceId}/...`).
@@ -353,9 +364,12 @@ export class KnowledgeToolsInjector implements InjectionHook {
       }
 
       resources = filterResourcesByCapabilities(resources, assetCapabilities);
-      // The service-id in the injected prompt for the LLM must also be spaceId (the LLM uses it to call KS tools/list|call).
-      const injectionServiceId = spaceId || this.config.coreSkill.serviceId;
-      const content = renderKnowledgeToolsBlock(resources, injectionServiceId, telemetryContext);
+      const content = renderKnowledgeToolsBlock(
+        resources,
+        this.config.proxyBaseUrl,
+        sessionId ?? undefined,
+        spaceId || this.config.coreSkill.serviceId,
+      );
       if (!content) return [];
       return [{
         type: "text",

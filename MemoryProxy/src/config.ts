@@ -119,6 +119,7 @@ export const DEFAULT_CONFIG: ProxyConfig = {
   knowledge: {
     enabled: false,
     endpoint: "http://127.0.0.1:8420",
+    toolsEndpoint: "http://127.0.0.1:8424",
     serviceToken: "",
     serviceId: "context-proxy",
     timeoutMs: 1500,
@@ -470,6 +471,7 @@ export function buildConfig(overrides: CliOverrides = {}): ProxyConfig {
     knowledge: {
       enabled: yaml.knowledge?.enabled ?? DEFAULT_CONFIG.knowledge.enabled,
       endpoint: yaml.knowledge?.endpoint ?? DEFAULT_CONFIG.knowledge.endpoint,
+      toolsEndpoint: yaml.knowledge?.toolsEndpoint ?? DEFAULT_CONFIG.knowledge.toolsEndpoint,
       serviceToken: yaml.knowledge?.serviceToken ?? DEFAULT_CONFIG.knowledge.serviceToken,
       serviceId: yaml.knowledge?.serviceId ?? DEFAULT_CONFIG.knowledge.serviceId,
       timeoutMs: yaml.knowledge?.timeoutMs ?? DEFAULT_CONFIG.knowledge.timeoutMs,

@@ -568,7 +568,8 @@ skill:
 # To turn it off: enabled=false (default); the injector isn't registered and nothing is injected.
 knowledge:
   enabled: false                        # off by default, same as wamf.enabled
-  endpoint: "http://127.0.0.1:8420"     # kernel gateway address
+  endpoint: "http://127.0.0.1:8420"     # kernel gateway address (list bound wiki / code-graph assets)
+  toolsEndpoint: "http://127.0.0.1:8424" # MemoryKnowledge base (no /v3). knowledge-bridge forwards tools/list|call here
   serviceToken: "local"               # Authorization: Bearer
   serviceId: "context-proxy"          # x-wamf-service-id (overridden by the spaceId in the request path)
   timeoutMs: 1500                     # timeout per call (ms)

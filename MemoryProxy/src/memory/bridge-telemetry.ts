@@ -20,7 +20,7 @@ export interface BridgeCallTelemetryInput {
   agentId?: string;
   /** "claude-code" | "codebuddy" | "unknown" -- derived back from the sessionKey prefix */
   agentSource: string;
-  /** "memory-bridge" | "skill-bridge" */
+  /** "memory-bridge" | "skill-bridge" | "knowledge-bridge" */
   bridgeSource: string;
   /** Concrete sub string ("atomic/search" / "skill/get" etc.) */
   executedEndpoint: string;
@@ -101,7 +101,7 @@ export function agentSourceFromSessionKey(sessionKey: string): string {
 export interface BridgeRejectTelemetryInput {
   /** Fill in if it could be derived; at the pre-check stage (missing header) it cannot be derived, so fill "" */
   sessionKey: string;
-  bridgeSource: "memory-bridge" | "skill-bridge";
+  bridgeSource: "memory-bridge" | "skill-bridge" | "knowledge-bridge";
   /** Stable enum value, for GROUP BY -- see the tool_call_logs.reject_reason comment for details */
   rejectReason: string;
   /** HTTP status the proxy returned to the client (401/415/400/...); stored in the upstream_status column */

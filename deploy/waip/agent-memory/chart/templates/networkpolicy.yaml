@@ -26,8 +26,9 @@ spec:
 ---
 # Hub: the panel (8125) is public through the gateway and serves memory-mcp, so it stays
 # open. The knowledge API (8424) keeps wikis, code graphs (private repo source) and the
-# LLM binding, and its read routes need no key: only this release's pods (the proxy) may
-# reach it. The panel talks to it over loopback inside the pod.
+# LLM binding, and its read routes need no key: only this release's pods (the proxy
+# knowledge-bridge) may reach it. The panel talks to it over loopback inside the pod.
+# Open Terminal / WeaverAI One must curl the public proxy, not this port.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

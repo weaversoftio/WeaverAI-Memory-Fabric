@@ -10,6 +10,7 @@ import { handleWorkbuddyEndpoint } from "./workbuddyHandler.js";
 import { apiKeyToKeyId, extractBearerToken } from "./opik.js";
 import { createSkillBridgeHandler } from "./skill/skill-bridge.js";
 import { createMemoryBridgeHandler } from "./memory/memory-bridge.js";
+import { createKnowledgeBridgeHandler } from "./knowledge/knowledge-bridge.js";
 import { createInstanceDestroyHandler } from "./routes/instance-destroy.js";
 import { createRateLimitHandlers } from "./routes/rate-limits.js";
 import { adminAuthError, checkAdminAuth } from "./routes/admin-auth.js";
@@ -141,6 +142,12 @@ export function createApp(config: ProxyConfig): Hono {
   // Let the LLM use Bash to call <proxy>/memory-bridge/v3/atomic/search etc., with the proxy injecting identity.
   const memoryBridgeHandler = createMemoryBridgeHandler(config);
   app.post("/memory-bridge/*", (c) => memoryBridgeHandler(c));
+
+  // Knowledge bridge: wiki / code-graph tools/list|call. Hub:8424 is not on the
+  // public route and is NetworkPolicy-locked to this release; the LLM curls the
+  // public proxy, which forwards with session identity.
+  const knowledgeBridgeHandler = createKnowledgeBridgeHandler(config);
+  app.post("/knowledge-bridge/*", (c) => knowledgeBridgeHandler(c));
 
   // -- Ops endpoint (registered before the catch-all `POST /*`) ----------------
   // /v3/instance/proxy-destroy -- when an instance is destroyed, clean up the proxy-side storage cache.

@@ -8,6 +8,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- define "am.hub" -}}{{ .Release.Name }}-hub{{- end -}}
 {{- define "am.proxy" -}}{{ .Release.Name }}-proxy{{- end -}}
 {{- define "am.coreUrl" -}}http://{{ include "am.core" . }}:8420{{- end -}}
+{{- define "am.hubKnowledgeUrl" -}}http://{{ include "am.hub" . }}:8424{{- end -}}
 
 {{/* Non-root, read-only root fs; write paths are PVCs or emptyDirs. */}}
 {{- define "am.podSecurity" -}}

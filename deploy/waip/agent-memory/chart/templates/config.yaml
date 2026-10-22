@@ -140,6 +140,9 @@ stringData:
     knowledge:
       enabled: true
       endpoint: "{{ include "am.coreUrl" . }}"
+      # Hub knowledge API (in-cluster). knowledge-bridge on the proxy forwards
+      # tools/list|call here; Open Terminal cannot reach this URL directly.
+      toolsEndpoint: "{{ include "am.hubKnowledgeUrl" . }}"
       serviceToken: "local"
       serviceId: "default"
     auth:
@@ -161,6 +164,11 @@ stringData:
       enabled: false
     injection:
       enabled: true
+      {{- with .Values.publicUrls.proxy }}
+      # Public proxy hostname so Open Terminal curls knowledge/skill/memory
+      # bridges on a URL the sandbox can actually reach.
+      externalGatewayUrl: {{ . | quote }}
+      {{- end }}
       injectors:
         - skill
         - knowledge

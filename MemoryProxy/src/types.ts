@@ -313,7 +313,13 @@ export interface CoreSkillConfig {
 export interface KnowledgeConfig {
   /** Master switch. `false` (default) → injector not registered, no injection. */
   enabled: boolean;
+  /** Kernel gateway (8420) used to list bound wiki / code-graph assets. */
   endpoint: string;
+  /**
+   * MemoryKnowledge base URL (hub:8424, no /v3 suffix). knowledge-bridge
+   * forwards tools/list|call here. Empty → bridge returns 503.
+   */
+  toolsEndpoint: string;
   serviceToken: string;
   serviceId: string;
   timeoutMs: number;

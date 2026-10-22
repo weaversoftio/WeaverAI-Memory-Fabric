@@ -21,6 +21,7 @@ import {
 } from "../bridge-signature.js";
 import { renderWamfMemoryToolsBlock } from "../injection/injectors/wamf-tools-injector.js";
 import { renderSkillToolsBlock } from "../injection/injectors/skill-tools-injector.js";
+import { renderKnowledgeToolsBlock } from "../injection/injectors/knowledge-tools-injector.js";
 
 function baseConfig() {
   const config = structuredClone(DEFAULT_CONFIG);
@@ -142,7 +143,35 @@ describe("bridge signature", () => {
     expect(block).toContain(`x-conversation-id: ${encodeBridgeSessionToken("sess-1")}`);
   });
 
-  it.each(["/memory-bridge/v3/atomic/search", "/skill-bridge/v3/skill/search"])(
+  it("is baked into the injected knowledge curl recipe as opaque session + v1 sig", () => {
+    initBridgeSecret("seed-a");
+    const block = renderKnowledgeToolsBlock(
+      [{
+        knowledge_id: "cg-1",
+        type: "code-graph",
+        service_url: "http://hub:8424/v3",
+        name: "grus",
+        summary: null,
+        team_id: "team-1",
+        user_id: null,
+        repo_url: "https://github.com/weaversoftio/grus.git",
+        branch: "main",
+        created_at: "",
+        updated_at: "",
+      }],
+      "http://proxy.test",
+      "sess-1",
+      "space-1",
+    );
+    expect(block).toContain("/knowledge-bridge/v3");
+    expect(block).toContain(`${BRIDGE_SIG_HEADER}: ${signBridgeSession("sess-1", "space-1")}`);
+    expect(block).toContain(`x-conversation-id: ${encodeBridgeSessionToken("sess-1")}`);
+    expect(block).not.toContain("http://hub:8424");
+    expect(block).not.toMatch(/If it doesn't → the index is not for this repository/);
+    expect(block).toMatch(/even if the current workspace is a different project/);
+  });
+
+  it.each(["/memory-bridge/v3/atomic/search", "/skill-bridge/v3/skill/search", "/knowledge-bridge/v3/tools/list"])(
     "%s rejects a session id without a valid signature",
     async (path) => {
       const app = createApp(baseConfig());
@@ -165,7 +194,7 @@ describe("bridge signature", () => {
     },
   );
 
-  it.each(["/memory-bridge/v3/atomic/search", "/skill-bridge/v3/skill/search"])(
+  it.each(["/memory-bridge/v3/atomic/search", "/skill-bridge/v3/skill/search", "/knowledge-bridge/v3/tools/list"])(
     "%s accepts v1 sig even when x-conversation-id is PII-redacted",
     async (path) => {
       const config = baseConfig();

@@ -254,7 +254,7 @@ function buildPipelineBundle(config: ProxyConfig): PipelineBundle {
   // (`coreSkill`, `wamf`, ...); there is no shared external endpoint anymore.
   const injectors = config.injection?.injectors ?? [];
 
-  // proxyBaseUrl is shared between skill-tools-injector and wamf-tools-injector.
+  // proxyBaseUrl is shared between skill-tools, wamf-memory-tools, and knowledge-tools.
   //
   // WARNING: multi-node deployments must explicitly configure `injection.externalGatewayUrl` (the gateway's external domain,
   // e.g. https://gateway.example.com) - otherwise each pod embeds
@@ -263,7 +263,11 @@ function buildPipelineBundle(config: ProxyConfig): PipelineBundle {
   //
   // When not configured, fall back to the local host:port (only usable for single-node / local development), warning once at startup.
   let proxyBaseUrl: string | undefined;
-  if (injectors.includes("skill") || (injectors.includes("wamf-memory") && config.wamf.enabled)) {
+  if (
+    injectors.includes("skill")
+    || injectors.includes("knowledge")
+    || (injectors.includes("wamf-memory") && config.wamf.enabled)
+  ) {
     const externalBase = config.injection?.externalGatewayUrl;
     if (externalBase && externalBase.length > 0) {
       proxyBaseUrl = externalBase.replace(/\/$/, "");
@@ -318,6 +322,7 @@ function buildPipelineBundle(config: ProxyConfig): PipelineBundle {
     if (shouldRegisterKnowledgeInjector(config)) {
       registry.register(new KnowledgeToolsInjector({
         coreSkill: config.knowledge,
+        proxyBaseUrl: proxyBaseUrl ?? "",
       }));
     }
   }
