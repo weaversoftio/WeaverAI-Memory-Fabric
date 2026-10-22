@@ -33,6 +33,7 @@ import {
   useAgents,
   isTeamAdmin,
   canManageAsset,
+  isAgentVisibleToUser,
   invalidateBackendCache,
   writeAgentUiMeta,
   type Agent as StoreAgent,
@@ -83,13 +84,14 @@ export default function TeamManagementPanel({
   // Agents of the current team, plus agents shared into this team from other teams (include_shared on agent/list).
   const { agents: allAgents, loading: agentsLoading } = useAgents(activeTeamId);
   const { t } = useTranslation();
-  // Agent visibility: agents are created with visibility=team, so every team member
-  // can see the full team agent list. Edit/delete stay owner- or team-admin-gated via canManageAsset.
+  // Custom agents stay team-visible. Auto-created default-agent-* (and any
+  // visibility=private agent) are owner-only. Edit/delete stay owner- or
+  // team-admin-gated via canManageAsset.
   const canSeeAllAgents = !!activeTeam;
   const agents = useMemo(() => {
     if (!activeTeam) return [];
-    return allAgents;
-  }, [allAgents, activeTeam]);
+    return allAgents.filter((agent) => isAgentVisibleToUser(agent, currentUser));
+  }, [allAgents, activeTeam, currentUser]);
   const canManageDefaultAgent = _isAdmin || (!!activeTeam && isTeamAdmin(activeTeam, currentUser));
   const { counts: mountedCounts, countsLoading } = useAgentMountedCounts(activeTeamId, agents);
   // Show display_name instead of user_id in notification text (reuses the global cache, idempotent with no extra requests)

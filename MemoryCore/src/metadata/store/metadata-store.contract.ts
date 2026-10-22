@@ -237,6 +237,50 @@ export function runMetadataStoreContract(
         ).items;
         expect(activeMine.map((a) => a.agent_id)).toEqual([a1.agent_id]);
       });
+
+      it("listAgentsByTeam viewerUserId hides others' private and default-agent-* assistants", async () => {
+        const u1 = await store.createUser(uniqueUserInput());
+        const u2 = await store.createUser(uniqueUserInput());
+        const team = await store.createTeam(teamInput(u1.user_id));
+        const mineDefault = await store.createAgent({
+          team_id: team.team_id,
+          owner_user_id: u1.user_id,
+          name: "default-agent-user1",
+          visibility: "private",
+        });
+        const theirDefault = await store.createAgent({
+          team_id: team.team_id,
+          owner_user_id: u2.user_id,
+          name: "default-agent-user2",
+          visibility: "team",
+        });
+        const sharedCustom = await store.createAgent({
+          team_id: team.team_id,
+          owner_user_id: u2.user_id,
+          name: "CS Assistant",
+          visibility: "team",
+        });
+        const theirPrivate = await store.createAgent({
+          team_id: team.team_id,
+          owner_user_id: u2.user_id,
+          name: "secret-bot",
+          visibility: "private",
+        });
+
+        const visible = (
+          await store.listAgentsByTeam(team.team_id, P, { status: "active" }, { viewerUserId: u1.user_id })
+        ).items.map((a) => a.agent_id);
+        expect(visible).toContain(mineDefault.agent_id);
+        expect(visible).toContain(sharedCustom.agent_id);
+        expect(visible).not.toContain(theirDefault.agent_id);
+        expect(visible).not.toContain(theirPrivate.agent_id);
+
+        const unscoped = (await store.listAgentsByTeam(team.team_id, P, { status: "active" })).items.map(
+          (a) => a.agent_id,
+        );
+        expect(unscoped).toContain(theirDefault.agent_id);
+        expect(unscoped).toContain(theirPrivate.agent_id);
+      });
     });
 
     // -- Task (including atomic linkAgents) --

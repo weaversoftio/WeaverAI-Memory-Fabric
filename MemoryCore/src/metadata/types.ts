@@ -456,6 +456,9 @@ export interface GrantAgentShareInput {
 // Filter types
 // ============================
 
+/** Auto-created per-user default agents are named `default-agent-{username}`. */
+export const DEFAULT_AGENT_NAME_PREFIX = "default-agent-";
+
 export interface AgentFilter {
   status?: AgentStatus;
   /**
@@ -465,6 +468,16 @@ export interface AgentFilter {
   owner_user_id?: string;
   /** Exact agent name match (for duplicate checks, etc.). */
   name?: string;
+}
+
+export interface ListAgentsByTeamOptions {
+  includeShared?: boolean;
+  /**
+   * When set, hide other people's private agents and auto-created
+   * `default-agent-*` assistants. Omit for owner-scoped internal lists
+   * (duplicate checks, "my agents").
+   */
+  viewerUserId?: string;
 }
 
 export interface TaskFilter {

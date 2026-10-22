@@ -39,6 +39,7 @@ import type {
   GrantAclInput,
   GrantAgentShareInput,
   AgentFilter,
+  ListAgentsByTeamOptions,
   TaskFilter,
   TeamFilter,
   AssetFilter,
@@ -136,7 +137,7 @@ export interface IMetadataStore {
     teamId: string,
     pagination?: PaginationParams | null,
     filter?: AgentFilter,
-    options?: { includeShared?: boolean },
+    options?: ListAgentsByTeamOptions,
   ): MaybePromise<ListPage<AgentEntity>>;
   listAgentsByOwner(userId: string, pagination?: PaginationParams | null, filter?: AgentFilter): MaybePromise<ListPage<AgentEntity>>;
 

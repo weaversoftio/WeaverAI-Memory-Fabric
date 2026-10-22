@@ -34,6 +34,7 @@ export {
   isTeamMember,
   roleInTeam,
   canManageAsset,
+  isAgentVisibleToUser,
   canEditTask,
   canDeleteTask,
   invalidateBackendCache,

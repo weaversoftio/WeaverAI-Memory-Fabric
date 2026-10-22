@@ -20,6 +20,7 @@ import {
 } from "./relation-id-insert.js";
 import { generateUserKey } from "../utils/crypto.js";
 import { isUserKeyExpired } from "../utils/user-key.js";
+import { DEFAULT_AGENT_NAME_PREFIX } from "../types.js";
 import type {
   UserEntity,
   UserKeyEntity,
@@ -47,6 +48,7 @@ import type {
   GrantAgentShareInput,
   AgentShareEntity,
   AgentFilter,
+  ListAgentsByTeamOptions,
   TaskFilter,
   AssetFilter,
   BatchDeleteResult,
@@ -999,7 +1001,7 @@ export class SqliteMetadataStore implements IMetadataStore {
     teamId: string,
     pagination?: PaginationParams | null,
     filter?: AgentFilter,
-    options?: { includeShared?: boolean },
+    options?: ListAgentsByTeamOptions,
   ): ListPage<AgentEntity> {
     const includeShared = !!options?.includeShared;
     let where: string;
@@ -1023,6 +1025,10 @@ export class SqliteMetadataStore implements IMetadataStore {
     if (filter?.name) {
       where += " AND name = ?";
       params.push(filter.name);
+    }
+    if (options?.viewerUserId) {
+      where += " AND (owner_user_id = ? OR (visibility != 'private' AND name NOT LIKE ?))";
+      params.push(options.viewerUserId, `${DEFAULT_AGENT_NAME_PREFIX}%`);
     }
     return this.selectList(
       `SELECT COUNT(*) AS c FROM meta_agents ${where}`,

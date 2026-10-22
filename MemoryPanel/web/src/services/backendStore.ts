@@ -61,8 +61,24 @@ export interface Agent {
   chat_memories: string[];
   /** Backend metadata_json passthrough (on write-back it must be merged onto the old value, not overwritten wholesale) */
   metadata_json?: string;
+  visibility?: BackendAgent['visibility'];
   created_at_ms: number;
   updated_at_ms: number;
+}
+
+/** Auto-created per-user default agents are named `default-agent-{username}`. */
+export const DEFAULT_AGENT_NAME_PREFIX = 'default-agent-';
+
+/** Team-wide agent lists hide other people's private / default-agent-* assistants. */
+export function isAgentVisibleToUser(
+  agent: Pick<Agent, 'owner_user_id' | 'name'> & { visibility?: Agent['visibility'] },
+  userId: string,
+): boolean {
+  if (!userId) return true;
+  if (agent.owner_user_id === userId) return true;
+  if (agent.visibility === 'private') return false;
+  if (agent.name.startsWith(DEFAULT_AGENT_NAME_PREFIX)) return false;
+  return true;
 }
 
 export type TaskStatus = 'running' | 'completed';
@@ -212,6 +228,7 @@ export function adaptAgent(ba: BackendAgent, index: number): Agent {
     owner_user_id: ba.owner_user_id,
     name: ba.name,
     description: ba.description ?? '',
+    visibility: ba.visibility,
     role_prompt: rolePrompt,
     rules_prompt: ui.rules_prompt,
     icon: ui.icon,

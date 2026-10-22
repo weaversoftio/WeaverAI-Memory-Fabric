@@ -85,7 +85,7 @@ export default function DefaultAgentTemplateDialog({
         name: name.trim(),
         description: description.trim() || null,
         prompt: [rolePrompt.trim(), rulesPrompt.trim()].filter(Boolean).join('\n\n'),
-        visibility: 'team',
+        visibility: 'private',
         metadata_json: metadataJson,
         asset_ids: { skills, code_graphs: codeGraphs, wikis: llmWikis },
       };

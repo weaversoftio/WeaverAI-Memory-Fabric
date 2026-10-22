@@ -283,7 +283,7 @@ async function cloneDefaultAgentForNewMember(
       name: agentName,
       description: hasTemplate ? template!.description ?? null : DEFAULT_AGENT_DESCRIPTION,
       prompt: hasTemplate ? template!.prompt ?? '' : DEFAULT_AGENT_PROMPT,
-      visibility: hasTemplate ? template!.visibility ?? 'team' : 'team',
+      visibility: 'private',
       metadata_json: hasTemplate ? template!.metadata_json ?? '{}' : DEFAULT_AGENT_METADATA_JSON,
       status: 'active',
     }, ctx);

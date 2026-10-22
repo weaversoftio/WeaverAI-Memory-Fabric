@@ -27,7 +27,7 @@ export interface AgentTemplateConfig {
   name: string;
   description?: string | null;
   prompt?: string | null;
-  /** 'private' | 'team'(default) | 'restricted' */
+  /** 'private' (default for per-user default agents) | 'team' | 'restricted' */
   visibility?: string;
   metadata_json?: string;
   asset_ids?: AgentTemplateAssetIds;

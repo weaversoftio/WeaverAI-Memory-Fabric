@@ -412,7 +412,7 @@ export class MetadataService {
           description: DEFAULT_AGENT_DESCRIPTION,
           prompt: DEFAULT_AGENT_PROMPT,
           metadata_json: DEFAULT_AGENT_METADATA_JSON,
-          visibility: "team",
+          visibility: "private",
           status: "active",
         });
       } catch (err) {
@@ -976,7 +976,7 @@ export class MetadataService {
     teamId: string,
     pagination: PaginationParams = DEFAULT_PAGINATION,
     filter?: AgentFilter,
-    options?: { includeShared?: boolean },
+    options?: { includeShared?: boolean; viewerUserId?: string },
   ): Promise<PaginatedResult<AgentEntity>> {
     const page = await this.store.listAgentsByTeam(teamId, pagination, filter, options);
     const items = page.items;

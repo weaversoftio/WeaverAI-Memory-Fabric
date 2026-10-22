@@ -24,6 +24,7 @@ import {
 } from "./relation-id-insert.js";
 import { generateUserKey } from "../utils/crypto.js";
 import { isUserKeyExpired } from "../utils/user-key.js";
+import { DEFAULT_AGENT_NAME_PREFIX } from "../types.js";
 import type {
   UserEntity,
   UserKeyEntity,
@@ -51,6 +52,7 @@ import type {
   GrantAgentShareInput,
   AgentShareEntity,
   AgentFilter,
+  ListAgentsByTeamOptions,
   TaskFilter,
   AssetFilter,
   BatchDeleteResult,
@@ -845,21 +847,31 @@ export class MongoMetadataStore implements IMetadataStore {
     teamId: string,
     pagination?: PaginationParams | null,
     filter?: AgentFilter,
-    options?: { includeShared?: boolean },
+    options?: ListAgentsByTeamOptions,
   ): Promise<ListPage<AgentEntity>> {
-    const q: Document = {};
+    const clauses: Document[] = [];
     if (options?.includeShared) {
       const shareRows = await this.col<AgentShareEntity>("meta_agent_team_shares")
         .find({ target_team_id: teamId } as Document, { projection: { agent_id: 1, _id: 0 } })
         .toArray();
       const sharedIds = shareRows.map((r) => r.agent_id);
-      q.$or = [{ team_id: teamId }, { agent_id: { $in: sharedIds } }];
+      clauses.push({ $or: [{ team_id: teamId }, { agent_id: { $in: sharedIds } }] });
     } else {
-      q.team_id = teamId;
+      clauses.push({ team_id: teamId });
     }
-    if (filter?.status) q.status = filter.status;
-    if (filter?.owner_user_id) q.owner_user_id = filter.owner_user_id;
-    if (filter?.name) q.name = filter.name;
+    if (filter?.status) clauses.push({ status: filter.status });
+    if (filter?.owner_user_id) clauses.push({ owner_user_id: filter.owner_user_id });
+    if (filter?.name) clauses.push({ name: filter.name });
+    if (options?.viewerUserId) {
+      // Owner sees their own agents. Everyone else sees only non-private, non-default-agent-* cards.
+      clauses.push({
+        $or: [
+          { owner_user_id: options.viewerUserId },
+          { visibility: { $ne: "private" }, name: { $not: new RegExp(`^${DEFAULT_AGENT_NAME_PREFIX}`) } },
+        ],
+      });
+    }
+    const q: Document = clauses.length === 1 ? clauses[0]! : { $and: clauses };
     return this.paginatedFind("meta_agents", q, pagination, { created_at: -1 }, (d) => d as AgentEntity);
   }
 

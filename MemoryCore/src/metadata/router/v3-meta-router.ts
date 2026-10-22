@@ -184,7 +184,7 @@ const routeTable: Record<string, Handler> = {
     return s.updateAgentForCaller(agent_id, patch, c);
   }),
   [`${V3_PREFIX}/agent/delete`]: bind(S.agentDeleteSchema, (d, c, s) => s.deleteAgentsForCaller(d.agent_ids, c)),
-  [`${V3_PREFIX}/agent/list`]: bind(S.agentListSchema, async (d, _c, s) => {
+  [`${V3_PREFIX}/agent/list`]: bind(S.agentListSchema, async (d, c, s) => {
     const pagination = resolvePagination(d);
     if (d.team_id) {
       // team_id branch: if owner_user_id is also passed, the filter is stacked ("agents in the team that I own"),
@@ -196,7 +196,10 @@ const routeTable: Record<string, Handler> = {
       // Default include_shared=true so cross-team shared agents appear in team lists.
       // When filtering by owner_user_id, keep home-team-only (shared foreign agents are not "mine").
       const includeShared = d.include_shared ?? !d.owner_user_id;
-      return s.listAgentsByTeam(d.team_id, pagination, filter, { includeShared });
+      // Owner-scoped lists skip the viewer hide (duplicate-check / "my agents" must still see
+      // that user's private default agent). Team-wide lists hide private + default-agent-*.
+      const viewerUserId = d.owner_user_id ? undefined : c.userId;
+      return s.listAgentsByTeam(d.team_id, pagination, filter, { includeShared, viewerUserId });
     }
     const ownerId = d.owner_user_id ?? await resolveUserId(s, { user_key: d.owner_user_key });
     const filter2: AgentFilter = {};

@@ -23,6 +23,7 @@ import {
 import { feedback } from '@/lib/feedback';
 import i18n from '@/i18n';
 import { seedDisplayNameCache } from '@/services/user-profile-store';
+import { getPanelSession } from '@/lib/panelSession';
 
 // Re-import pure functions (adapters / types) from backendStore.ts, to avoid circular dependencies
 import {
@@ -33,6 +34,7 @@ import {
   adaptMember,
   adaptAgent,
   adaptTask,
+  isAgentVisibleToUser,
   readActiveTeamId,
   writeActiveTeamId,
   ensureValidActiveTeamId,
@@ -180,7 +182,10 @@ export const useBackendStore = create<BackendState>((set, get) => ({
         const backendAgents = await agentsApi.list(teamId);
         // Stale session result returned after logout / cache clear: discard, do not write to the store
         if (get().epoch !== epoch) return [];
-        const adapted = backendAgents.map((ba, i) => adaptAgent(ba, i));
+        const userId = getPanelSession()?.user?.user_id ?? '';
+        const adapted = backendAgents
+          .map((ba, i) => adaptAgent(ba, i))
+          .filter((agent) => isAgentVisibleToUser(agent, userId));
         set((s) => ({
           agentsByTeam: { ...s.agentsByTeam, [teamId]: adapted },
           agentsLoadedTeamIds: new Set(s.agentsLoadedTeamIds).add(teamId),
