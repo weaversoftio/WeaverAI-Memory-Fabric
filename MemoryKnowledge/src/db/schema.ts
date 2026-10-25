@@ -24,6 +24,10 @@ export const knowledgeCodeGraph = sqliteTable(
     repoName: text("repo_name").notNull().default(""),
     repoUrl: text("repo_url").notNull(),
     branch: text("branch").notNull(),
+    /** Per-repo git username; never returned on public APIs. */
+    gitAuthUsername: text("git_auth_username"),
+    /** Per-repo git token; never returned on public APIs. */
+    gitAuthToken: text("git_auth_token"),
     commitHash: text("commit_hash"),
     ownerUserId: text("owner_user_id"),
     userId: text("user_id"),

@@ -179,7 +179,14 @@ export interface KnowledgeClientPort {
   wikiSearch(wikiId: string, query: string, limit?: number, graph?: { hop?: number; decay?: number; minScore?: number }): Promise<WikiSearchResult>;
 
   // Code-Graph (create/list carry IdFields; get/sync/delete/query are addressed by asset id only)
-  codeGraphCreate(teamId: string, repoUrl: string, branch?: string, userId?: string, repoName?: string): Promise<CodeGraphDetail>;
+  codeGraphCreate(
+    teamId: string,
+    repoUrl: string,
+    branch?: string,
+    userId?: string,
+    repoName?: string,
+    gitAuth?: { username?: string; token?: string },
+  ): Promise<CodeGraphDetail>;
   codeGraphList(teamId: string, opts?: { status?: string; limit?: number; offset?: number }): Promise<CodeGraphListResult>;
   codeGraphGet(codeGraphId: string): Promise<CodeGraphDetail>;
   codeGraphSync(codeGraphId: string): Promise<CodeGraphSyncResult>;

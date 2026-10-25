@@ -65,6 +65,16 @@ export interface CreateCodeGraphInput {
   task_id?: string;
   visibility?: string;
   service_url?: string;
+  /** Per-repo git username (optional; inferred from host when omitted). Never exposed on list/get. */
+  git_username?: string;
+  /** Per-repo git access token. Stored separately from repo_url; never exposed on list/get. */
+  git_token?: string;
+}
+
+/** Internal-only git credential for a code-graph. Not part of CodeGraphRow / public APIs. */
+export interface CodeGraphGitAuth {
+  username: string | null;
+  token: string;
 }
 
 export interface CodeGraphStatusPatch {
@@ -217,6 +227,8 @@ export interface IKnowledgeStore {
   updateCodeGraphStatus(serviceId: string, codeGraphId: string, patch: CodeGraphStatusPatch): void;
   deleteCodeGraph(serviceId: string, teamId: string, codeGraphId: string): boolean;
   updateCodeGraphMeta(serviceId: string, codeGraphId: string, patch: CodeGraphMetaPatch): CodeGraphRow | null;
+  getCodeGraphGitAuth(serviceId: string, codeGraphId: string): CodeGraphGitAuth | null;
+  setCodeGraphGitAuth(serviceId: string, codeGraphId: string, auth: CodeGraphGitAuth): void;
 
   // ── Wiki ──
   createWiki(input: CreateWikiInput): CreateResult<WikiRow>;

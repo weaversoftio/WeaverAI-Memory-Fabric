@@ -1,13 +1,15 @@
 /**
- * Server-side HTTPS credentials for private git repositories.
+ * HTTPS credentials for private git repositories.
  *
- * An operator configures one credential scoped to a URL prefix
- * (e.g. https://bitbucket.org/weaversoft/). Repos under that prefix are cloned/fetched
- * with an `Authorization: Basic` header passed as a per-command `git -c` option.
+ * Two sources, in order:
+ *   1. A per-repo token from Code Graph register (`git_token` / `git_username`).
+ *      Stored in dedicated columns, never in repo_url, never returned on list/get.
+ *   2. A server-wide credential scoped to a URL prefix
+ *      (e.g. https://bitbucket.org/weaversoft/) via KNOWLEDGE_GIT_AUTH_*.
  *
- * The token never becomes part of the repo URL, so it is not stored in the database,
- * not shown in the panel, not written to the clone's .git/config and not echoed in git
- * error messages. Repos outside the prefix get no header.
+ * Both are sent as `Authorization: Basic` on a per-command `git -c` option.
+ * The token never becomes part of the repo URL, so it is not shown in the panel,
+ * not written to the clone's .git/config and not echoed in git error messages.
  *
  * Env:
  *   KNOWLEDGE_GIT_AUTH_URL_PREFIX  https://bitbucket.org/<workspace>/
@@ -79,4 +81,57 @@ export function gitAuthConfig(repoUrl: string, cred: GitHttpCredential | null): 
   if (!cred || !credentialAppliesTo(repoUrl, cred)) return [];
   const basic = Buffer.from(`${cred.username}:${cred.token}`, "utf8").toString("base64");
   return [`http.${cred.urlPrefix}.extraHeader=Authorization: Basic ${basic}`];
+}
+
+/** Default Basic-auth username for a host when the caller omits one. */
+export function inferGitUsername(repoUrl: string): string {
+  let host = "";
+  try {
+    host = new URL(repoUrl).host.toLowerCase();
+  } catch {
+    return "git";
+  }
+  if (host === "github.com" || host.endsWith(".github.com")) return "x-access-token";
+  if (host === "bitbucket.org" || host.endsWith(".bitbucket.org")) return "x-token-auth";
+  if (host === "gitlab.com" || host.includes("gitlab")) return "oauth2";
+  return "git";
+}
+
+/** https://host/ — used so a per-repo token is scoped to that clone command only. */
+function hostPrefix(repoUrl: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(repoUrl.trim());
+  } catch {
+    return null;
+  }
+  // A username in the URL (Bitbucket clone button) is fine; a password is not.
+  if (url.protocol !== "https:" || url.password) return null;
+  return `https://${url.host.toLowerCase()}/`;
+}
+
+export interface GitAuthOverride {
+  username?: string | null;
+  token?: string | null;
+}
+
+/**
+ * Prefer a per-repo token (register form). Otherwise the server-wide
+ * KNOWLEDGE_GIT_AUTH_* credential, and only if its prefix matches.
+ */
+export function resolveGitCredential(
+  repoUrl: string,
+  override?: GitAuthOverride | null,
+  env: NodeJS.ProcessEnv = process.env,
+): GitHttpCredential | null {
+  const token = override?.token?.trim() ?? "";
+  if (token) {
+    const urlPrefix = hostPrefix(repoUrl);
+    if (!urlPrefix) return null;
+    const username = override?.username?.trim() || inferGitUsername(repoUrl);
+    return { urlPrefix, username, token };
+  }
+  const envCred = gitCredentialFromEnv(env);
+  if (!envCred || !credentialAppliesTo(repoUrl, envCred)) return null;
+  return envCred;
 }

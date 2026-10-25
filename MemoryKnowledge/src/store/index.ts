@@ -9,6 +9,7 @@ export type {
   WikiStatus,
   CodeGraphRow,
   CreateCodeGraphInput,
+  CodeGraphGitAuth,
   CodeGraphStatusPatch,
   CodeGraphMetaPatch,
   WikiRow,

@@ -460,9 +460,17 @@ export const heIL = {
   'code.register.caption': 'רישום מאגר',
   'code.register.gitUrl': 'כתובת Git',
   'code.register.gitUrlExtra':
-    'לאחר הרישום המאגר ישוכפל אוטומטית ויבנה עבורו אינדקס קוד.',
+    'כתובת HTTPS שמסתיימת ב-‎.git. למאגר פרטי הוסף אסימון גישה למטה — אל תשים את האסימון בכתובת.',
   'code.register.gitUrlPlaceholder': 'https://gitlab.example.com/namespace/repo.git',
   'code.register.branch': 'ענף',
+  'code.register.token': 'אסימון גישה (מאגר פרטי)',
+  'code.register.tokenExtra':
+    'אופציונלי. נדרש למאגרים פרטיים. נשלח כפרטי הזדהות של Git ואינו נשמר בכתובת המאגר.',
+  'code.register.tokenPlaceholder': 'אסימון גישה לקריאה בלבד',
+  'code.register.username': 'שם משתמש Git',
+  'code.register.usernameExtra':
+    'אופציונלי. ריק = ברירת המחדל של המארח (GitHub: x-access-token, Bitbucket: x-token-auth, GitLab: oauth2).',
+  'code.register.usernamePlaceholder': 'אוטומטי לפי המארח',
   'code.register.sshWarning':
     'כתובות מאגר בפורמט SSH אינן נתמכות בגרסה זו. השתמש בפורמט HTTPS (לדוגמה https://gitlab.example.com/namespace/repo.git).',
   'code.register.urlError':

@@ -56,9 +56,14 @@ export function registerKnowledgeCodeGraphRoutes(api: Hono, deps: PanelDeps): vo
     if ('error' in gate) return gate.error;
     const branch = str(body, 'branch') ?? undefined;
     const repoName = str(body, 'repo_name') ?? undefined;
+    const gitUsername = str(body, 'git_username') ?? undefined;
+    const gitToken = str(body, 'git_token') ?? undefined;
     const kc = deps.knowledgeClientFactory(ctx.instanceId);
     try {
-      const detail = await kc.codeGraphCreate(teamId, repoUrl, branch, gate.userId, repoName);
+      const detail = await kc.codeGraphCreate(teamId, repoUrl, branch, gate.userId, repoName, {
+        username: gitUsername,
+        token: gitToken,
+      });
       // stash the owner key so status-callback can register the meta asset as the owner on ready
       // (the callback is S2S with no user_key; see knowledge-task-registry.ts for details)
       if (ctx.userKey) {

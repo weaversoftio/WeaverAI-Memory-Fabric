@@ -1055,11 +1055,18 @@ components:
           properties:
             repo_url:
               type: string
+              description: HTTPS repo URL. Do not embed a password or token.
             branch:
               type: string
               default: main
             repo_name:
               type: string
+            git_token:
+              type: string
+              description: Optional read-only git access token for a private repo. Never returned on list/get.
+            git_username:
+              type: string
+              description: Optional git username for git_token. Empty = host default.
 
     CodeGraphListRequest:
       allOf:

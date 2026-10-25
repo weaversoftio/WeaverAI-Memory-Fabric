@@ -12,7 +12,7 @@ Default port **8421**, API prefix **`/v3`**.
 | **LLM-Wiki** | upload/fetch documents → the LLM extracts structured pages → FTS5 full-text search + knowledge graph |
 | **Code-Graph** | `git clone` a repository → CodeGraph index (symbols, calls, file tree) → exploration queries |
 | **Auto-Sync** (optional) | periodically scans code-graphs; a FIFO queue + worker pool pulls git updates and rebuilds the index. Off by default; see `docs/data-flow.md` §9. |
-| **Private repositories** (optional) | server-wide git credentials via `KNOWLEDGE_GIT_AUTH_URL_PREFIX` / `_USERNAME` / `_TOKEN`; the token turns it on and is sent as an HTTP header, never stored in repo URLs |
+| **Private repositories** (optional) | per-repo access token on Code Graph register (`git_token`, never stored in `repo_url`), plus optional server-wide `KNOWLEDGE_GIT_AUTH_URL_PREFIX` / `_USERNAME` / `_TOKEN` as fallback |
 | **Tools** | `POST /v3/tools/list`, `/v3/tools/call`, for Agents / the Kernel to discover and call |
 | **Status callback** | after an ingest/sync finishes, calls back the Panel (`TMC_CALLBACK_URL`), which then writes the remote meta / knowledge |
 

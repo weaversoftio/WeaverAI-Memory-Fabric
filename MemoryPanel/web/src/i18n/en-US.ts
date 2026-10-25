@@ -460,9 +460,17 @@ export const enUS = {
   'code.register.caption': 'Register Repository',
   'code.register.gitUrl': 'Git URL',
   'code.register.gitUrlExtra':
-    'After registration, it will automatically clone and build a code index.',
+    'HTTPS URL ending in .git. For a private repo, add an access token below — do not put the token in the URL.',
   'code.register.gitUrlPlaceholder': 'https://gitlab.example.com/namespace/repo.git',
   'code.register.branch': 'Branch',
+  'code.register.token': 'Access token (private repo)',
+  'code.register.tokenExtra':
+    'Optional. Required for private repositories. Sent as a git credential and never stored in the repo URL.',
+  'code.register.tokenPlaceholder': 'Read-only personal access token',
+  'code.register.username': 'Git username',
+  'code.register.usernameExtra':
+    'Optional. Leave empty to use the host default (GitHub: x-access-token, Bitbucket: x-token-auth, GitLab: oauth2).',
+  'code.register.usernamePlaceholder': 'Auto from host',
   'code.register.sshWarning':
     'SSH format repository URLs are not supported in this version. Please use HTTPS format (e.g. https://gitlab.example.com/namespace/repo.git).',
   'code.register.urlError':

@@ -29,6 +29,7 @@ import type {
   SyncStatus,
   CodeGraphRow,
   CreateCodeGraphInput,
+  CodeGraphGitAuth,
   CodeGraphStatusPatch,
   CodeGraphMetaPatch,
   WikiRow,
@@ -95,6 +96,8 @@ export class SqliteKnowledgeStore implements IKnowledgeStore {
             repoName: input.repo_name ?? "",
             repoUrl: input.repo_url,
             branch: input.branch,
+            gitAuthUsername: input.git_username?.trim() || null,
+            gitAuthToken: input.git_token?.trim() || null,
             ownerUserId: input.owner_user_id ?? null,
             userId: input.user_id ?? null,
             agentId: input.agent_id ?? null,
@@ -257,6 +260,44 @@ export class SqliteKnowledgeStore implements IKnowledgeStore {
       )
       .run();
     return this.getCodeGraphById(serviceId, codeGraphId);
+  }
+
+  getCodeGraphGitAuth(serviceId: string, codeGraphId: string): CodeGraphGitAuth | null {
+    const row = this.db
+      .select({
+        username: knowledgeCodeGraph.gitAuthUsername,
+        token: knowledgeCodeGraph.gitAuthToken,
+      })
+      .from(knowledgeCodeGraph)
+      .where(
+        and(
+          eq(knowledgeCodeGraph.codeGraphId, codeGraphId),
+          eq(knowledgeCodeGraph.serviceId, serviceId),
+        ),
+      )
+      .get();
+    const token = row?.token?.trim() ?? "";
+    if (!token) return null;
+    return { username: row?.username?.trim() || null, token };
+  }
+
+  setCodeGraphGitAuth(serviceId: string, codeGraphId: string, auth: CodeGraphGitAuth): void {
+    const token = auth.token.trim();
+    if (!token) return;
+    this.db
+      .update(knowledgeCodeGraph)
+      .set({
+        gitAuthUsername: auth.username?.trim() || null,
+        gitAuthToken: token,
+        updatedAt: nowIso(),
+      })
+      .where(
+        and(
+          eq(knowledgeCodeGraph.codeGraphId, codeGraphId),
+          eq(knowledgeCodeGraph.serviceId, serviceId),
+        ),
+      )
+      .run();
   }
 
   // ═══════════════════════ Wiki ═══════════════════════

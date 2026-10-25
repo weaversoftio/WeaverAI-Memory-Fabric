@@ -986,9 +986,11 @@ Creates a Code-Graph (KS builds it automatically after creating it; the meta is 
 | Field | Type | Required | Description |
 |---|---|---|---|
 | team_id | string | yes | team ID |
-| repo_url | string | yes | repository address (private repositories need the server-wide git credentials on the Knowledge Service) |
+| repo_url | string | yes | repository address (do not embed a token in the URL) |
 | branch | string | no | branch |
 | repo_name | string | no | repository name |
+| git_token | string | no | read-only git access token for a private repo; stored separately and never returned |
+| git_username | string | no | git username for that token; empty = host default |
 
 **Response** `data`: the KS code-graph details (with `code_graph_id`).
 

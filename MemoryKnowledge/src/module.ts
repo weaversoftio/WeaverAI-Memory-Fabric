@@ -22,7 +22,7 @@ import {
 } from "./store/llm-binding-store.js";
 import { createWikiSourceManager, type WikiSourceManager } from "./engines/wiki/index.js";
 import { indexProject, openIndex, syncIndex, getStats, closeIndex, type CodeGraphInstance } from "./engines/code/index.js";
-import { SourceFetcherRegistry } from "./source-fetcher/index.js";
+import { GitSourceFetcher, resolveGitCredential } from "./source-fetcher/index.js";
 import { createLogger } from "./logger.js";
 import type { LlmConfig } from "./config.js";
 import { getGlobalLlmConcurrency } from "./config.js";
@@ -112,15 +112,14 @@ export function createKnowledgeModule(config: KnowledgeModuleConfig): KnowledgeM
   // Wiki engine manager
   const wikiMgr = createWikiSourceManager(join(dataDir, "_wiki_engines"));
 
-  // Source fetcher registry (git/local/ftp routing + security validation)
-  const fetcherRegistry = new SourceFetcherRegistry();
-
   // ── Real code-graph worker: fetch/sync via SourceFetcher + index ──
   const realCodeWorker: CodeGraphWorker = async (ctx) => {
-    const { dir, repoUrl, branch, codeGraphId, setInternalStatus } = ctx;
+    const { dir, repoUrl, branch, codeGraphId, setInternalStatus, gitAuth } = ctx;
 
-    // Resolve protocol-specific fetcher (validates url: https-only + SSRF blocklist).
-    const fetcher = fetcherRegistry.resolve(repoUrl);
+    // Per-repo token from the register form, else KNOWLEDGE_GIT_AUTH_* if the URL matches.
+    const fetcher = new GitSourceFetcher({
+      credential: resolveGitCredential(repoUrl, gitAuth ?? null),
+    });
 
     const isExistingRepo = existsSync(join(dir, ".git"));
     let didIncrementalSync = false;

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import type { AddressInfo } from "node:net";
 import simpleGit from "simple-git";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { credentialAppliesTo, gitAuthConfig, gitCredentialFromEnv } from "../git-auth.js";
+import { credentialAppliesTo, gitAuthConfig, gitCredentialFromEnv, inferGitUsername, resolveGitCredential } from "../git-auth.js";
 import { GitSourceFetcher } from "../git-fetcher.js";
 
 const CRED = { urlPrefix: "https://bitbucket.org/weaversoft/", username: "x-token-auth", token: "tok123" };
@@ -69,6 +69,80 @@ describe("credentialAppliesTo / gitAuthConfig", () => {
     ]);
     expect(gitAuthConfig("https://github.com/x/y.git", CRED)).toEqual([]);
     expect(gitAuthConfig("https://bitbucket.org/weaversoft/coworker.git", null)).toEqual([]);
+  });
+});
+
+describe("inferGitUsername / resolveGitCredential", () => {
+  it("picks the host default username", () => {
+    expect(inferGitUsername("https://github.com/acme/repo.git")).toBe("x-access-token");
+    expect(inferGitUsername("https://bitbucket.org/acme/repo.git")).toBe("x-token-auth");
+    expect(inferGitUsername("https://gitlab.com/acme/repo.git")).toBe("oauth2");
+    expect(inferGitUsername("https://gitea.example.com/acme/repo.git")).toBe("git");
+  });
+
+  it("prefers a per-repo token over the server-wide credential", () => {
+    const cred = resolveGitCredential(
+      "https://github.com/acme/private.git",
+      { token: "ghp_abc" },
+      {
+        KNOWLEDGE_GIT_AUTH_URL_PREFIX: "https://bitbucket.org/weaversoft/",
+        KNOWLEDGE_GIT_AUTH_USERNAME: "x-token-auth",
+        KNOWLEDGE_GIT_AUTH_TOKEN: "bb_tok",
+      },
+    );
+    expect(cred).toEqual({
+      urlPrefix: "https://github.com/",
+      username: "x-access-token",
+      token: "ghp_abc",
+    });
+  });
+
+  it("accepts a username-only URL when applying a per-repo token", () => {
+    const cred = resolveGitCredential("https://jdoe@github.com/acme/repo.git", { token: "ghp_abc" });
+    expect(cred).toEqual({
+      urlPrefix: "https://github.com/",
+      username: "x-access-token",
+      token: "ghp_abc",
+    });
+  });
+
+  it("uses an explicit username with a per-repo token", () => {
+    const cred = resolveGitCredential("https://gitea.example.com/acme/repo.git", {
+      username: "wea",
+      token: "gitea_tok",
+    });
+    expect(cred).toEqual({
+      urlPrefix: "https://gitea.example.com/",
+      username: "wea",
+      token: "gitea_tok",
+    });
+  });
+
+  it("falls back to the server-wide credential when no per-repo token is given", () => {
+    const cred = resolveGitCredential(
+      "https://bitbucket.org/weaversoft/coworker.git",
+      null,
+      {
+        KNOWLEDGE_GIT_AUTH_URL_PREFIX: "https://bitbucket.org/weaversoft/",
+        KNOWLEDGE_GIT_AUTH_USERNAME: "x-token-auth",
+        KNOWLEDGE_GIT_AUTH_TOKEN: "bb_tok",
+      },
+    );
+    expect(cred).toEqual({
+      urlPrefix: "https://bitbucket.org/weaversoft/",
+      username: "x-token-auth",
+      token: "bb_tok",
+    });
+  });
+
+  it("does not apply the server-wide credential to a different host", () => {
+    expect(
+      resolveGitCredential("https://github.com/acme/repo.git", null, {
+        KNOWLEDGE_GIT_AUTH_URL_PREFIX: "https://bitbucket.org/weaversoft/",
+        KNOWLEDGE_GIT_AUTH_USERNAME: "x-token-auth",
+        KNOWLEDGE_GIT_AUTH_TOKEN: "bb_tok",
+      }),
+    ).toBeNull();
   });
 });
 

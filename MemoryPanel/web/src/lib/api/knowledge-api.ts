@@ -432,8 +432,22 @@ export const knowledgeApi = {
 
   code: {
     /** Create (register a repository) */
-    create: (opts: { teamId: string; repoUrl: string; branch?: string; repoName?: string }): Promise<CodeGraphDetail> =>
-      panelPost('/code-graph/create', { team_id: opts.teamId, repo_url: opts.repoUrl, branch: opts.branch ?? 'main', repo_name: opts.repoName }),
+    create: (opts: {
+      teamId: string;
+      repoUrl: string;
+      branch?: string;
+      repoName?: string;
+      gitUsername?: string;
+      gitToken?: string;
+    }): Promise<CodeGraphDetail> =>
+      panelPost('/code-graph/create', {
+        team_id: opts.teamId,
+        repo_url: opts.repoUrl,
+        branch: opts.branch ?? 'main',
+        repo_name: opts.repoName,
+        git_username: opts.gitUsername,
+        git_token: opts.gitToken,
+      }),
 
     /** @deprecated use teamAssets */
     list: async (teamId: string): Promise<CodeGraphDetail[]> => {

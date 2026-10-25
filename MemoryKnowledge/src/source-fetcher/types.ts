@@ -24,7 +24,7 @@ export interface FetchResult {
  *   3. returning the version identifier
  *
  * Implementations:
- *   - GitSourceFetcher: simple-git, the first version supports only public HTTPS (SSH/private repo auth: see doc 005)
+ *   - GitSourceFetcher: simple-git, HTTPS only. Private repos use a per-repo token or KNOWLEDGE_GIT_AUTH_*
  *   - LocalSourceFetcher / FtpSourceFetcher: future extensions
  */
 export interface ISourceFetcher {

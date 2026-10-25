@@ -119,7 +119,7 @@ When you switch models, switch the protocol with it:
 | `KNOWLEDGE_TIMEOUT_MS` | `15000` | timeout for Panel → KS requests |
 | `METADATA_REMOTE_TIMEOUT_MS` | `15000` | timeout for Panel → remote Gateway requests |
 | `REMOTE_INSTANCE_PROXY_URL` | empty | base URL shown on the Panel UI's "client connection" card. In the open-source local deploy, where core and proxy run separately, set the proxy's external address (e.g. `http://host.docker.internal:8096`) so the CodeBuddy/Claude Code connection address the Panel UI copies points at the proxy. Empty keeps the old behaviour: the UI falls back to `gateway_endpoint`. **Panel backend → Kernel forwarding always uses `REMOTE_INSTANCE_URL` and has nothing to do with this variable.** (Ignored when `metadata-instances.json` is mounted; add a `proxy_endpoint` field in the JSON instead) |
-| `KNOWLEDGE_GIT_AUTH_URL_PREFIX` / `_USERNAME` / `_TOKEN` | empty | server-wide credentials for importing private git repos; the token turns it on (see `deploy/global-images/README.md`) |
+| `KNOWLEDGE_GIT_AUTH_URL_PREFIX` / `_USERNAME` / `_TOKEN` | empty | optional server-wide fallback for private git repos. Prefer the access-token field on Code Graph → Register Repo |
 
 ### TLS certificates
 

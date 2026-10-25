@@ -379,9 +379,11 @@ Creates a Code-Graph (`pending`, build triggered automatically). **Idempotent**:
 | Field | Type | Required | Description |
 |---|---|---|---|
 | team_id | string | yes | team ID |
-| repo_url | string | yes | repository address. Private repositories need the server-wide git credentials (`KNOWLEDGE_GIT_AUTH_*`); a URL that embeds a password or token fails the build (status `failed`, reason in `sync_error`) |
+| repo_url | string | yes | repository address. Do not embed a password or token in the URL (that fails the build). Private repos: pass `git_token` here, or configure server-wide `KNOWLEDGE_GIT_AUTH_*` |
 | branch | string | no | branch, default `main` |
 | repo_name | string | no | repository name |
+| git_token | string | no | read-only git access token for this repo. Stored separately from `repo_url` and never returned on list/get |
+| git_username | string | no | git username for that token. Empty = host default (`x-access-token` / `x-token-auth` / `oauth2` / `git`) |
 | user_id / agent_id / task_id | string | no | ownership |
 
 **Response** `data`: `CodeGraphDetail`.

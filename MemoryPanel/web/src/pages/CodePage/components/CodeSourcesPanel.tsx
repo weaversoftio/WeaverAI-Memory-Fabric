@@ -48,6 +48,10 @@ export default function CodeSourcesPanel() {
     setFormRepo,
     formBranch,
     setFormBranch,
+    formGitUsername,
+    setFormGitUsername,
+    formGitToken,
+    setFormGitToken,
     submitting,
     // allocate
     allocateTarget,
@@ -443,7 +447,12 @@ export default function CodeSourcesPanel() {
               visible
               caption={t('code.register.caption')}
               size="m"
-              onClose={() => setShowRegister(false)}
+              onClose={() => {
+                if (submitting) return;
+                setShowRegister(false);
+                setFormGitUsername('');
+                setFormGitToken('');
+              }}
               disableEscape={submitting}
             >
               <Modal.Body>
@@ -474,6 +483,24 @@ export default function CodeSourcesPanel() {
                       placeholder="main"
                     />
                   </Form.Item>
+                  <Form.Item label={t('code.register.token')} extra={t('code.register.tokenExtra')}>
+                    <Input.Password
+                      size="full"
+                      value={formGitToken}
+                      onChange={setFormGitToken}
+                      placeholder={t('code.register.tokenPlaceholder')}
+                      autoComplete="off"
+                    />
+                  </Form.Item>
+                  <Form.Item label={t('code.register.username')} extra={t('code.register.usernameExtra')}>
+                    <Input
+                      size="full"
+                      value={formGitUsername}
+                      onChange={setFormGitUsername}
+                      placeholder={t('code.register.usernamePlaceholder')}
+                      autoComplete="off"
+                    />
+                  </Form.Item>
                 </Form>
               </Modal.Body>
               <Modal.Footer>
@@ -485,7 +512,14 @@ export default function CodeSourcesPanel() {
                 >
                   {submitting ? t('code.register.submitting') : t('code.register.submit')}
                 </Button>
-                <Button onClick={() => setShowRegister(false)} disabled={submitting}>
+                <Button
+                  onClick={() => {
+                    setShowRegister(false);
+                    setFormGitUsername('');
+                    setFormGitToken('');
+                  }}
+                  disabled={submitting}
+                >
                   {t('common.cancel')}
                 </Button>
               </Modal.Footer>

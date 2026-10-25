@@ -39,6 +39,8 @@ export interface CodeGraphBuildContext {
   dir: string;
   /** The worker may call this to update the fine-grained internal state (cloning → indexing). */
   setInternalStatus: (s: string) => void;
+  /** Per-repo git credential from the register form; never logged. */
+  gitAuth?: { username?: string | null; token: string } | null;
 }
 
 export interface CodeGraphBuildResult {
@@ -93,6 +95,8 @@ export interface CreateCodeGraphParams {
   agent_id?: string;
   task_id?: string;
   visibility?: string;
+  git_username?: string;
+  git_token?: string;
 }
 
 export class CodeGraphService {
@@ -126,14 +130,39 @@ export class CodeGraphService {
 
   /**
    * Idempotently create and build the graph asynchronously.
-   * - Already exists (same memory+team+repo+branch) → return the existing row directly, no repeated graph build.
+   * - Already exists (same memory+team+repo+branch) → return the existing row, no repeated graph build
+   *   (unless it previously failed and a new git_token is supplied, in which case we retry).
    * - New → insert as pending into the DB + build the graph in the background.
+   * Optional git_token / git_username are stored off repo_url and used for private clones.
    */
   create(params: CreateCodeGraphParams): { row: CodeGraphRow; existed: boolean } {
     const { row, existed } = this.store.createCodeGraph(params);
+    const token = params.git_token?.trim() ?? "";
+    if (token) {
+      this.store.setCodeGraphGitAuth(params.service_id, row.code_graph_id, {
+        username: params.git_username?.trim() || null,
+        token,
+      });
+    }
     if (!existed) {
       this.audit(row, "create", `clone ${row.repo_url}@${row.branch}`, params.user_id);
       this.enqueueBuild(row);
+      return { row, existed };
+    }
+    // Same repo already registered but previously failed: persist the new
+    // credential and retry instead of leaving the failed row as-is.
+    if (token && row.status === "failed") {
+      const nextVersion = row.version + 1;
+      this.store.updateCodeGraphStatus(params.service_id, row.code_graph_id, {
+        status: "pending",
+        internal_status: null,
+        sync_error: null,
+        version: nextVersion,
+      });
+      this.audit({ ...row, version: nextVersion }, "ingest", "retry with git credential", params.user_id);
+      const fresh = this.store.getCodeGraph(params.service_id, params.team_id, row.code_graph_id);
+      if (fresh) this.enqueueBuild(fresh);
+      return { row: fresh ?? row, existed: true };
     }
     return { row, existed };
   }
@@ -290,6 +319,7 @@ export class CodeGraphService {
       sync_error: null,
     });
     try {
+      const storedAuth = this.store.getCodeGraphGitAuth(serviceId, codeGraphId);
       const result = await this.worker({
         codeGraphId,
         serviceId,
@@ -297,6 +327,7 @@ export class CodeGraphService {
         repoUrl,
         branch,
         dir: this.dirFor(serviceId, teamId, codeGraphId),
+        gitAuth: storedAuth,
         setInternalStatus: (s) =>
           this.store.updateCodeGraphStatus(serviceId, codeGraphId, { status: "processing", internal_status: s }),
       });

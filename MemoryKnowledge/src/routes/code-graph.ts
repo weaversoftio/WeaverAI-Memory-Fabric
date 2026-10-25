@@ -189,6 +189,8 @@ export function createCodeGraphRoutes(deps: CodeGraphRouteDeps): Hono {
 
     const branch = typeof body.branch === "string" && body.branch ? body.branch : "main";
     const repoName = typeof body.repo_name === "string" ? body.repo_name : undefined;
+    const gitUsername = typeof body.git_username === "string" ? body.git_username.trim() : undefined;
+    const gitToken = typeof body.git_token === "string" ? body.git_token.trim() : undefined;
 
     const { row, existed } = cgService.create({
       service_id: idFields.service_id,
@@ -200,6 +202,8 @@ export function createCodeGraphRoutes(deps: CodeGraphRouteDeps): Hono {
       user_id: idFields.user_id,
       agent_id: idFields.agent_id,
       task_id: idFields.task_id,
+      git_username: gitUsername || undefined,
+      git_token: gitToken || undefined,
     });
 
     // Persist service_url (tools self-discovery base; resource selected via

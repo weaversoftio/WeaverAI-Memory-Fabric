@@ -6,7 +6,8 @@
  * Security protections (002 §4-5):
  *   - R1 git hooks: clone/fetch never pulls the remote .git/hooks (hooks are local state), so
  *     core.hooksPath is not configured additionally (hardened git rejects that config and needs allowUnsafeHooksPath).
- *   - R2 SSRF: only public HTTPS is allowed + a blacklist of internal/loopback addresses (aligned with the project's security_rules).
+ *   - R2 SSRF: only HTTPS is allowed + a blacklist of internal/loopback addresses (aligned with the project's security_rules).
+ *   - Private repos: per-repo token or KNOWLEDGE_GIT_AUTH_*; never embed a token in repo_url.
  *   - Bug fix (plan A): git clean in incremental sync excludes .codegraph/, so the codegraph index DB is not deleted.
  */
 
@@ -75,7 +76,7 @@ export class GitSourceFetcher implements ISourceFetcher {
     // must use the server-side credential instead.
     if (this.hasEmbeddedPassword(sourceUrl)) {
       throw new Error(
-        "repo_url must not contain a password or token; private repos use the server-side git credential",
+        "repo_url must not contain a password or token; private repos use a git access token (register form or KNOWLEDGE_GIT_AUTH_*)",
       );
     }
     // R2: SSRF protection — forbid addresses pointing to the internal network / loopback (can be turned off via KNOWLEDGE_SSRF_CHECK=off).
