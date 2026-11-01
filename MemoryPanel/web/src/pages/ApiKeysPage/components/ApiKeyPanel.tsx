@@ -178,7 +178,8 @@ export default function ApiKeyPanel() {
           </div>
         }
         right={
-          role !== 'admin' ? (
+          // Only the bootstrap system admin (whose key is the instance key) is locked; promoted admins keep their own keys.
+          !(role === 'admin' && auth?.userType === 'system_admin') ? (
             <Button
               type="primary"
               onClick={() => {

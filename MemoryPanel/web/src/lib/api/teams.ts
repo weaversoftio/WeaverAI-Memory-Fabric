@@ -3,15 +3,15 @@
  */
 import { metaPost, metaListAll, getCurrentUser } from './base';
 import type { Team, TeamMember } from './types';
+import { isInstanceAdminType } from '@/services/permissions';
 
 export const teamsApi = {
   /**
-   * List the teams in which the current user is an active member.
-   * meta/team/list requires the body to carry user_id or user_key; identity in the header alone is not enough.
-   * Admins also pass their own user_id (the backend has no user/list-style "instance-level list of all teams" yet).
+   * List the teams the current user can see: their own teams, or every team on the instance for admins.
    */
   list: async () => {
     const me = await getCurrentUser();
+    if (isInstanceAdminType(me.user_type)) return metaListAll<Team>('team/list', { all: true });
     return metaListAll<Team>('team/list', { user_id: me.user_id });
   },
 
@@ -56,6 +56,10 @@ export const membersApi = {
    */
   add: (teamId: string, data: { user_id: string; role: 'admin' | 'member' | 'reviewer' }) =>
     metaPost<TeamMember>('team-member/add', { team_id: teamId, user_id: data.user_id, role: data.role }),
+
+  /** Change an existing member's role (team-member/add upserts the role for an existing member). */
+  setRole: (teamId: string, userId: string, role: 'admin' | 'member' | 'reviewer') =>
+    metaPost<TeamMember>('team-member/add', { team_id: teamId, user_id: userId, role }),
 
   /** Remove a member */
   remove: async (teamId: string, userId: string) => {

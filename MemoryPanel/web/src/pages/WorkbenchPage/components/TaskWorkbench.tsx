@@ -188,6 +188,7 @@ export default function TaskWorkbench(props: {
         // activeTeam must be non-empty here, because the !activeTeamId branch above already went to EmptyTeam
         <TaskCreateDialog
           team={{ team_id: activeTeam.team_id, name: activeTeam.name }}
+          agents={agents}
           onClose={() => setShowCreate(false)}
           onCreate={handleCreate}
         />

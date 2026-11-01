@@ -36,6 +36,8 @@ import {
   canManageUsers,
   canViewUser,
   filterVisibleUsers,
+  isInstanceAdminCtx,
+  isInstanceAdminUser,
   isSystemAdminUser,
   toPublicUser,
 } from "./user-visibility.js";
@@ -122,6 +124,14 @@ const DEFAULT_AGENT_METADATA_JSON = JSON.stringify({
     rules_prompt: DEFAULT_AGENT_RULES_PROMPT,
   },
 });
+
+/**
+ * Visibility of an agent's own chat_memory asset: team agents share what they learn with the team
+ * (so members can see the agent's task output); private agents (incl. default-agent-*) keep it private.
+ */
+function chatMemoryVisibilityFor(agent: Pick<AgentEntity, "visibility">): AssetVisibility {
+  return agent.visibility === "private" ? "private" : "team";
+}
 
 /** Business validation error, with a code mappable to an HTTP status. */
 export class MetadataError extends Error {
@@ -526,6 +536,36 @@ export class MetadataService {
     return this.store.getUserById(userId);
   }
 
+  /**
+   * Promote a user to instance admin or demote back to normal.
+   * Instance admins only; system_admin (the bootstrap account) is never changed, and callers cannot change themselves
+   * (prevents an admin from accidentally locking themselves out).
+   */
+  async setUserTypeForCaller(
+    userId: string,
+    userType: Exclude<UserType, "system_admin">,
+    ctx: V3AuthContext,
+  ): Promise<UserPublic> {
+    if (!isInstanceAdminCtx(ctx)) {
+      throw new MetadataError("permission_denied", "only admins can change user roles");
+    }
+    if (userId === ctx.userId) {
+      throw new MetadataError("permission_denied", "cannot change your own admin role");
+    }
+    const target = await this.requireUser(userId);
+    if (isSystemAdminUser(target)) {
+      throw new MetadataError("permission_denied", "the bootstrap system admin cannot be changed");
+    }
+    const updated = await this.store.setUserType(userId, userType);
+    if (!updated) throw new MetadataError("user_not_found", `user not found: ${userId}`);
+    return toPublicUser(updated, ctx);
+  }
+
+  private async isInstanceAdminUserId(userId: string): Promise<boolean> {
+    const user = await this.store.getUserById(userId);
+    return !!user && isInstanceAdminUser(user);
+  }
+
   async getUserByKey(userKey: string): Promise<UserEntity | null> {
     return this.store.getUserByKey(userKey);
   }
@@ -626,7 +666,7 @@ export class MetadataService {
     const storeFilter = this.buildUserListStoreFilter(input);
 
     if (!input.team_id) {
-      if (!ctx.isSystemAdmin) {
+      if (!isInstanceAdminCtx(ctx)) {
         throw new MetadataError("missing_team_id", "team_id is required for non-system-admin callers");
       }
       const page = await this.store.listUsers(pagination, storeFilter);
@@ -636,7 +676,7 @@ export class MetadataService {
 
     const teamId = input.team_id;
 
-    if (ctx.isSystemAdmin) {
+    if (isInstanceAdminCtx(ctx)) {
       const page = await this.store.listUsersByTeam(teamId, pagination, storeFilter);
       const items = filterVisibleUsers(page.items, ctx);
       return formatListResult({ items, total: page.total }, pagination);
@@ -725,6 +765,7 @@ export class MetadataService {
           userId: user.user_id,
           isAdmin: false,
           isSystemAdmin: user.user_type === "system_admin",
+          isInstanceAdmin: isInstanceAdminUser(user),
         };
     if (!canViewUser(user, visibilityCtx)) {
       return { valid: true, user: null };
@@ -888,6 +929,32 @@ export class MetadataService {
     return formatListResult({ items, total: page.total }, pagination);
   }
 
+  /**
+   * team/list from the caller's perspective:
+   *   - non-admins only ever get their own teams (a user_id/user_key for someone else is rejected);
+   *   - instance admins may list any user's teams, or every team with all=true.
+   */
+  async listTeamsForCaller(
+    input: { user_id?: string; user_key?: string; name?: string; all?: boolean },
+    ctx: V3AuthContext,
+    pagination: PaginationParams = DEFAULT_PAGINATION,
+  ): Promise<PaginatedResult<TeamEntity>> {
+    const filter = input.name ? { name: input.name } : undefined;
+    const admin = isInstanceAdminCtx(ctx);
+    if (input.all) {
+      if (!admin) throw new MetadataError("permission_denied", "listing all teams requires admin");
+      const page = await this.store.listTeams(pagination, filter);
+      return formatListResult(page, pagination);
+    }
+    const userId = input.user_id || input.user_key
+      ? await resolveUserId(this, input)
+      : this.requireCallerId(ctx);
+    if (!admin && userId !== ctx.userId) {
+      throw new MetadataError("permission_denied", "cannot list another user's teams");
+    }
+    return this.listTeamsByUser(userId, pagination, filter);
+  }
+
   // ============================================================
   // TeamMember
   // ============================================================
@@ -962,9 +1029,18 @@ export class MetadataService {
   }
 
   async updateAgent(agentId: string, patch: Partial<AgentEntity>): Promise<AgentEntity> {
-    if (!(await this.getAgentById(agentId))) throw new MetadataError("agent_not_found", `agent not found: ${agentId}`);
+    const existing = await this.getAgentById(agentId);
+    if (!existing) throw new MetadataError("agent_not_found", `agent not found: ${agentId}`);
     const updated = await this.store.updateAgent(agentId, patch);
     if (!updated) throw new MetadataError("agent_not_found", `agent not found: ${agentId}`);
+    // The agent's own memory follows the agent: a team agent's learnings are readable by the team,
+    // a private agent's stay with its owner.
+    if (patch.visibility && patch.visibility !== existing.visibility) {
+      const memoryAssetId = buildChatMemoryAssetId(updated.team_id, updated.agent_id);
+      if (await this.getAssetById(memoryAssetId)) {
+        await this.store.updateAsset(memoryAssetId, { visibility: chatMemoryVisibilityFor(updated) });
+      }
+    }
     return updated;
   }
 
@@ -1198,7 +1274,7 @@ export class MetadataService {
   async getAssetForCaller(assetId: string, ctx: V3AuthContext): Promise<AssetEntity | null> {
     const asset = await this.getAssetById(assetId);
     if (!asset) return null;
-    if (ctx.isSystemAdmin) return asset;
+    if (isInstanceAdminCtx(ctx)) return asset;
     if (!ctx.userId) return null;
     if (asset.owner_user_id === ctx.userId) return asset;
     const perm = await this.checkAssetPermission({ user_id: ctx.userId, asset_id: assetId, action: "read" });
@@ -1218,7 +1294,7 @@ export class MetadataService {
   ): Promise<PaginatedResult<AssetEntity>> {
     const pagination = this.pag(params);
     const { team_id, limit: _limit, offset: _offset, ...filter } = params;
-    if (ctx.isSystemAdmin) {
+    if (isInstanceAdminCtx(ctx)) {
       return this.listAssetsByTeam(team_id, pagination, filter);
     }
     if (!ctx.userId) return paginateArray([], pagination);
@@ -1415,7 +1491,7 @@ export class MetadataService {
           name: `Memory of ${agent.name}`,
           owner_user_id: agent.owner_user_id,
           source_type: "auto",
-          visibility: "private",
+          visibility: chatMemoryVisibilityFor(agent),
           status: "active",
         });
       } catch (err) {
@@ -1763,10 +1839,16 @@ export class MetadataService {
       return { allowed: true, reason: "owner" };
     }
 
+    const action = params.action;
+
+    // Instance admins (admin / system_admin) can read and use every asset on the instance, including private ones.
+    if ((action === "read" || action === "use") && (await this.isInstanceAdminUserId(userId))) {
+      return { allowed: true, reason: "instance_admin" };
+    }
+
     const membership = await this.store.getTeamMember(asset.team_id, userId);
 
     // First run with an empty ACL: a role-default hit allows directly, no table lookup needed
-    const action = params.action;
     const fast = checkPermission({
       user: { user_id: userId },
       asset,
@@ -1826,11 +1908,14 @@ export class MetadataService {
       ? new Set(Array.isArray(params.visibility) ? params.visibility : [params.visibility])
       : null;
 
+    const instanceAdmin = await this.isInstanceAdminUserId(userId);
     let teamIds: string[];
     if (params.team_id) {
-      const member = await this.store.getTeamMember(params.team_id, userId);
-      if (!member || member.status !== "active") {
-        return paginateArray([], pagination);
+      if (!instanceAdmin) {
+        const member = await this.store.getTeamMember(params.team_id, userId);
+        if (!member || member.status !== "active") {
+          return paginateArray([], pagination);
+        }
       }
       teamIds = [params.team_id];
     } else {
@@ -1838,7 +1923,9 @@ export class MetadataService {
       let offset = 0;
       const limit = 100;
       while (true) {
-        const page = await this.store.listTeamsByUser(userId, { limit, offset });
+        const page = instanceAdmin
+          ? await this.store.listTeams({ limit, offset })
+          : await this.store.listTeamsByUser(userId, { limit, offset });
         allTeams.push(...page.items);
         if (offset + page.items.length >= page.total) break;
         offset += limit;
@@ -1908,6 +1995,17 @@ export class MetadataService {
   private async requireActiveTeamMember(ctx: V3AuthContext, teamId: string): Promise<TeamMemberEntity> {
     const callerId = this.requireCallerId(ctx);
     const member = await this.store.getTeamMember(teamId, callerId);
+    // Instance admins act as team admin of every team, member or not.
+    if (isInstanceAdminCtx(ctx) && (!member || member.status !== "active" || member.role !== "admin")) {
+      return {
+        id: `instance-admin:${teamId}:${callerId}`,
+        team_id: teamId,
+        user_id: callerId,
+        role: "admin",
+        joined_at: member?.joined_at ?? new Date(0).toISOString(),
+        status: "active",
+      };
+    }
     if (!member || member.status !== "active") {
       throw new MetadataError("permission_denied", "not a team member");
     }
@@ -1930,11 +2028,113 @@ export class MetadataService {
     return team;
   }
 
-  private async assertCallerIsAgentOwner(ctx: V3AuthContext, agentId: string): Promise<AgentEntity> {
+  /** Read access to a team's metadata: active member or instance admin. */
+  async assertCallerCanReadTeam(ctx: V3AuthContext, teamId: string): Promise<void> {
+    await this.requireActiveTeamMember(ctx, teamId);
+  }
+
+  /** Read access to an agent: member of its home team, member of a team it was shared to, or instance admin. */
+  async assertCallerCanReadAgent(ctx: V3AuthContext, agent: AgentEntity): Promise<void> {
+    const callerId = this.requireCallerId(ctx);
+    if (isInstanceAdminCtx(ctx) || agent.owner_user_id === callerId) return;
+    const home = await this.store.getTeamMember(agent.team_id, callerId);
+    if (home?.status === "active") return;
+    let offset = 0;
+    const limit = 100;
+    while (true) {
+      const page = await this.store.listAgentSharesByAgent(agent.agent_id, { limit, offset });
+      for (const share of page.items) {
+        const m = await this.store.getTeamMember(share.target_team_id, callerId);
+        if (m?.status === "active") return;
+      }
+      if (offset + page.items.length >= page.total) break;
+      offset += limit;
+    }
+    throw new MetadataError("permission_denied", "not a member of the agent's team");
+  }
+
+  async getTeamForCaller(teamId: string, ctx: V3AuthContext): Promise<TeamEntity | null> {
+    const team = await this.getTeamById(teamId);
+    if (!team) return null;
+    await this.assertCallerCanReadTeam(ctx, teamId);
+    return team;
+  }
+
+  async getAgentForCaller(agentId: string, ctx: V3AuthContext): Promise<AgentEntity | null> {
+    const agent = await this.getAgentById(agentId);
+    if (!agent) return null;
+    await this.assertCallerCanReadAgent(ctx, agent);
+    return agent;
+  }
+
+  async getTaskForCaller(taskId: string, ctx: V3AuthContext): Promise<TaskEntity | null> {
+    const task = await this.getTaskById(taskId);
+    if (!task) return null;
+    await this.assertCallerCanReadTeam(ctx, task.team_id);
+    return task;
+  }
+
+  /**
+   * task/list from the caller's perspective: a team's tasks need team membership; without team_id
+   * non-admins can only list tasks they created.
+   */
+  async listTasksForCaller(
+    teamId: string | undefined,
+    filter: TaskFilter,
+    ctx: V3AuthContext,
+    pagination: PaginationParams = DEFAULT_PAGINATION,
+  ): Promise<PaginatedResult<TaskEntity>> {
+    if (teamId) {
+      await this.assertCallerCanReadTeam(ctx, teamId);
+      return this.listTasksByTeam(teamId, pagination, filter);
+    }
+    if (!isInstanceAdminCtx(ctx) && filter.creator_user_id !== this.requireCallerId(ctx)) {
+      throw new MetadataError("permission_denied", "team_id is required to list other users' tasks");
+    }
+    return this.listTasks(filter, pagination);
+  }
+
+  async listTaskAgentsForCaller(
+    taskId: string,
+    ctx: V3AuthContext,
+    pagination: PaginationParams = DEFAULT_PAGINATION,
+  ): Promise<PaginatedResult<TaskAgentEntity>> {
+    const task = await this.getTaskById(taskId);
+    if (!task) throw new MetadataError("task_not_found", `task not found: ${taskId}`);
+    await this.assertCallerCanReadTeam(ctx, task.team_id);
+    return this.listTaskAgents(taskId, pagination);
+  }
+
+  /** list-accessible always answers for the caller; only instance admins may ask on behalf of another user. */
+  async listAccessibleAssetsForCaller(
+    params: ListAccessibleAssetsParams,
+    ctx: V3AuthContext,
+  ): Promise<PaginatedResult<AssetEntity>> {
+    const callerId = this.requireCallerId(ctx);
+    if (params.user_id || params.user_key) {
+      const requested = await resolveUserId(this, params);
+      if (requested !== callerId && !isInstanceAdminCtx(ctx)) {
+        throw new MetadataError("permission_denied", "cannot list another user's assets");
+      }
+      return this.listAccessibleAssets({ ...params, user_id: requested, user_key: undefined });
+    }
+    return this.listAccessibleAssets({ ...params, user_id: callerId });
+  }
+
+  /** Read access to an agent's fixed-asset bindings follows read access to the agent. */
+  async assertCallerCanReadAgentById(ctx: V3AuthContext, agentId: string): Promise<void> {
     const agent = await this.getAgentById(agentId);
     if (!agent) throw new MetadataError("agent_not_found", `agent not found: ${agentId}`);
-    this.assertCallerIsResourceOwner(ctx, agent.owner_user_id);
-    return agent;
+    await this.assertCallerCanReadAgent(ctx, agent);
+  }
+
+  private async assertCallerIsTaskCreatorOrTeamAdmin(ctx: V3AuthContext, taskId: string): Promise<TaskEntity> {
+    const task = await this.getTaskById(taskId);
+    if (!task) throw new MetadataError("task_not_found", `task not found: ${taskId}`);
+    const callerId = this.requireCallerId(ctx);
+    if (task.creator_user_id === callerId) return task;
+    await this.assertCallerIsTeamAdmin(ctx, task.team_id);
+    return task;
   }
 
   /**
@@ -1949,13 +2149,6 @@ export class MetadataService {
     if (agent.owner_user_id === callerId) return agent;
     await this.assertCallerIsTeamAdmin(ctx, agent.team_id);
     return agent;
-  }
-
-  private async assertCallerIsTaskCreator(ctx: V3AuthContext, taskId: string): Promise<TaskEntity> {
-    const task = await this.getTaskById(taskId);
-    if (!task) throw new MetadataError("task_not_found", `task not found: ${taskId}`);
-    this.assertCallerIsResourceOwner(ctx, task.creator_user_id);
-    return task;
   }
 
   private async assertCallerIsAssetOwner(ctx: V3AuthContext, assetId: string): Promise<AssetEntity> {
@@ -1978,6 +2171,10 @@ export class MetadataService {
   // Caller-scoped mutations (L-12 / L-14)
   // ============================================================
   async createTeamForCaller(input: CreateTeamInput, ctx: V3AuthContext): Promise<TeamEntity> {
+    // Team creation is an admin action (the panel only offers it to admins); previously only hidden in the UI.
+    if (!isInstanceAdminCtx(ctx)) {
+      throw new MetadataError("permission_denied", "only admins can create teams");
+    }
     this.assertCallerIsResourceOwner(ctx, input.owner_user_id);
     return this.createTeam(input);
   }
@@ -2057,19 +2254,19 @@ export class MetadataService {
     patch: Partial<AgentEntity>,
     ctx: V3AuthContext,
   ): Promise<AgentEntity> {
-    await this.assertCallerIsAgentOwner(ctx, agentId);
+    await this.assertCallerIsAgentOwnerOrTeamAdmin(ctx, agentId);
     return this.updateAgent(agentId, patch);
   }
 
   async deleteAgentsForCaller(agentIds: string[], ctx: V3AuthContext): Promise<BatchDeleteResult> {
     for (const agentId of agentIds) {
-      await this.assertCallerIsAgentOwner(ctx, agentId);
+      await this.assertCallerIsAgentOwnerOrTeamAdmin(ctx, agentId);
     }
     return this.deleteAgents(agentIds);
   }
 
   async archiveAgentForCaller(agentId: string, ctx: V3AuthContext): Promise<AgentEntity> {
-    await this.assertCallerIsAgentOwner(ctx, agentId);
+    await this.assertCallerIsAgentOwnerOrTeamAdmin(ctx, agentId);
     return this.archiveAgent(agentId);
   }
 
@@ -2085,19 +2282,19 @@ export class MetadataService {
     patch: Partial<TaskEntity>,
     ctx: V3AuthContext,
   ): Promise<TaskEntity> {
-    await this.assertCallerIsTaskCreator(ctx, taskId);
+    await this.assertCallerIsTaskCreatorOrTeamAdmin(ctx, taskId);
     return this.updateTask(taskId, patch);
   }
 
   async deleteTasksForCaller(taskIds: string[], ctx: V3AuthContext): Promise<BatchDeleteResult> {
     for (const taskId of taskIds) {
-      await this.assertCallerIsTaskCreator(ctx, taskId);
+      await this.assertCallerIsTaskCreatorOrTeamAdmin(ctx, taskId);
     }
     return this.deleteTasks(taskIds);
   }
 
   async archiveTaskForCaller(taskId: string, ctx: V3AuthContext): Promise<TaskEntity> {
-    await this.assertCallerIsTaskCreator(ctx, taskId);
+    await this.assertCallerIsTaskCreatorOrTeamAdmin(ctx, taskId);
     return this.archiveTask(taskId);
   }
 
@@ -2107,12 +2304,12 @@ export class MetadataService {
     roleInTask: string | undefined,
     ctx: V3AuthContext,
   ): Promise<TaskAgentEntity> {
-    await this.assertCallerIsTaskCreator(ctx, taskId);
+    await this.assertCallerIsTaskCreatorOrTeamAdmin(ctx, taskId);
     return this.linkTaskAgent(taskId, agentId, roleInTask);
   }
 
   async unlinkTaskAgentForCaller(taskId: string, agentId: string, ctx: V3AuthContext): Promise<void> {
-    await this.assertCallerIsTaskCreator(ctx, taskId);
+    await this.assertCallerIsTaskCreatorOrTeamAdmin(ctx, taskId);
     return this.unlinkTaskAgent(taskId, agentId);
   }
 
@@ -2149,7 +2346,8 @@ export class MetadataService {
     patch: Partial<AssetEntity>,
     ctx: V3AuthContext,
   ): Promise<AssetEntity> {
-    await this.assertCallerIsAssetOwner(ctx, assetId);
+    // Owner or team admin (incl. instance admins): admins can manage sharing of their team's assets.
+    await this.assertCallerIsAssetOwnerOrTeamAdmin(ctx, assetId);
     return this.updateAsset(assetId, patch);
   }
 

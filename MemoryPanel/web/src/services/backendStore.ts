@@ -25,6 +25,7 @@ import {
   type TeamMember as BackendMember,
   type BackendTask,
 } from '@/lib/teamApi';
+import { isInstanceAdminSession } from './permissions';
 import { invalidateBackendCache } from '@/stores/backend';
 
 // ========================= Types (frontend display shapes, kept close to the old demoStore to reduce caller changes) =========================
@@ -76,6 +77,8 @@ export function isAgentVisibleToUser(
 ): boolean {
   if (!userId) return true;
   if (agent.owner_user_id === userId) return true;
+  // Instance admins see every agent, private and default assistants included.
+  if (isInstanceAdminSession()) return true;
   if (agent.visibility === 'private') return false;
   if (agent.name.startsWith(DEFAULT_AGENT_NAME_PREFIX)) return false;
   return true;
@@ -321,6 +324,8 @@ export {
 
 export function roleInTeam(team: Team | null | undefined, userId: string): 'admin' | 'member' | 'reviewer' | null {
   if (!team) return null;
+  // Instance admins act as team admin of every team (surfaced as 'member', same as team admins below).
+  if (isInstanceAdminSession()) return 'member';
   const member = team.members.find((m) => m.user_id === userId);
   if (member) {
     // Team-level "admin" must not surface as useCurrentRole() === 'admin'.
@@ -339,6 +344,7 @@ export function roleInTeam(team: Team | null | undefined, userId: string): 'admi
 
 export function isTeamAdmin(team: Team | null | undefined, userId: string): boolean {
   if (!team) return false;
+  if (isInstanceAdminSession()) return true;
   if (team.owner_user_id === userId) return true;
   return team.members.some((m) => m.user_id === userId && m.role === 'admin');
 }

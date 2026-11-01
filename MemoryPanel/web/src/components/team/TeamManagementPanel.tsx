@@ -127,7 +127,7 @@ export default function TeamManagementPanel({
         name: card.name,
         description: card.description,
         prompt: [card.rolePrompt, card.rulesPrompt].filter(Boolean).join('\n\n'),
-        visibility: 'team',
+        visibility: card.visibility ?? 'team',
       });
       const metadataJson = writeAgentUiMeta(created.metadata_json, {
         role_prompt: card.rolePrompt,

@@ -477,6 +477,14 @@ export class MongoMetadataStore implements IMetadataStore {
     return this.getUserById(userId);
   }
 
+  async setUserType(userId: string, userType: UserEntity["user_type"]): Promise<UserEntity | null> {
+    await this.col("meta_users").updateOne(
+      { user_id: userId } as Document,
+      { $set: { user_type: userType, updated_at: nowIso() } },
+    );
+    return this.getUserById(userId);
+  }
+
   async deleteUsers(userIds: string[]): Promise<BatchDeleteResult> {
     const result = await this.batchDelete("meta_users", "user_id", userIds);
     if (result.deleted_ids.length > 0) {
@@ -706,6 +714,12 @@ export class MongoMetadataStore implements IMetadataStore {
       pagination,
       Object.keys(joinedMatch).length > 0 ? joinedMatch : undefined,
     );
+  }
+
+  async listTeams(pagination?: PaginationParams | null, filter?: { name?: string }): Promise<ListPage<TeamEntity>> {
+    const q: Document = {};
+    if (filter?.name) q.name = filter.name;
+    return this.paginatedFind("meta_teams", q, pagination, { created_at: -1 }, (d) => d as TeamEntity);
   }
 
   // ============================================================

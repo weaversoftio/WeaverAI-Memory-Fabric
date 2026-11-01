@@ -9,15 +9,15 @@
  *
  * Approach of this route (business cascade is closed off in the control layer, the kernel is unchanged):
  *   1. auth/verify to look up the caller
- *   2. agent/get to fetch the agent, strictly check owner_user_id === caller (admin deletion on behalf of others is not allowed in this phase)
+ *   2. agent/get to fetch the agent; the caller must be its owner, a team admin of its team, or an instance admin
  *   3. skill/list, fully paginated by owner_agent_id + active
  *   4. skill/delete one by one -- abort immediately on any failure, return 500 + the deleted list + the failed skill_id
  *      + the kernel error message; agent/archive is not called then, and the caller must fix and retry
  *   5. after all skills are archived successfully, call meta/agent/archive
  *      -- the kernel also clears chat_memory in the same archive call (this part is unchanged)
  *
- * Why admin deletion on behalf of others is not done: the kernel skill/delete requires the caller to be the owner of the owner_agent;
- * admin deletion would need impersonation or the control layer obtaining the owner's user_key, which is out of scope for this phase.
+ * Admin deletion on behalf of the owner: skill ownership is keyed by owner_agent_id (assertOwner in core), so the skill calls
+ * are made as the agent (agent_id + its owner's user_id) once the caller has been authorized here.
  *
  * Frontend counterpart: agentsApi.delete must switch from meta/agent/archive to this route; to skip the cascade and use
  * the old logic (e.g. migration tools), keep calling /api/v1/meta/agent/archive directly (an escape hatch is retained).
@@ -31,6 +31,7 @@ import type { MetaCallContext } from '../../kernel/types.js';
 import {
   buildCtx,
   extractListItems,
+  isCallerTeamAdmin,
   okEnvelope,
   readJson,
   resolveCallerUserId,
@@ -106,12 +107,14 @@ export function registerAgentLifecycleRoutes(api: Hono, deps: PanelDeps): void {
     }
     if (agentEnv.code !== 0) return respondEnvelope(c, agentEnv);
     const agent = agentEnv.data as AgentRaw;
-    if (agent.owner_user_id !== callerId) {
+    if (agent.owner_user_id !== callerId && !(await isCallerTeamAdmin(deps, ctx, agent.team_id))) {
       return respondControlError(c, 403, 'NOT_YOUR_AGENT');
     }
+    // Skills are stored under the agent owner's user_id.
+    const skillUserId = agent.owner_user_id;
 
     // 3. skill list
-    const listRes = await listAgentSkills(deps, ctx, callerId, agent.team_id, agent.agent_id);
+    const listRes = await listAgentSkills(deps, ctx, skillUserId, agent.team_id, agent.agent_id);
     if (!listRes.ok) return respondEnvelope(c, listRes.envelope);
     const skills = listRes.items;
 
@@ -121,7 +124,7 @@ export function registerAgentLifecycleRoutes(api: Hono, deps: PanelDeps): void {
       const delEnv = await deps.skillKernel.invoke(
         'delete',
         {
-          user_id: callerId,
+          user_id: skillUserId,
           team_id: agent.team_id,
           agent_id: agent.agent_id,
           skill_id: s.skill_id,

@@ -26,8 +26,8 @@ export const TAB_I18N_KEY: Record<Tab, string> = {
 
 export function useSkillsPanel() {
   const { t } = useTranslation();
-  // Show Agent assets (fixed) by default, so users don't think their own assets are under "Team assets"
-  const [tab, setTab] = useState<Tab>('fixed');
+  // Open on Team assets: what the whole team shares is the most useful starting point.
+  const [tab, setTab] = useState<Tab>('team');
   const { activeTeamId, activeTeam } = useTeams();
   const myUserId = getPanelSession()?.user?.user_id ?? '';
   const [selectedAgent, setSelectedAgent] = useState<string>('');

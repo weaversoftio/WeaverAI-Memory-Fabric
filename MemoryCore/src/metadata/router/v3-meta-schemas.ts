@@ -97,6 +97,11 @@ export const initAdminSchema = z.object({
 });
 export const userGetSchema = userIdOrKeySchema;
 export const userDeleteSchema = z.object({ user_ids: idList });
+/** Promote to instance admin / demote to normal (system_admin cannot be set or changed). */
+export const userSetTypeSchema = z.object({
+  user_id: nonEmpty,
+  user_type: z.enum(["normal", "admin"]),
+});
 export const userListSchema = z
   .object({
     team_id: nonEmpty.optional(),
@@ -140,9 +145,12 @@ export const teamUpdateSchema = z.object({
 });
 export const teamDeleteSchema = z.object({ team_ids: idList });
 export const teamListSchema = userIdOrKeyFields
-  .merge(z.object({ name: z.string().min(1).optional() }))
-  .merge(paginationInputSchema)
-  .refine(requireUserIdOrKey, userIdOrKeyRefine);
+  .merge(z.object({
+    name: z.string().min(1).optional(),
+    /** Instance admins only: list every team on the instance. */
+    all: z.boolean().optional(),
+  }))
+  .merge(paginationInputSchema);
 
 // ── TeamMember ──
 export const teamMemberAddSchema = z.object({
@@ -440,7 +448,7 @@ const optionalUserIdsFilter = z
 export const internalListUsersByInstanceSchema = z.object({
   instance_id: z.string().min(1).optional(),
   status: userStatus.optional(),
-  user_type: z.enum(["normal", "system_admin"]).optional(),
+  user_type: z.enum(["normal", "admin", "system_admin"]).optional(),
   user_ids: optionalUserIdsFilter,
 }).merge(paginationInputSchema);
 
@@ -494,6 +502,7 @@ export const V3_SCHEMAS = {
   "/v3/meta/user/create-with-key": userCreateWithKeySchema,
   "/v3/meta/user/get": userGetSchema,
   "/v3/meta/user/delete": userDeleteSchema,
+  "/v3/meta/user/set-type": userSetTypeSchema,
   "/v3/meta/user/list": userListSchema,
   "/v3/meta/user-key/create": userKeyCreateSchema,
   "/v3/meta/user-key/list": userKeyListSchema,

@@ -43,7 +43,11 @@ import {
 import type { MetaEnvelope } from "../../kernel/envelope.js";
 import { MAX_IMPORTED_AGENTS } from "../../domain/chat-memory-governance.js";
 import { newExternalAssetId } from "../../domain/asset-id.js";
-import { fetchAllMetaListItems } from "./knowledge/common.js";
+import {
+  fetchAllMetaListItems,
+  isCallerTeamAdmin,
+  resolveCaller,
+} from "./knowledge/common.js";
 
 /**
  * Normalize the time_start / time_end passed by the detail-page time filter.
@@ -92,6 +96,7 @@ interface AgentRaw {
   team_id: string;
   owner_user_id: string;
   name: string;
+  visibility?: string;
 }
 interface FixedAssetRaw {
   asset_id: string;
@@ -134,6 +139,11 @@ export function registerChatMemoryRoutes(api: Hono, deps: PanelDeps): void {
       const teamId = requiredTeamId(await readJson(c));
       if (!teamId) return respondControlError(c, 400, "MISSING_TEAM_ID");
 
+      // Instance admins see every memory in the team (private ones included); everyone else sees shared ones.
+      const caller = await resolveCaller(deps, ctx);
+      const listFilter: Record<string, unknown> = { team_id: teamId, asset_type: "chat_memory" };
+      if (!caller?.isInstanceAdmin) listFilter.visibility = "team";
+
       // Fetch everything with pagination: kernel DEFAULT_PAGINATION=20, a single-page truncation would make the list incomplete
       let listError: MetaEnvelope<unknown> | null = null;
       const items = (
@@ -141,7 +151,7 @@ export function registerChatMemoryRoutes(api: Hono, deps: PanelDeps): void {
           deps,
           ctx,
           "asset/list",
-          { team_id: teamId, asset_type: "chat_memory", visibility: "team" },
+          listFilter,
           (env) => {
             listError = env;
           },
@@ -161,6 +171,7 @@ export function registerChatMemoryRoutes(api: Hono, deps: PanelDeps): void {
         uploaded_by_user_id: a.owner_user_id,
         updated_at_ms: toMs(a.updated_at),
         layer_counts: emptyLayers(),
+        scope: a.visibility === "private" ? "private" : "team",
       }));
       return respondEnvelope(
         c,
@@ -176,10 +187,10 @@ export function registerChatMemoryRoutes(api: Hono, deps: PanelDeps): void {
   // Returns the bindings with asset_type=chat_memory in meta_agent_fixed_assets under this agent.
   // Get the asset details in one go via /v3/meta/agent-fixed-asset/list-with-detail.
   //
-  // Permissions (product definition: "fixed assets" = the bound assets of agents I own):
-  //   1. agent.owner_user_id === me -> can see all assets borrowed by one's own agent
-  //   2. agent.owner_user_id !== me → 403 NOT_YOUR_AGENT
-  //   3. no caller identity -> 401
+  // Permissions:
+  //   1. agent owner, team admin or instance admin -> can see the agent's bound memory
+  //   2. team member + team agent (visibility != private) -> can see it too
+  //   3. otherwise 403 NOT_YOUR_AGENT; no caller identity -> 401
   api.post(
     "/chat-memory/agent-fixed",
     validatePanelMetaHeaders(deps),
@@ -203,7 +214,13 @@ export function registerChatMemoryRoutes(api: Hono, deps: PanelDeps): void {
       }
       if (agentEnv.code !== 0) return respondEnvelope(c, agentEnv);
       const agent = agentEnv.data as AgentRaw;
-      if (agent.owner_user_id !== meUserId) {
+      // Owner, team admin / instance admin, or any team member when it is a team agent (not private),
+      // so the whole team can follow what a shared agent learned on its tasks.
+      if (
+        agent.owner_user_id !== meUserId &&
+        !(await isCallerTeamAdmin(deps, ctx, agent.team_id)) &&
+        !(agent.visibility !== "private" && (await isTeamMember(deps, ctx, agent.team_id, meUserId)))
+      ) {
         return respondControlError(c, 403, "NOT_YOUR_AGENT");
       }
 
@@ -2110,6 +2127,8 @@ async function authorizeChatMemoryRead(
   blockId: string,
 ): Promise<boolean> {
   if (asset.owner_user_id === meUserId) return true;
+  // Instance admins can read every memory on the instance.
+  if ((await resolveCaller(deps, ctx))?.isInstanceAdmin) return true;
   if (asset.visibility === "team") {
     if (await isTeamMember(deps, ctx, asset.team_id, meUserId)) return true;
   }

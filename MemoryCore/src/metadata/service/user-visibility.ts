@@ -13,8 +13,17 @@ export function isSystemAdminUser(user: Pick<UserEntity, "user_type">): boolean 
   return user.user_type === "system_admin";
 }
 
+/** admin or system_admin: instance-wide read of every team + team-admin rights everywhere. */
+export function isInstanceAdminUser(user: Pick<UserEntity, "user_type">): boolean {
+  return user.user_type === "system_admin" || user.user_type === "admin";
+}
+
+export function isInstanceAdminCtx(ctx: V3AuthContext): boolean {
+  return ctx.isSystemAdmin || ctx.isInstanceAdmin === true;
+}
+
 export function canManageUsers(ctx: V3AuthContext): boolean {
-  return ctx.isSystemAdmin;
+  return isInstanceAdminCtx(ctx);
 }
 
 /** admin/system_admin can read all; ordinary users can only read themselves; system_admin accounts are invisible to others by default. */
@@ -27,7 +36,7 @@ export function canViewUser(
     // A single instance has only one system_admin (design invariant); the ctx.isSystemAdmin branch is unreachable in production, kept as defense.
     return ctx.isAdmin || ctx.isSystemAdmin || ctx.userId === user.user_id;
   }
-  if (ctx.isSystemAdmin) return true;
+  if (isInstanceAdminCtx(ctx)) return true;
   if (options?.allowTeamPeers) return true;
   if (ctx.isAdmin) return true;
   return ctx.userId === user.user_id;

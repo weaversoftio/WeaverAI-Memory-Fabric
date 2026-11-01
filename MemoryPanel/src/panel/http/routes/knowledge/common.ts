@@ -66,16 +66,36 @@ export async function resolveCallerUserId(
   return typeof uid === 'string' && uid.length > 0 ? uid : null;
 }
 
-/** Determine whether the current caller is system_admin (auth/verify returns user.user_type). Conservatively returns false on failure. */
+/** admin (promoted) or system_admin (bootstrap): sees every team and acts as team admin everywhere. */
+export function isInstanceAdminType(userType: string | undefined | null): boolean {
+  return userType === 'system_admin' || userType === 'admin';
+}
+
+/** The caller's user_id + user_type via auth/verify. Returns null on failure. */
+export async function resolveCaller(
+  deps: PanelDeps,
+  ctx: MetaCallContext,
+): Promise<{ userId: string; userType: string; isInstanceAdmin: boolean } | null> {
+  if (!ctx.userKey) return null;
+  const env = await deps.metaKernel.invoke('auth/verify', { user_key: ctx.userKey }, ctx);
+  if (env.code !== 0) return null;
+  const data = env.data as { valid?: boolean; user?: { user_id?: string; user_type?: string } } | null;
+  const uid = data?.valid ? data.user?.user_id : undefined;
+  if (typeof uid !== 'string' || !uid) return null;
+  const userType = data?.user?.user_type ?? 'normal';
+  return { userId: uid, userType, isInstanceAdmin: isInstanceAdminType(userType) };
+}
+
+/**
+ * Whether the current caller is an instance admin (system_admin or promoted admin).
+ * Kept under its historical name; conservatively returns false on failure.
+ */
 export async function isCallerSystemAdmin(
   deps: PanelDeps,
   ctx: MetaCallContext,
 ): Promise<boolean> {
-  if (!ctx.userKey) return false;
-  const env = await deps.metaKernel.invoke('auth/verify', { user_key: ctx.userKey }, ctx);
-  if (env.code !== 0) return false;
-  const data = env.data as { valid?: boolean; user?: { user_type?: string } } | null;
-  return data?.valid === true && data.user?.user_type === 'system_admin';
+  const caller = await resolveCaller(deps, ctx);
+  return caller?.isInstanceAdmin === true;
 }
 
 /** Check whether the user is a team member (team-member/get exists -> member). Conservatively returns false on exception. */
@@ -101,8 +121,10 @@ export async function isCallerTeamAdmin(
   teamId: string,
 ): Promise<boolean> {
   if (!teamId) return false;
-  const userId = await resolveCallerUserId(deps, ctx);
-  if (!userId) return false;
+  const caller = await resolveCaller(deps, ctx);
+  if (!caller) return false;
+  if (caller.isInstanceAdmin) return true;
+  const userId = caller.userId;
   try {
     const teamEnv = await deps.metaKernel.invoke('team/get', { team_id: teamId }, ctx);
     if (teamEnv.code === 0 && teamEnv.data) {
@@ -131,8 +153,11 @@ export async function requireTeamMember(
   ctx: MetaCallContext,
   teamId: string,
 ): Promise<{ userId: string } | { error: Response }> {
-  const userId = await resolveCallerUserId(deps, ctx);
-  if (!userId) return { error: respondControlError(c, 401, 'INVALID_USER_KEY') };
+  const caller = await resolveCaller(deps, ctx);
+  if (!caller) return { error: respondControlError(c, 401, 'INVALID_USER_KEY') };
+  const userId = caller.userId;
+  // Instance admins can read every team without being a member.
+  if (caller.isInstanceAdmin) return { userId };
   const member = await isTeamMember(deps, ctx, teamId, userId);
   if (!member) return { error: respondControlError(c, 403, 'NOT_TEAM_MEMBER') };
   return { userId };

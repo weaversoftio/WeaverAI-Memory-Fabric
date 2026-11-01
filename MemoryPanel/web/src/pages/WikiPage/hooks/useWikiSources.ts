@@ -15,8 +15,8 @@ export function useWikiSources() {
   const { t } = useTranslation();
   const [sources, setSources] = useState<WikiDetail[]>([]);
   const [loading, setLoading] = useState(false);
-  // Show Agent assets (fixed) by default, so users don't think their own assets are under "Team assets"
-  const [scopeTab, setScopeTab] = useState<WikiScopeTab>('fixed');
+  // Open on Team assets: what the whole team shares is the most useful starting point.
+  const [scopeTab, setScopeTab] = useState<WikiScopeTab>('team');
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('card');

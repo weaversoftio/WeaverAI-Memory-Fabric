@@ -20,6 +20,8 @@ export interface V3AuthContext {
   isAdmin: boolean;
   /** The user_key corresponds to user_type === system_admin. */
   isSystemAdmin: boolean;
+  /** user_type is admin or system_admin: reads every team's assets and acts as team admin everywhere. */
+  isInstanceAdmin?: boolean;
 }
 
 export interface V3AuthResult {
@@ -62,8 +64,9 @@ export async function authenticateV3(
   }
 
   const isSystemAdmin = user.user_type === "system_admin";
+  const isInstanceAdmin = isSystemAdmin || user.user_type === "admin";
   return {
     ok: true,
-    ctx: { token: userKey, userId: user.user_id, isAdmin: false, isSystemAdmin },
+    ctx: { token: userKey, userId: user.user_id, isAdmin: false, isSystemAdmin, isInstanceAdmin },
   };
 }

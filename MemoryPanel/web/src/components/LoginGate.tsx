@@ -27,6 +27,7 @@ import {
   type PublicUser,
 } from '@/lib/teamApi';
 import { getPanelSession, setPanelSession, clearPanelSession } from '@/lib/panelSession';
+import { isInstanceAdminType } from '@/services/permissions';
 import ParticleWaveBackground from './ParticleWaveBackground';
 import './login-gate.css';
 
@@ -44,6 +45,8 @@ export interface AuthState {
    * regular non-admin users (user_type !== 'system_admin') need their role looked up in the team.members table.
    */
   isAdmin: boolean;
+  /** Raw user_type: 'system_admin' (bootstrap account) | 'admin' (promoted) | 'normal'. */
+  userType?: string;
 }
 
 // In-memory cache - real persistence is left to localStorage (lib/panelSession.ts, shared across tabs).
@@ -72,7 +75,8 @@ function toAuthState(user: PublicUser, instanceId: string, instanceName: string)
     instance_id: instanceId,
     instance_name: instanceName,
     loggedInAt: Date.now(),
-    isAdmin: user.user_type === 'system_admin',
+    isAdmin: isInstanceAdminType(user.user_type),
+    userType: user.user_type ?? 'normal',
   };
 }
 

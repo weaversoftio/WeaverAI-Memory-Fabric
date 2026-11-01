@@ -1425,3 +1425,105 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* ===== Member list (row layout) ===== */
+._memory-member-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 4px 0 12px;
+  font-size: 12px;
+  color: var(--wf-color-text-tertiary);
+}
+._memory-member-legend-item strong {
+  color: var(--wf-color-text-secondary, var(--wf-color-text-primary));
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+._memory-member-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--wf-color-border-primary-default);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+._memory-member-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 170px 32px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--wf-color-bg-primary-default);
+}
+._memory-member-row + ._memory-member-row {
+  border-top: 1px solid var(--wf-color-border-primary-default);
+}
+._memory-member-row:hover {
+  background: var(--wf-color-bg-brand-lighten-default);
+}
+._memory-member-row ._memory-member-avatar {
+  width: 32px;
+  height: 32px;
+}
+
+._memory-member-name-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+._memory-member-row ._memory-member-id {
+  font-size: 13px;
+}
+._memory-member-subid {
+  font-size: 11px;
+  color: var(--wf-color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+._memory-member-role-cell {
+  min-width: 0;
+}
+._memory-member-role-cell .wf-select,
+._memory-member-role-cell > * {
+  width: 100%;
+}
+._memory-member-role-text {
+  font-size: 13px;
+  color: var(--wf-color-text-secondary, var(--wf-color-text-primary));
+  padding-left: 2px;
+}
+
+._memory-member-more-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--wf-color-text-tertiary);
+  cursor: pointer;
+}
+._memory-member-more-btn:hover {
+  background: var(--wf-color-bg-primary-hover, rgba(0, 0, 0, 0.06));
+  color: var(--wf-color-text-primary);
+}
+._memory-member-more-placeholder {
+  display: block;
+  width: 28px;
+}
+
+@media (max-width: 640px) {
+  ._memory-member-row {
+    grid-template-columns: 32px minmax(0, 1fr) 32px;
+  }
+  ._memory-member-role-cell {
+    grid-column: 2 / 3;
+  }
+}

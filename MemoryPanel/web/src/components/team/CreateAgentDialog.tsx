@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { Button, Input, Modal, Tag } from '@/components/ui';
+import { Button, Input, Modal, Segment, Tag } from '@/components/ui';
 import { useTranslation } from 'react-i18next';
 import { AddIcon, StarFilledIcon, CloseIcon, LibraryIcon, CodeIcon, ToolsIcon, ChatIcon } from '@/components/ui/icons';
 import {
@@ -37,6 +37,7 @@ export default function CreateAgentDialog({
   const [description, setDescription] = useState('');
   const [rolePrompt, setRolePrompt] = useState('');
   const [rulesPrompt, setRulesPrompt] = useState('');
+  const [visibility, setVisibility] = useState<'team' | 'private'>('team');
   const [skillsOpen, setSkillsOpen] = useState(false);
   const [codeGraphOpen, setCodeGraphOpen] = useState(false);
   const [wikiOpen, setWikiOpen] = useState(false);
@@ -253,6 +254,20 @@ export default function CreateAgentDialog({
           </div>
         </LightField>
 
+        <LightField label={t('createAgent.visibility')}>
+          <Segment
+            value={visibility}
+            onChange={(v) => setVisibility(v as 'team' | 'private')}
+            options={[
+              { value: 'team', text: t('createAgent.visibility.team') },
+              { value: 'private', text: t('createAgent.visibility.private') },
+            ]}
+          />
+          <div className="_memory-field-hint">
+            {visibility === 'team' ? t('createAgent.visibility.team.hint') : t('createAgent.visibility.private.hint')}
+          </div>
+        </LightField>
+
         <LightField label={t('createAgent.descLabel')} hint={t('createAgent.descHint')}>
           <Input
             size="full"
@@ -396,6 +411,7 @@ export default function CreateAgentDialog({
             codeGraphs,
             llmWikis,
             chatMemories,
+            visibility,
           })}
         >
           {t('createAgent.submit')}

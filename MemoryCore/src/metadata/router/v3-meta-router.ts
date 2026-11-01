@@ -10,6 +10,7 @@
  * Reuses v2's envelope utilities, guaranteeing a consistent response format.
  */
 
+import { isInstanceAdminCtx } from "../service/user-visibility.js";
 import type * as http from "node:http";
 import type { ZodType } from "zod";
 import {
@@ -112,6 +113,7 @@ const routeTable: Record<string, Handler> = {
     return s.getUserForCaller(userId, c);
   }),
   [`${V3_PREFIX}/user/delete`]: bind(S.userDeleteSchema, (d, c, s) => s.deleteUsersForCaller(d.user_ids, c)),
+  [`${V3_PREFIX}/user/set-type`]: bind(S.userSetTypeSchema, (d, c, s) => s.setUserTypeForCaller(d.user_id, d.user_type, c)),
   [`${V3_PREFIX}/user/list`]: bind(S.userListSchema, (d, c, s) =>
     s.listUsersForCaller(d, c, resolvePagination(d)),
   ),
@@ -148,17 +150,15 @@ const routeTable: Record<string, Handler> = {
 
   // Team
   [`${V3_PREFIX}/team/create`]: bind(S.teamCreateSchema, (d, c, s) => s.createTeamForCaller(d, c)),
-  [`${V3_PREFIX}/team/get`]: bind(S.teamGetSchema, async (d, _c, s) => orNotFound(await s.getTeamById(d.team_id), "team_not_found", d.team_id)),
+  [`${V3_PREFIX}/team/get`]: bind(S.teamGetSchema, async (d, c, s) => orNotFound(await s.getTeamForCaller(d.team_id, c), "team_not_found", d.team_id)),
   [`${V3_PREFIX}/team/update`]: bind(S.teamUpdateSchema, async (d, c, s) => {
     const { team_id, ...patch } = d;
     return s.updateTeamForCaller(team_id, patch, c);
   }),
   [`${V3_PREFIX}/team/delete`]: bind(S.teamDeleteSchema, (d, c, s) => s.deleteTeamsForCaller(d.team_ids, c)),
-  [`${V3_PREFIX}/team/list`]: bind(S.teamListSchema, async (d, _c, s) => {
-    const userId = await resolveUserId(s, d);
-    const filter = d.name ? { name: d.name } : undefined;
-    return s.listTeamsByUser(userId, resolvePagination(d), filter);
-  }),
+  [`${V3_PREFIX}/team/list`]: bind(S.teamListSchema, (d, c, s) =>
+    s.listTeamsForCaller(d, c, resolvePagination(d)),
+  ),
 
   // TeamMember
   [`${V3_PREFIX}/team-member/add`]: bind(S.teamMemberAddSchema, async (d, c, s) => {
@@ -178,7 +178,7 @@ const routeTable: Record<string, Handler> = {
 
   // Agent
   [`${V3_PREFIX}/agent/create`]: bind(S.agentCreateSchema, (d, c, s) => s.createAgentForCaller(d, c)),
-  [`${V3_PREFIX}/agent/get`]: bind(S.agentGetSchema, async (d, _c, s) => orNotFound(await s.getAgentById(d.agent_id), "agent_not_found", d.agent_id)),
+  [`${V3_PREFIX}/agent/get`]: bind(S.agentGetSchema, async (d, c, s) => orNotFound(await s.getAgentForCaller(d.agent_id, c), "agent_not_found", d.agent_id)),
   [`${V3_PREFIX}/agent/update`]: bind(S.agentUpdateSchema, async (d, c, s) => {
     const { agent_id, ...patch } = d;
     return s.updateAgentForCaller(agent_id, patch, c);
@@ -198,7 +198,8 @@ const routeTable: Record<string, Handler> = {
       const includeShared = d.include_shared ?? !d.owner_user_id;
       // Owner-scoped lists skip the viewer hide (duplicate-check / "my agents" must still see
       // that user's private default agent). Team-wide lists hide private + default-agent-*.
-      const viewerUserId = d.owner_user_id ? undefined : c.userId;
+      // Instance admins see every agent (private + default assistants included).
+      const viewerUserId = d.owner_user_id || isInstanceAdminCtx(c) ? undefined : c.userId;
       return s.listAgentsByTeam(d.team_id, pagination, filter, { includeShared, viewerUserId });
     }
     const ownerId = d.owner_user_id ?? await resolveUserId(s, { user_key: d.owner_user_key });
@@ -231,13 +232,13 @@ const routeTable: Record<string, Handler> = {
 
   // Task
   [`${V3_PREFIX}/task/create`]: bind(S.taskCreateSchema, (d, c, s) => s.createTaskForCaller(d, c)),
-  [`${V3_PREFIX}/task/get`]: bind(S.taskGetSchema, async (d, _c, s) => orNotFound(await s.getTaskById(d.task_id), "task_not_found", d.task_id)),
+  [`${V3_PREFIX}/task/get`]: bind(S.taskGetSchema, async (d, c, s) => orNotFound(await s.getTaskForCaller(d.task_id, c), "task_not_found", d.task_id)),
   [`${V3_PREFIX}/task/update`]: bind(S.taskUpdateSchema, (d, c, s) => {
     const { task_id, ...patch } = d;
     return s.updateTaskForCaller(task_id, patch, c);
   }),
   [`${V3_PREFIX}/task/delete`]: bind(S.taskDeleteSchema, (d, c, s) => s.deleteTasksForCaller(d.task_ids, c)),
-  [`${V3_PREFIX}/task/list`]: bind(S.taskListSchema, async (d, _c, s) => {
+  [`${V3_PREFIX}/task/list`]: bind(S.taskListSchema, async (d, c, s) => {
     const filter: TaskFilter = {};
     if (d.status) filter.status = d.status;
     if (d.title) filter.title = d.title;
@@ -246,9 +247,7 @@ const routeTable: Record<string, Handler> = {
     } else if (d.creator_user_key) {
       filter.creator_user_id = await resolveUserId(s, { user_key: d.creator_user_key });
     }
-    const pagination = resolvePagination(d);
-    if (d.team_id) return s.listTasksByTeam(d.team_id, pagination, filter);
-    return s.listTasks(filter, pagination);
+    return s.listTasksForCaller(d.team_id, filter, c, resolvePagination(d));
   }),
   [`${V3_PREFIX}/task/archive`]: bind(S.taskArchiveSchema, (d, c, s) => s.archiveTaskForCaller(d.task_id, c)),
 
@@ -261,8 +260,8 @@ const routeTable: Record<string, Handler> = {
     await s.unlinkTaskAgentForCaller(d.task_id, d.agent_id, c);
     return OK;
   }),
-  [`${V3_PREFIX}/task-agent/list`]: bind(S.taskAgentListSchema, (d, _c, s) =>
-    s.listTaskAgents(d.task_id, resolvePagination(d)),
+  [`${V3_PREFIX}/task-agent/list`]: bind(S.taskAgentListSchema, (d, c, s) =>
+    s.listTaskAgentsForCaller(d.task_id, c, resolvePagination(d)),
   ),
 
   // ParticipationLog
@@ -291,8 +290,8 @@ const routeTable: Record<string, Handler> = {
   [`${V3_PREFIX}/asset/delete`]: bind(S.assetDeleteSchema, (d, c, s) => s.deleteAssetsForCaller(d.asset_ids, c)),
   // Caller-perspective read (horizontal privilege escalation fix): membership check + per-item permission filtering, same source as list-accessible
   [`${V3_PREFIX}/asset/list`]: bind(S.assetListSchema, (d, c, s) => s.listAssetsForCaller(d, c)),
-  [`${V3_PREFIX}/asset/list-accessible`]: bind(S.assetListAccessibleSchema, (d, _c, s) =>
-    s.listAccessibleAssets(d)),
+  [`${V3_PREFIX}/asset/list-accessible`]: bind(S.assetListAccessibleSchema, (d, c, s) =>
+    s.listAccessibleAssetsForCaller(d, c)),
 
   [`${V3_PREFIX}/asset/touch-usage`]: bind(S.assetTouchUsageSchema, async (d, c, s) => {
     await s.touchAssetUsageForCaller(d.asset_id, c);
@@ -304,10 +303,14 @@ const routeTable: Record<string, Handler> = {
     await s.setAgentFixedAssetsForCaller(d.agent_id, d.bindings, c);
     return OK;
   }),
-  [`${V3_PREFIX}/agent-fixed-asset/list`]: bind(S.fixedAssetListSchema, (d, _c, s) =>
-    s.listAgentFixedAssets(d.agent_id, resolvePagination(d)),
-  ),
-  [`${V3_PREFIX}/agent-fixed-asset/list-with-detail`]: bind(S.fixedAssetListWithDetailSchema, (d, _c, s) => s.listAgentFixedAssetsWithDetail(d)),
+  [`${V3_PREFIX}/agent-fixed-asset/list`]: bind(S.fixedAssetListSchema, async (d, c, s) => {
+    await s.assertCallerCanReadAgentById(c, d.agent_id);
+    return s.listAgentFixedAssets(d.agent_id, resolvePagination(d));
+  }),
+  [`${V3_PREFIX}/agent-fixed-asset/list-with-detail`]: bind(S.fixedAssetListWithDetailSchema, async (d, c, s) => {
+    await s.assertCallerCanReadAgentById(c, d.agent_id);
+    return s.listAgentFixedAssetsWithDetail(d);
+  }),
   [`${V3_PREFIX}/agent-fixed-asset/summary-by-agents`]: bind(S.fixedAssetSummaryByAgentsSchema, (d, _c, s) =>
     s.summarizeAgentFixedAssetsByAgents({ agent_ids: d.agent_ids, asset_id: d.asset_id }),
   ),

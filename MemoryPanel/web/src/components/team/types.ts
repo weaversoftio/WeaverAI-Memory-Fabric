@@ -35,6 +35,8 @@ export interface AgentCard {
   codeGraphs: string[];
   llmWikis: string[];
   chatMemories: string[];
+  /** team = everyone in the team sees the agent and what it learns; private = only the owner (and admins). */
+  visibility?: 'team' | 'private';
 }
 
 export interface AgentMountedCounts {

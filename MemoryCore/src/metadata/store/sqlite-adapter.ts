@@ -591,6 +591,11 @@ export class SqliteMetadataStore implements IMetadataStore {
     return this.getUserById(userId);
   }
 
+  setUserType(userId: string, userType: UserEntity["user_type"]): UserEntity | null {
+    this.run("UPDATE meta_users SET user_type = ?, updated_at = ? WHERE user_id = ?", userType, nowIso(), userId);
+    return this.getUserById(userId);
+  }
+
   deleteUsers(userIds: string[]): BatchDeleteResult {
     const result = this.batchDelete("meta_users", "user_id", userIds);
     if (result.deleted_ids.length > 0) {
@@ -854,6 +859,23 @@ export class SqliteMetadataStore implements IMetadataStore {
       `SELECT COUNT(*) AS c ${base}`,
       params,
       `SELECT t.* ${base} ORDER BY t.created_at DESC`,
+      params,
+      pagination,
+      (r) => this.mapTeam(r),
+    );
+  }
+
+  listTeams(pagination?: PaginationParams | null, filter?: { name?: string }): ListPage<TeamEntity> {
+    let where = "WHERE 1=1";
+    const params: SQLInputValue[] = [];
+    if (filter?.name) {
+      where += " AND name = ?";
+      params.push(filter.name);
+    }
+    return this.selectList(
+      `SELECT COUNT(*) AS c FROM meta_teams ${where}`,
+      params,
+      `SELECT * FROM meta_teams ${where} ORDER BY created_at DESC`,
       params,
       pagination,
       (r) => this.mapTeam(r),

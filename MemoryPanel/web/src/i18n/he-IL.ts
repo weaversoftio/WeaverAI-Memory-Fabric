@@ -31,6 +31,7 @@ export const heIL = {
   'header.sync.title': 'סנכרון בזמן אמת מחובר',
   'header.settings': 'הגדרות',
   'header.profile': 'הפרופיל שלי',
+  'header.aiConnection': 'חיבור ה-AI שלי',
   'header.logout': 'התנתקות',
   'header.profile.caption': 'הפרופיל שלי',
   'header.profile.username': 'שם משתמש',
@@ -139,22 +140,22 @@ export const heIL = {
     'בתגובת ההתחברות חסרים פרטי משתמש (data.user הוא null). פנה לצוות ה-backend כדי לבדוק את חוזה auth/verify.',
 
   // ===== SettingsDialog =====
-  'settings.caption': 'הגדרות · הרשאות',
+  'settings.caption': 'חיבור ה-AI שלי',
   'settings.title': 'הפעלה וכיבוי של מודולי משאבים',
   'settings.desc':
-    'ההגדרות נשמרות עבור המשתמש הנוכחי. כשמודול כבוי, ה-proxy לא יזריק את היכולת המתאימה עבור המשתמש. השינויים חלים מיד על סשנים חדשים.',
+    'בחר מה ה-Agent שלך (Claude Code, Codex…) מקבל מ-Memory Fabric. משפיע רק עליך, לא על חברי הצוות ולא על מי שרואה את נכסי הצוות. השינויים חלים על סשנים חדשים.',
   'settings.loadingConfig': 'טוען את תצורת המשאבים של המשתמש הנוכחי…',
   'settings.tag.saving': 'שומר',
-  'settings.tag.enabled': 'פעיל',
+  'settings.tag.enabled': 'פועל',
   'settings.tag.disabled': 'כבוי',
-  'settings.module.wiki': 'מאגר ידע Wiki',
-  'settings.module.code': 'Code_Graph',
+  'settings.module.wiki': 'חיפוש ב-Wiki',
+  'settings.module.code': 'חיפוש בקוד',
   'settings.module.skill': 'Skills',
-  'settings.module.chatMemory': 'Chat_Memory',
-  'settings.module.wiki.desc': 'כשכבוי, רק הזרקת הכלים נעצרת',
-  'settings.module.code.desc': 'כשכבוי, רק הזרקת הכלים נעצרת',
-  'settings.module.skill.desc': 'הזרקת הכלים וחילוץ Skills חדשים נעצרים',
-  'settings.module.chatMemory.desc': 'הזרקת הכלים וקליטת שיחות חדשות נעצרות',
+  'settings.module.chatMemory': 'זיכרון שיחות',
+  'settings.module.wiki.desc': 'ה-Agent שלך יכול לחפש בדפי ה-Wiki של הצוות.',
+  'settings.module.code.desc': 'ה-Agent שלך יכול לחפש במאגרי הקוד המאונדקסים של הצוות.',
+  'settings.module.skill.desc': 'ה-Agent שלך משתמש ב-Skills של הצוות ולומד חדשים מהסשנים שלך.',
+  'settings.module.chatMemory.desc': 'ה-Agent שלך זוכר הקשר קודם, והשיחות שלך נשמרות בזיכרון.',
   'settings.notify.enabled': '{{label}} הופעל',
   'settings.notify.disabled': '{{label}} כובה',
   'settings.notify.saveFailed': 'השמירה נכשלה: {{msg}}',
@@ -248,6 +249,18 @@ export const heIL = {
     'כלול רקע, מטרות וקריטריוני קבלה. ככל שהתיאור מפורט יותר, ההקשר של ה-Agent טוב יותר.',
   'taskCreate.submit': 'יצירת משימה',
   'taskCreate.cancel': 'ביטול',
+  'taskCreate.agents': 'Agents (אופציונלי)',
+  'taskCreate.agentsExtra': 'Agents שמשויכים למשימה עובדים עליה; מה שהם לומדים במהלך המשימה מופיע ב"תוצרים" של המשימה לכל הצוות.',
+  'taskCreate.agentsPlaceholder': 'שייך Agent…',
+  'taskCreate.agentsEmpty': 'אין עדיין Agents בצוות',
+  'task.assignedAgents': 'Agents משויכים',
+  'task.assignedAgents.hint': 'מי צריך לעבוד על המשימה. Agents של הצוות משתפים את תוצרי המשימה עם כל הצוות.',
+  'task.assignedAgents.add': 'שייך Agent…',
+  'task.outputs': 'תוצרים',
+  'task.outputs.hint': 'זיכרונות שה-Agents יצרו בזמן העבודה על המשימה.',
+  'task.outputs.loading': 'טוען תוצרים…',
+  'task.outputs.empty': 'עדיין אין. תוצרים יופיעו ברגע ש-Agent יתחיל סשן על המשימה.',
+  'task.outputs.hiddenPrivate': '{{count}} Agents פרטיים עבדו גם הם על המשימה; התוצרים שלהם גלויים רק לבעלים ולמנהלים.',
 
   // ===== AdminResourceLock =====
   'adminLock.title': 'ניהול משאבים אינו זמין למנהלי מערכת',
@@ -541,7 +554,7 @@ export const heIL = {
   'skills.personal.scope.shared': 'משותף',
   'skills.personal.scope.private': 'פרטי',
   'skills.personal.scope.shared.tooltip': 'חברי הצוות יכולים לקרוא; הבעלים והמנהל יכולים לכתוב',
-  'skills.personal.scope.private.tooltip': 'רק הבעלים ומנהל הצוות יכולים לראות',
+  'skills.personal.scope.private.tooltip': 'רק הבעלים (ומנהלי הפלטפורמה) יכולים לראות',
   'skills.personal.delete.tooltip': 'מחיקה לצמיתות של Skill זה (בלתי הפיכה)',
   'skills.personal.delete.confirm': 'למחוק לצמיתות את ה-Skill "{{name}}"?',
   'skills.personal.delete.confirm.desc':
@@ -794,7 +807,7 @@ export const heIL = {
   'memoryPersonal.shared': 'משותף',
   'memoryPersonal.private': 'פרטי',
   'memoryPersonal.shared.tooltip': 'חברי הצוות יכולים לקרוא; הבעלים והמנהל יכולים לכתוב',
-  'memoryPersonal.private.tooltip': 'רק הבעלים ומנהל הצוות יכולים לראות',
+  'memoryPersonal.private.tooltip': 'רק הבעלים (ומנהלי הפלטפורמה) יכולים לראות',
   'memoryPersonal.ownerTag.title': 'משתמש בעלים: {{name}} ({{id}})',
   'memoryPersonal.ownerTag.you': ' (את/ה)',
 
@@ -969,6 +982,11 @@ export const heIL = {
   'createAgent.assets.toolbarLabel': 'יכולות',
   'createAgent.submit': 'יצירה',
   'createAgent.cancel': 'ביטול',
+  'createAgent.visibility': 'מי יכול לראות את ה-Agent',
+  'createAgent.visibility.team': 'הצוות',
+  'createAgent.visibility.private': 'רק אני',
+  'createAgent.visibility.team.hint': 'כל חברי הצוות רואים את ה-Agent ואת מה שהוא לומד (הזיכרון ותוצרי המשימות שלו).',
+  'createAgent.visibility.private.hint': 'רק אתה (ומנהלי הפלטפורמה) רואים את ה-Agent ואת הזיכרון שלו.',
 
   // ===== AgentEditDialog =====
   'agentEdit.caption': 'פרטי Agent',
@@ -1070,6 +1088,29 @@ export const heIL = {
   'member.remove.tooltip': 'הסרת חבר זה',
   'member.role.creator': ' · יוצר',
   'member.me': ' (את/ה)',
+  'member.role.member': 'חבר',
+  'member.role.admin': 'מנהל צוות',
+  'member.role.reviewer': 'צופה',
+  'member.role.member.desc': 'יכול ליצור Agents ומשימות משלו ורואה את כל מה שמשותף עם הצוות.',
+  'member.role.admin.desc': 'מנהל חברים ותפקידים, ויכול לערוך או למחוק כל Agent או משימה בצוות. רואה את כל נכסי הצוות.',
+  'member.role.reviewer.desc': 'קריאה בלבד: רואה את מה שמשותף עם הצוות אך אינו יכול ליצור או לשנות דבר.',
+  'member.role.changed': 'התפקיד עודכן',
+  'member.role.member.short': 'יוצר Agents ומשימות משלו',
+  'member.role.admin.short': 'מנהל אנשים, Agents ומשימות',
+  'member.role.reviewer.short': 'קריאה בלבד',
+  'member.subtitle.simple': 'האנשים ב-{{name}} ומה הם יכולים לעשות.',
+  'member.owner': 'בעלים',
+  'member.owner.desc': 'יצר את הצוות. הבעלים תמיד מנהל צוות ולא ניתן להסיר אותו.',
+  'member.actions': 'פעולות נוספות',
+  'member.remove.menu': 'הסר מהצוות',
+  'member.admin.badge': 'מנהל פלטפורמה',
+  'member.admin.badge.desc': 'מנהל פלטפורמה: רואה כל צוות וכל נכס (כולל פרטיים) ויכול לנהל כל צוות.',
+  'member.admin.grant': 'תן הרשאת מנהל פלטפורמה',
+  'member.admin.revoke': 'הסר הרשאת מנהל פלטפורמה',
+  'member.admin.grant.confirm': 'להפוך את {{userId}} למנהל פלטפורמה?',
+  'member.admin.grant.desc': 'הוא יראה כל צוות, Agent, משימה ונכס במופע הזה (כולל פרטיים) ויוכל לנהל כל צוות.',
+  'member.admin.revoke.confirm': 'להסיר הרשאות מנהל מ-{{userId}}?',
+  'member.admin.revoke.desc': 'הוא יחזור להיות משתמש רגיל ויראה רק את הצוותים שהוא חבר בהם.',
 
   // ===== AddMemberDialog =====
   'addMember.caption': 'הוספת חבר ל-"{{name}}"',
@@ -1092,7 +1133,7 @@ export const heIL = {
   'addMember.role.member': 'member',
   'addMember.role.admin': 'admin',
   'addMember.role.hint': 'חברים חדשים מקבלים כברירת מחדל את התפקיד member.',
-  'addMember.role.hintAdmin': 'בחר member או admin לצוות זה. ניתן להוסיף מחדש חבר קיים כדי לשנות תפקיד.',
+  'addMember.role.hintAdmin': 'חבר: Agents ומשימות משלו. מנהל צוות: מנהל חברים וכל Agent/משימה בצוות. צופה: קריאה בלבד. אפשר לשנות תפקיד מאוחר יותר מרשימת החברים.',
   'addMember.existing.submit': 'הוספה',
   'addMember.new.submit': 'יצירה והוספה',
   'addMember.cancel': 'ביטול',
@@ -1411,52 +1452,64 @@ export const heIL = {
   'onboarding.guide.start.admin.title': 'ברוכים הבאים ל-WeaverAI Memory Fabric',
   'onboarding.guide.start.admin.desc':
     'אתה מנהל מערכת: אתה מנהל צוותים וחברים. בוא נעבור על היכולות המרכזיות – לחץ על "הבא" כדי להתחיל.',
-  'onboarding.guide.start.member.title': 'ברוכים הבאים ל-WeaverAI Memory Fabric',
+  'onboarding.guide.start.member.title':
+    'ברוך הבא ל-WeaverAI Memory Fabric',
   'onboarding.guide.start.member.desc':
-    'אתה חבר צוות: אתה יכול לנהל Agents ונכסים בתוך הצוות. בוא נעבור על היכולות המרכזיות – לחץ על "הבא" כדי להתחיל.',
+    'אתה יכול ליצור Agents ומשימות משלך ולהשתמש בכל מה שהצוות משתף. הסיור הקצר הזה מראה איפה הכול נמצא.',
   // Login identity (shared by Admin / Member)
-  'onboarding.guide.login.title': 'זהות ההתחברות שלך',
+  'onboarding.guide.login.title':
+    'החשבון שלך',
   'onboarding.guide.login.desc':
-    'התחברת עם user_key. השתמש בתפריט בפינה העליונה כדי לצפות בפרופיל, להחליף שפה או להתנתק; הבעלות וההרשאות מבוססות על הזהות הנוכחית שלך.',
+    'בתפריט הזה נמצאים הפרופיל שלך, "חיבור ה-AI שלי" (מה ה-Agent שלך מקבל מ-Memory Fabric) והתנתקות.',
   // Admin: create / switch team
-  'onboarding.guide.team.title': 'יצירה / החלפה של צוות',
+  'onboarding.guide.team.title':
+    'החלפה או יצירה של צוות',
   'onboarding.guide.team.desc':
-    'לחץ על הפינה העליונה כדי להחליף את הצוות הפעיל. צוות הוא הגבול העיקרי של נכסים, Agents ומשימות; כמנהל מערכת אתה יכול ליצור כאן צוותים חדשים.',
+    'הכול נמצא בתוך צוות: אנשים, Agents, משימות ונכסים. כמנהל פלטפורמה אתה רואה כאן כל צוות ויכול ליצור חדשים.',
   // Admin: create members and issue user_key (not available to member)
-  'onboarding.guide.memberAdmin.title': 'יצירת חברים והנפקת user_key',
+  'onboarding.guide.memberAdmin.title':
+    'אנשים, תפקידים ומנהלי פלטפורמה',
   'onboarding.guide.memberAdmin.desc':
-    'כמנהל מערכת אתה יכול ליצור חשבונות משתמש חדשים ב"חברים" ולהנפיק user_key חד-פעמי (מוצג פעם אחת בלבד), או להזמין משתמשים קיימים לצוות. חברים רגילים לא יכולים ליצור משתמשים – הם יכולים רק להזמין משתמשים קיימים.',
+    'הוסף אנשים לצוות ובחר את התפקיד שלהם (חבר, מנהל צוות או צופה) מהרשימה. בתפריט ⋯ ליד אדם אפשר לתת או להסיר הרשאת מנהל פלטפורמה.',
   // Member: invite teammates (cannot create users)
-  'onboarding.guide.member.title': 'הזמנת חברי צוות',
+  'onboarding.guide.member.title':
+    'הצוות שלך',
   'onboarding.guide.member.desc':
-    'ב"חברים" אתה יכול להזמין משתמשים קיימים לצוות הנוכחי לפי user_id (אינך יכול ליצור חשבונות משתמש חדשים – לכך נדרש מנהל מערכת). בקש מהם להעתיק את ה-user_id שלהם מ"הפרופיל שלי".',
+    'ראה מי בצוות ומה כל תפקיד יכול לעשות. מנהלי צוות מוסיפים אנשים ומשנים תפקידים.',
   // Agent management (same for Admin and Member, both can edit)
-  'onboarding.guide.agent.title': 'יצירה ועריכה של Agents',
+  'onboarding.guide.agent.title':
+    'יצירת Agent',
   'onboarding.guide.agent.desc':
-    'לחץ על "יצירת Agent" כדי ליצור Agent. אתה יכול לערוך את ה-Agents שלך ולשייך אליהם נכסי Wiki / Code / Skill / Chat Memory; Agents שיצרו אחרים הם לקריאה בלבד. למנהלים ולחברים יש אותן יכולות.',
+    'בחר מי רואה אותו: "הצוות" משתף עם כולם את מה שה-Agent לומד, "רק אני" שומר אותו פרטי.',
   // Click an Agent card to open the edit dialog and bind assets
   // (falls back to the "Create Agent" button when the user has none — copy covers both cases)
-  'onboarding.guide.agentBind.title': 'לחץ על כרטיס Agent כדי לשייך נכסי צוות',
+  'onboarding.guide.agentBind.title':
+    'תן ל-Agent שלך ידע של הצוות',
   'onboarding.guide.agentBind.desc':
-    'לחץ על כרטיס של Agent שבבעלותך (או על שמו) כדי לפתוח את חלון העריכה: סמן נכסי צוות של Wiki / CodeGraph / Chat Memory בקטע "יכולות" ושמור – השיוכים נכנסים לתוקף מיד. אין עדיין Agent? לחץ קודם על "יצירת Agent", ואז חזור ולחץ עליו. Skills משויכים על ידי בחירת ה-Agent הבעלים בעת הייבוא בדף ה-Skills.',
+    'לחץ על אחד ה-Agents שלך, סמן את ה-Wiki, ה-Code Graph והזיכרון שהוא צריך, ושמור. אין עדיין Agent? צור אחד קודם.',
   // Member: key management
-  'onboarding.guide.apikey.title': 'ניהול מפתחות ה-User_Key שלך',
+  'onboarding.guide.apikey.title':
+    'מפתחות ה-API שלך',
   'onboarding.guide.apikey.desc':
-    'צור מפתחות ב"ניהול User_Key" עבור לקוחות חיצוניים (לדוגמה CodeBuddy / ClaudeCode CLI). המפתח המלא מוצג פעם אחת בלבד – העתק ושמור אותו במקום בטוח.',
+    'צור מפתח כדי לחבר את ה-Agent שלך (Claude Code, Codex…). המפתח מוצג פעם אחת בלבד, אז העתק אותו למקום בטוח.',
   // Create and allocate assets (same for Admin and Member; each asset page is visited.
   // Each description follows "what it is → how to import → how to use" for first-time users)
-  'onboarding.guide.asset.wiki.title': 'Wiki: נכסי המסמכים של הצוות',
+  'onboarding.guide.asset.wiki.title':
+    'Wiki: מסמכי הצוות',
   'onboarding.guide.asset.wiki.desc':
-    'מה זה: מאגר ידע למסמכים משותפים של הצוות. ייבוא: לחץ על "Wiki חדש" ← פתח אותו והעלה קובצי Markdown (‎.md/.txt, נתמכת בחירה מרובה וגרירה) ← הפעל "קליטה" כדי לבנות דפי ידע שניתן לחפש בהם. שימוש: לחץ על "הקצאה ל-Agent" בכרטיס ה-Wiki, או סמן אותו בחלון העריכה של ה-Agent – Agents משויכים יוכלו לאחזר את המסמכים ולצטט אותם בשיחה.',
-  'onboarding.guide.asset.code.title': 'CodeGraph: נכסי הקוד של הצוות',
+    'העלה מסמכים ל-Wiki כדי ש-Agents יוכלו לחפש ולצטט אותם. נפתח על נכסי הצוות: מה שכולם משתפים.',
+  'onboarding.guide.asset.code.title':
+    'Code Graph: הקוד של הצוות',
   'onboarding.guide.asset.code.desc':
-    'מה זה: אינדקס וגרף קריאות שנבנים מעל מאגרי הקוד של הצוות. ייבוא: לחץ על "רישום מאגר" והדבק כתובת Git מסוג HTTPS – האינדוקס רץ אוטומטית. שימוש: לאחר הקצאה ל-Agent, הוא יכול לחפש בקוד ולסייר בשרשראות קריאה בשיחה כדי לענות על שאלות שקשורות למאגר.',
-  'onboarding.guide.asset.skill.title': 'Skill: ההבדל בין "נכסי הצוות" ל"נכסי Agent"',
+    'רשום מאגר Git כדי ש-Agents יוכלו לחפש בקוד ולעקוב אחרי שרשראות קריאה. נפתח על נכסי הצוות.',
+  'onboarding.guide.asset.skill.title':
+    'Skills: ספרי הפעלה לשימוש חוזר',
   'onboarding.guide.asset.skill.desc':
-    'בעלות: בדף הזה שתי לשוניות – "נכסי הצוות" (מאגר משותף שכל חבר יכול להשתמש בו ולהגדיר אותו) ו"נכסי Agent" (Skills ששויכו ל-Agent מסוים וזמינים לו). ייבוא: לחץ על "ייבוא Skill" (צור קודם Agent) – ה-Skill משויך ל-Agent שנבחר. שימוש: לאחר השיוך, ה-Agent פועל לפי ה-SKILL.md כשעולה תרחיש מתאים; ב"נכסי Agent" אפשר להחליף בין "משותף / פרטי" עבור Skills שבבעלותך.',
-  'onboarding.guide.asset.memory.title': 'Chat Memory: ההבדל בין "נכסי הצוות" ל"נכסי Agent"',
+    'נכסי הצוות מציג Skills שמשותפים עם כולם; נכסי Agent מציג את מה ש-Agent מסוים משתמש בו. את ה-Skills שלך אפשר להגדיר כמשותפים או פרטיים.',
+  'onboarding.guide.asset.memory.title':
+    'זיכרון שיחות: מה ה-Agents זוכרים',
   'onboarding.guide.asset.memory.desc':
-    'בעלות: בדף הזה שתי לשוניות – "נכסי הצוות" (מאגר זיכרון משותף) ו"נכסי Agent" (זיכרון ששויך ל-Agent מסוים, כולל הזיכרון הפרטי המובנה של כל Agent). ייבוא: לחץ על "ייבוא זיכרון" כדי להכניס היסטוריה כ-L0; המערכת מזקקת את השכבות L1~L3 ומצמידה אותן ל-Agent שנבחר. שימוש: Agents משויכים זוכרים את ההעדפות והמסקנות שלך בין סשנים; ב"נכסי Agent" אפשר להחליף בין "משותף / פרטי" עבור זיכרון שייבאת.',
+    'נכסי הצוות מציג זיכרון שמשותף עם הצוות, כולל הזיכרון של Agents של הצוות. נכסי Agent מציג את הזיכרון של Agent אחד.',
 
   // ===== GuidePage =====
   'guide.back': 'חזרה',
@@ -1471,6 +1524,124 @@ export const heIL = {
   'guide.copyPrompt': 'העתקת ההנחיה',
   'guide.copyScript': 'העתקת הסקריפט',
   'guide.copyConfig': 'העתקת התצורה',
+  'onboarding.guide.start.platformAdmin.title':
+    'ברוך הבא, מנהל פלטפורמה',
+  'onboarding.guide.start.platformAdmin.desc':
+    'אתה רואה כל צוות, Agent, משימה ונכס, ויכול לנהל כל צוות. הסיור הקצר הזה מראה איפה הכול נמצא.',
+  'onboarding.guide.start.teamAdmin.title':
+    'ברוך הבא, מנהל צוות',
+  'onboarding.guide.start.teamAdmin.desc':
+    'אתה מנהל את האנשים, ה-Agents והמשימות של הצוות שלך. הסיור הקצר הזה מראה איפה הכול נמצא.',
+  'onboarding.guide.start.viewer.title':
+    'ברוך הבא ל-WeaverAI Memory Fabric',
+  'onboarding.guide.start.viewer.desc':
+    'יש לך גישת קריאה בלבד: אפשר לעיין במה שהצוות משתף ולעקוב אחרי המשימות שלו. הסיור הקצר הזה מראה איפה לחפש.',
+  'onboarding.guide.memberTeamAdmin.title':
+    'אנשים ותפקידים',
+  'onboarding.guide.memberTeamAdmin.desc':
+    'הוסף אנשים לפי ה-user_id שלהם (הם מעתיקים אותו מ"הפרופיל שלי") ושנה תפקיד של כל אחד מהרשימה: חבר, מנהל צוות או צופה.',
+  'onboarding.guide.task.title':
+    'עבודה במשימות',
+  'onboarding.guide.task.desc':
+    'צור משימה ושייך אליה Agents. פתח את המשימה כדי לראות את התוצרים שלה: מה ה-Agents למדו בזמן העבודה עליה, גלוי לכל הצוות.',
+  'onboarding.guide.task.viewer.title':
+    'מעקב אחרי משימות הצוות',
+  'onboarding.guide.task.viewer.desc':
+    'פתח כל משימה כדי לראות מי עובד עליה ואת התוצרים שלה: מה ה-Agents למדו בזמן העבודה עליה.',
+  'guide.perm.tab.title':
+    'צוותים והרשאות',
+  'guide.perm.tab.sub':
+    'תפקידים, שיתוף ומי רואה מה',
+  'guide.perm.heading':
+    'איך צוותים והרשאות עובדים',
+  'guide.perm.intro':
+    'הכול נמצא בתוך צוות: אנשים, Agents, משימות ונכסים. מה שאתה יכול לראות ולשנות תלוי בתפקיד שלך.',
+  'guide.perm.roles.title':
+    'תפקידים',
+  'guide.perm.col.role':
+    'תפקיד',
+  'guide.perm.col.sees':
+    'רואה',
+  'guide.perm.col.does':
+    'יכול לעשות',
+  'guide.perm.role.platformAdmin':
+    'מנהל פלטפורמה',
+  'guide.perm.role.platformAdmin.who':
+    'נקבע על ידי מנהל פלטפורמה אחר',
+  'guide.perm.role.platformAdmin.sees':
+    'כל צוות, Agent, משימה ונכס, כולל פרטיים.',
+  'guide.perm.role.platformAdmin.does':
+    'יצירת צוותים וחשבונות משתמש, פעולה כמנהל צוות בכל צוות, מתן או הסרה של הרשאת מנהל פלטפורמה.',
+  'guide.perm.role.teamAdmin':
+    'מנהל צוות',
+  'guide.perm.role.teamAdmin.who':
+    'לכל צוות',
+  'guide.perm.role.teamAdmin.sees':
+    'כל מה שמשותף בצוות שלו.',
+  'guide.perm.role.teamAdmin.does':
+    'הוספת אנשים ושינוי תפקידים, עריכה או מחיקה של כל Agent ומשימה בצוות, ניהול השיתוף של נכסי הצוות.',
+  'guide.perm.role.member':
+    'חבר',
+  'guide.perm.role.member.who':
+    'לכל צוות',
+  'guide.perm.role.member.sees':
+    'כל מה שמשותף בצוות שלו, וגם הפריטים הפרטיים שלו.',
+  'guide.perm.role.member.does':
+    'יצירת Agents ומשימות משלו, ייבוא נכסים, שיוך Agents למשימות.',
+  'guide.perm.role.viewer':
+    'צופה',
+  'guide.perm.role.viewer.who':
+    'לכל צוות',
+  'guide.perm.role.viewer.sees':
+    'כל מה שמשותף בצוות שלו.',
+  'guide.perm.role.viewer.does':
+    'קריאה בלבד: עיון בנכסים ומעקב אחרי משימות.',
+  'guide.perm.rules.title':
+    'כללי שיתוף',
+  'guide.perm.rule.teamAgent.title':
+    'Agent של הצוות',
+  'guide.perm.rule.teamAgent.desc':
+    'כל חברי הצוות רואים את ה-Agent, את הזיכרון שלו ואת תוצרי המשימות שלו.',
+  'guide.perm.rule.privateAgent.title':
+    'Agent "רק אני"',
+  'guide.perm.rule.privateAgent.desc':
+    'רק הבעלים ומנהלי הפלטפורמה רואים אותו. תוצרי המשימות שלו מוסתרים משאר הצוות.',
+  'guide.perm.rule.teamAssets.title':
+    'נכסי הצוות',
+  'guide.perm.rule.teamAssets.desc':
+    'Wikis, Code Graphs, Skills משותפים וזיכרון משותף גלויים לכל הצוות. את ה-Skills והזיכרון שלך אפשר להעביר למצב פרטי.',
+  'guide.perm.rule.taskOutputs.title':
+    'תוצרי משימות',
+  'guide.perm.rule.taskOutputs.desc':
+    'מה ש-Agents לומדים בזמן העבודה על משימה מופיע בתוצרי המשימה לכל הצוות.',
+  'guide.perm.howto.title':
+    'איך אני…',
+  'guide.perm.howto.open':
+    'פתח',
+  'guide.perm.howto.createTeam.title':
+    'יוצר צוות',
+  'guide.perm.howto.createTeam.steps':
+    'מנהל פלטפורמה: בורר הצוותים (למעלה משמאל) ← יצירת צוות.',
+  'guide.perm.howto.addMember.title':
+    'מוסיף מישהו לצוות',
+  'guide.perm.howto.addMember.steps':
+    'מנהל צוות: חברים ← הוספת חבר ← הדבק את ה-user_id ובחר תפקיד.',
+  'guide.perm.howto.changeRole.title':
+    'משנה תפקיד של מישהו',
+  'guide.perm.howto.changeRole.steps':
+    'מנהל צוות: חברים ← בחר חבר, מנהל צוות או צופה ליד האדם.',
+  'guide.perm.howto.platformAdmin.title':
+    'הופך מישהו למנהל פלטפורמה',
+  'guide.perm.howto.platformAdmin.steps':
+    'מנהל פלטפורמה: חברים ← ⋯ ליד האדם ← תן הרשאת מנהל פלטפורמה.',
+  'guide.perm.howto.followAgent.title':
+    'נותן לצוות לעקוב אחרי העבודה של Agent',
+  'guide.perm.howto.followAgent.steps':
+    'צור את ה-Agent כ"הצוות", שייך אותו למשימה, ואז פתח את המשימה ← תוצרים.',
+  'guide.perm.howto.myConnection.title':
+    'מכבה כלי עבור ה-Agent שלי',
+  'guide.perm.howto.myConnection.steps':
+    'האווטאר שלך (למעלה מימין) ← חיבור ה-AI שלי.',
 
   // Main tabs
   'guide.quick.title': 'הגדרה מהירה',

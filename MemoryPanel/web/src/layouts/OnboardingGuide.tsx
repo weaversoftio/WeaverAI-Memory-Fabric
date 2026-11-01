@@ -3,13 +3,12 @@
  *
  * Uses the UI kit `Guide` to highlight page elements step by step.
  *
- * Dual-role SOP (switching steps automatically navigates to the matching page, not just displays it):
- *   - Admin: login identity -> create/switch team -> create member and issue user_key -> Agent -> click Agent to bind assets -> four asset pages
- *   - Member: login identity -> invite members -> Agent -> click Agent to bind assets -> User_Key management -> four asset pages
- *
- * Admin and Member have the same Agent / asset capabilities (both can edit); the only difference is member management:
- * a member cannot create user accounts and can only invite existing users by user_id; an admin can create users and issue
- * user_keys, and can also create teams. The asset steps visit the Wiki / Code / Skill / Chat Memory pages one by one.
+ * One flow per role (switching steps automatically navigates to the matching page, not just displays it):
+ *   - Platform admin: identity -> switch/create team (sees every team) -> members, roles & platform admins
+ *                     -> agents -> tasks -> asset pages
+ *   - Team admin:     identity -> members & roles -> agents -> bind assets -> tasks -> API keys -> asset pages
+ *   - Member:         identity -> members -> agents -> bind assets -> tasks -> API keys -> asset pages
+ *   - Viewer:         identity -> tasks (read outputs) -> asset pages (read-only)
  *
  * Robustness: if a step's element selector is missing on the target page (e.g. a member lacks the "Add member" permission),
  * it falls back to the global Header brand area so the Guide does not vanish entirely due to a missing element.
@@ -18,6 +17,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Guide, type GuideStep } from '@/components/ui';
+import { isTeamAdmin, useTeams } from '@/services';
+
+/** Tour flavour: the platform role first, then the role in the active team. */
+type TourRole = 'platformAdmin' | 'teamAdmin' | 'member' | 'viewer';
 
 const STORAGE_PREFIX = 'wamf-panel.onboarded';
 
@@ -185,7 +188,18 @@ const ASSET_STEPS: OnboardingStep[] = [
   },
 ];
 
-function buildSteps(role: 'admin' | 'member'): OnboardingStep[] {
+/** Workbench: create a task, assign agents, follow their Outputs (same page for every role; copy differs). */
+function taskStep(role: TourRole): OnboardingStep {
+  return {
+    path: '/',
+    selector: ['[data-guide="create-task"]', FALLBACK_SELECTOR],
+    placement: 'bottom-end',
+    titleKey: role === 'viewer' ? 'onboarding.guide.task.viewer.title' : 'onboarding.guide.task.title',
+    descKey: role === 'viewer' ? 'onboarding.guide.task.viewer.desc' : 'onboarding.guide.task.desc',
+  };
+}
+
+function buildSteps(role: TourRole): OnboardingStep[] {
   const loginStep: OnboardingStep = {
     selector: '._memory-global-header-user-btn',
     // Top-right user button of the header: use bottom-end so the bubble's right edge aligns with the element's right edge and expands left,
@@ -194,72 +208,85 @@ function buildSteps(role: 'admin' | 'member'): OnboardingStep[] {
     titleKey: 'onboarding.guide.login.title',
     descKey: 'onboarding.guide.login.desc',
   };
+  const agentStep: OnboardingStep = {
+    path: '/team/agents',
+    selector: '[data-guide="create-agent"]',
+    // ActionPanel left "New Agent" button: expand right
+    placement: 'bottom-start',
+    titleKey: 'onboarding.guide.agent.title',
+    descKey: 'onboarding.guide.agent.desc',
+  };
+  const apiKeyStep: OnboardingStep = {
+    path: '/team/api-keys',
+    selector: '[data-guide="create-key"]',
+    // Justify right "New Key" button: expand left
+    placement: 'bottom-end',
+    titleKey: 'onboarding.guide.apikey.title',
+    descKey: 'onboarding.guide.apikey.desc',
+  };
 
-  // Admin and Member have the same Agent / asset capabilities (both can edit); only member management differs:
-  //   - admin: can create teams, create users and issue user_keys (member lacks this permission)
-  //   - member: can only invite existing users into the team by user_id; but can manage their own User_Key (admin has no such entry)
   // placement choice: right-side elements use bottom-end (expand left), left-side elements use bottom-start (expand right)
-  if (role === 'admin') {
-    return [
-      loginStep,
-      {
-        selector: '._memory-team-switcher-trigger',
-        // Top-left of header: expand left to avoid overflowing on the right
-        placement: 'bottom-start',
-        titleKey: 'onboarding.guide.team.title',
-        descKey: 'onboarding.guide.team.desc',
-      },
-      {
-        path: '/team/members',
-        // Prefer highlighting the "Add member" button; with no team the button does not exist, so fall back to the member list area
-        selector: ['[data-guide="add-member"]', '[data-guide="members-list"]'],
-        placement: 'bottom-end',
-        titleKey: 'onboarding.guide.memberAdmin.title',
-        descKey: 'onboarding.guide.memberAdmin.desc',
-      },
-      {
-        path: '/team/agents',
-        selector: '[data-guide="create-agent"]',
-        // ActionPanel left "New Agent" button: expand right
-        placement: 'bottom-start',
-        titleKey: 'onboarding.guide.agent.title',
-        descKey: 'onboarding.guide.agent.desc',
-      },
-      AGENT_BIND_STEP,
-      ...ASSET_STEPS,
-    ];
+  switch (role) {
+    case 'platformAdmin':
+      return [
+        loginStep,
+        {
+          selector: '._memory-team-switcher-trigger',
+          // Top-left of header: expand left to avoid overflowing on the right
+          placement: 'bottom-start',
+          titleKey: 'onboarding.guide.team.title',
+          descKey: 'onboarding.guide.team.desc',
+        },
+        {
+          path: '/team/members',
+          // Prefer highlighting the "Add member" button; with no team the button does not exist, so fall back to the member list area
+          selector: ['[data-guide="add-member"]', '[data-guide="members-list"]'],
+          placement: 'bottom-end',
+          titleKey: 'onboarding.guide.memberAdmin.title',
+          descKey: 'onboarding.guide.memberAdmin.desc',
+        },
+        agentStep,
+        taskStep(role),
+        ...ASSET_STEPS,
+      ];
+    case 'teamAdmin':
+      return [
+        loginStep,
+        {
+          path: '/team/members',
+          selector: ['[data-guide="add-member"]', '[data-guide="members-list"]'],
+          placement: 'bottom-end',
+          titleKey: 'onboarding.guide.memberTeamAdmin.title',
+          descKey: 'onboarding.guide.memberTeamAdmin.desc',
+        },
+        agentStep,
+        AGENT_BIND_STEP,
+        taskStep(role),
+        apiKeyStep,
+        ...ASSET_STEPS,
+      ];
+    case 'viewer':
+      // Read-only: no create/edit steps (the Members menu is hidden for viewers too).
+      return [loginStep, taskStep(role), ...ASSET_STEPS];
+    default:
+      return [
+        loginStep,
+        {
+          path: '/team/members',
+          // A regular member has no "Add member" button (visible only to admin/teamAdmin),
+          // so highlight the always-present member list area, avoiding a fallback to the header that causes "no navigation / wrong position"
+          selector: '[data-guide="members-list"]',
+          placement: 'bottom-start',
+          titleKey: 'onboarding.guide.member.title',
+          descKey: 'onboarding.guide.member.desc',
+        },
+        agentStep,
+        AGENT_BIND_STEP,
+        taskStep(role),
+        apiKeyStep,
+        ...ASSET_STEPS,
+      ];
   }
-
-  return [
-    loginStep,
-    {
-      path: '/team/members',
-      // A regular member has no "Add member" button (visible only to admin/teamAdmin),
-      // so highlight the always-present member list area, avoiding a fallback to the header that causes "no navigation / wrong position"
-      selector: '[data-guide="members-list"]',
-      placement: 'bottom-start',
-      titleKey: 'onboarding.guide.member.title',
-      descKey: 'onboarding.guide.member.desc',
-    },
-    {
-      path: '/team/agents',
-      selector: '[data-guide="create-agent"]',
-      // ActionPanel left "New Agent" button: expand right
-      placement: 'bottom-start',
-      titleKey: 'onboarding.guide.agent.title',
-      descKey: 'onboarding.guide.agent.desc',
-    },
-    AGENT_BIND_STEP,
-    {
-      path: '/team/api-keys',
-      selector: '[data-guide="create-key"]',
-      // Justify right "New Key" button: expand left
-      placement: 'bottom-end',
-      titleKey: 'onboarding.guide.apikey.title',
-      descKey: 'onboarding.guide.apikey.desc',
-    },
-    ...ASSET_STEPS,
-  ];
 }
 
 export function OnboardingGuide({
@@ -278,8 +305,17 @@ export function OnboardingGuide({
   const navigate = useNavigate();
   const location = useLocation();
 
-  const isAdmin = userRole === 'admin';
-  const steps = useMemo(() => buildSteps(isAdmin ? 'admin' : 'member'), [isAdmin]);
+  const { activeTeam } = useTeams();
+  const teamAdmin = !!userId && isTeamAdmin(activeTeam, userId);
+  const tourRole: TourRole =
+    userRole === 'admin'
+      ? 'platformAdmin'
+      : userRole === 'reviewer'
+        ? 'viewer'
+        : teamAdmin
+          ? 'teamAdmin'
+          : 'member';
+  const steps = useMemo(() => buildSteps(tourRole), [tourRole]);
 
   const [current, setCurrent] = useState(-1);
   const pendingRef = useRef<number | null>(null);
@@ -407,15 +443,11 @@ export function OnboardingGuide({
       element: () => resolveElement(FALLBACK_SELECTOR),
       // Welcome page highlights the header brand area: compute direction dynamically from the actual position
       placement: computePlacement(FALLBACK_SELECTOR, 'bottom-start'),
-      title: t(
-        isAdmin ? 'onboarding.guide.start.admin.title' : 'onboarding.guide.start.member.title',
-      ),
-      description: t(
-        isAdmin ? 'onboarding.guide.start.admin.desc' : 'onboarding.guide.start.member.desc',
-      ),
+      title: t(`onboarding.guide.start.${tourRole}.title`),
+      description: t(`onboarding.guide.start.${tourRole}.desc`),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isAdmin, t, visible],
+    [tourRole, t, visible],
   );
 
   // ===== Precise highlight layer =====

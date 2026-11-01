@@ -13,7 +13,12 @@
 // ============================
 
 export type UserStatus = "active" | "inactive" | "invited";
-export type UserType = "normal" | "system_admin";
+/**
+ * - normal: regular user, sees only teams they belong to.
+ * - admin: instance admin promoted by another admin; reads every team's assets and acts as team admin everywhere.
+ * - system_admin: the single bootstrap account created by init-admin; same powers as admin.
+ */
+export type UserType = "normal" | "admin" | "system_admin";
 export type TeamStatus = "active" | "archived";
 export type TeamRole = "admin" | "member" | "reviewer";
 export type MemberStatus = "active" | "removed";

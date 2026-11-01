@@ -153,7 +153,7 @@ export async function handleV3AnalyticsRoute(
     }
 
     // Must be system_admin to access analytics
-    if (!authResult.ctx.isSystemAdmin) {
+    if (!authResult.ctx.isSystemAdmin && !authResult.ctx.isInstanceAdmin) {
       sendJson(res, 403, errorEnvelope(403, "forbidden: analytics requires system_admin", requestId));
       return true;
     }

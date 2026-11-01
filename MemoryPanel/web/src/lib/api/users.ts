@@ -7,7 +7,7 @@ import type { PublicUser } from './types';
 /** Kernel user/create response (CreateUserResult) -- contains no username, contains a one-time key */
 export interface CreateUserResult {
   user_id: string;
-  user_type: 'normal' | 'system_admin';
+  user_type: 'normal' | 'admin' | 'system_admin';
   created_at: string;
   /** Default API key in plaintext, returned only in this response */
   default_user_key: string;
@@ -55,6 +55,13 @@ export const usersApi = {
    * WARNING (permission) same as above: requires system_admin to call.
    */
   delete: (userId: string) => metaPost<{ ok: boolean }>('user/delete', { user_id: userId }),
+
+  /**
+   * Make a user an instance admin (sees every team's assets, team admin everywhere) or turn it back to a normal user.
+   * Admins only; the bootstrap system admin and your own account cannot be changed.
+   */
+  setAdmin: (userId: string, admin: boolean) =>
+    metaPost<PublicUser>('user/set-type', { user_id: userId, user_type: admin ? 'admin' : 'normal' }),
 };
 
 // ========================= User API Keys (meta/user-key/*) =========================

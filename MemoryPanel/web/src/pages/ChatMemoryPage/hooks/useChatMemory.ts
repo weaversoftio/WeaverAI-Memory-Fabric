@@ -56,8 +56,8 @@ export function useChatMemory(props: { activeTeamId?: string | null } = {}) {
   const [rangeTooLarge, setRangeTooLarge] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showAllocate, setShowAllocate] = useState(false);
-  // Show Agent assets (fixed) by default, so users don't mistake their own assets as being under "Team assets"
-  const [scopeTab, setScopeTab] = useState<ScopeTab>('fixed');
+  // Open on Team assets: what the whole team shares is the most useful starting point.
+  const [scopeTab, setScopeTab] = useState<ScopeTab>('team');
   const [agentFilter, setAgentFilter] = useState<string>('');
 
   useEffect(() => {

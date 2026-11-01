@@ -10,12 +10,14 @@
  *   and here it is only shown readonly as "will be created in team: name (team_id)", avoiding the inconsistency of two contexts
  *   ("top right says A but the dialog defaulted to B and the user did not notice, so everything went off track").
  *
- * An Agent is no longer chosen at creation time - associating an Agent is done after the task is created.
+ * Agents can be assigned at creation time (optional) or later from the task detail. Assigned agents' work on
+ * the task shows up in the task's "Outputs" for the whole team.
  */
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Tag, Input, Button, Form, Modal } from '@/components/ui';
+import { Alert, Tag, Input, Button, Form, Modal, Select } from '@/components/ui';
+import type { AgentOption } from '../utils/workbench-utils';
 import '../styles/task-create-dialog.css';
 
 export type TaskSourceType = 'manual' | 'tapd';
@@ -31,6 +33,8 @@ export interface TaskDraft {
 
 export default function TaskCreateDialog(props: {
   team: { team_id: string; name: string };
+  /** Team agents that can be assigned to the task. */
+  agents?: AgentOption[];
   onClose: () => void;
   onCreate: (draft: TaskDraft) => Promise<void> | void;
 }) {
@@ -39,6 +43,9 @@ export default function TaskCreateDialog(props: {
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [linkedAgents, setLinkedAgents] = useState<string[]>([]);
+  const agentOptions = props.agents ?? [];
+  const nameById = new Map(agentOptions.map((a) => [a.id, a.name]));
 
   const canSubmit = title.trim().length > 0 && description.trim().length > 0;
 
@@ -53,7 +60,7 @@ export default function TaskCreateDialog(props: {
         description: description.trim(),
         source_type: 'manual',
         source_url: '',
-        linked_agents: [],
+        linked_agents: linkedAgents,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -94,6 +101,32 @@ export default function TaskCreateDialog(props: {
               rows={4}
               placeholder={t('taskCreate.descriptionPlaceholder')}
             />
+          </Form.Item>
+          <Form.Item label={t('taskCreate.agents')} extra={t('taskCreate.agentsExtra')}>
+            <div>
+              {linkedAgents.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+                  {linkedAgents.map((id) => (
+                    <Tag key={id} size="sm" onClose={() => setLinkedAgents((prev) => prev.filter((x) => x !== id))}>
+                      {nameById.get(id) ?? id}
+                    </Tag>
+                  ))}
+                </div>
+              )}
+              <Select
+                size="full"
+                value=""
+                placeholder={agentOptions.length ? t('taskCreate.agentsPlaceholder') : t('taskCreate.agentsEmpty')}
+                disabled={agentOptions.length === 0}
+                searchable
+                onChange={(v) => {
+                  if (v && !linkedAgents.includes(v)) setLinkedAgents((prev) => [...prev, v]);
+                }}
+                options={agentOptions
+                  .filter((a) => !linkedAgents.includes(a.id))
+                  .map((a) => ({ value: a.id, text: a.name }))}
+              />
+            </div>
           </Form.Item>
           {error && <Form.Item><Alert type="error">{error}</Alert></Form.Item>}
         </Form>

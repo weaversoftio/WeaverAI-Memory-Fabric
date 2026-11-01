@@ -137,7 +137,60 @@ export const tasksApi = {
   unlinkAgent: async (taskId: string, agentId: string) => {
     await metaPost<{ ok: boolean }>('task-agent/unlink', { task_id: taskId, agent_id: agentId });
   },
+
+  /**
+   * What the task's agents produced: memories (L1) tagged with this task, visible to the whole team
+   * for team agents (private agents only to their owner / team admins).
+   */
+  outputs: async (taskId: string): Promise<TaskOutputs> => {
+    const session = getPanelSession();
+    if (!session) throw new ApiError(401, 'Unauthorized', 'no active panel session');
+    const envelope = await request<MetaEnvelope<TaskOutputs>>(
+      'POST',
+      '/api/v1/task/outputs',
+      { task_id: taskId },
+      {
+        'X-Wamf-Service-Id': session.instanceId,
+        'X-Wamf-User-Key': session.userKey,
+      },
+    );
+    if (envelope.code !== 0 || !envelope.data) {
+      throw new ApiError(200, envelope.message, '', {
+        code: envelope.code,
+        requestId: envelope.request_id,
+        rawMessage: envelope.message,
+      });
+    }
+    return envelope.data;
+  },
 };
+
+export interface TaskOutputAgent {
+  agent_id: string;
+  name: string;
+  owner_user_id: string;
+  visibility?: string;
+  linked: boolean;
+  visible: boolean;
+}
+
+export interface TaskOutputMemory {
+  id: string;
+  type?: string;
+  content?: string;
+  agent_id: string;
+  agent_name: string;
+  user_id: string;
+  created_at?: string;
+}
+
+export interface TaskOutputs {
+  task_id: string;
+  team_id: string;
+  agents: TaskOutputAgent[];
+  memories: TaskOutputMemory[];
+  hidden_private_agents: number;
+}
 
 // ========================= Participation Logs (meta/participation-log/*) =========================
 //

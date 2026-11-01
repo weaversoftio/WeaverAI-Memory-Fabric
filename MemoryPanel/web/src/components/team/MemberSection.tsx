@@ -1,13 +1,15 @@
 /**
- * MemberSection - team member list + remove action.
+ * MemberSection - team member list: one row per person with their team role (editable by team admins)
+ * and a "..." menu for platform-admin access / removal.
  * AddMemberDialog / CreatedUserKeyModal - dialogs for adding an existing user / creating a new user.
  */
 
-import { useState } from 'react';
-import { Alert, Button, Copy, Form, Input, Modal, Segment, Select, Switch, Tag } from '@/components/ui';
+import { useEffect, useState } from 'react';
+import { Alert, Button, Copy, Dropdown, Form, Input, List, Modal, Segment, Select, Switch, Tag } from '@/components/ui';
 import { useTranslation } from 'react-i18next';
-import { AddIcon, CloseIcon } from '@/components/ui/icons';
+import { AddIcon, MoreIcon } from '@/components/ui/icons';
 import { isTeamAdmin, invalidateBackendCache, type Team } from '@/services';
+import { isInstanceAdminType } from '@/services/permissions';
 import { membersApi, usersApi } from '@/lib/teamApi';
 import { feedback } from '@/lib/feedback';
 import { canRemoveMember } from './types';
@@ -26,13 +28,65 @@ export function MemberSection({
   isAdmin: boolean;
 }) {
   const [removing, setRemoving] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  /** user_id -> user_type, loaded for admins so they can see / toggle who is an admin. */
+  const [userTypes, setUserTypes] = useState<Record<string, string>>({});
   const { t } = useTranslation();
   // Only global admin or team admin/owner can add members; regular members have no such entry.
   const canAddMember = _globalAdmin || isTeamAdmin(team, currentUser);
+  const memberIds = team.members.map((m) => m.user_id).join(',');
 
-  async function handleRemove(userId: string) {
+  useEffect(() => {
+    if (!_globalAdmin || !memberIds) return;
+    let cancelled = false;
+    void usersApi
+      .list({ user_ids: memberIds.split(',').slice(0, 100) })
+      .then((users) => {
+        if (cancelled) return;
+        setUserTypes(Object.fromEntries(users.map((u) => [u.user_id, String(u.user_type ?? 'normal')])));
+      })
+      .catch(() => {
+        /* badge is best-effort */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [_globalAdmin, memberIds]);
+
+  async function handleRoleChange(userId: string, role: 'admin' | 'member' | 'reviewer') {
+    setBusy(userId);
+    try {
+      await membersApi.setRole(team.team_id, userId, role);
+      invalidateBackendCache();
+      feedback.notify.success(t('member.role.changed'));
+    } catch (err) {
+      feedback.notify.error(err);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleToggleAdmin(userId: string, name: string, makeAdmin: boolean) {
     const ok = await feedback.confirm({
-      message: t('member.remove.confirm', { userId }),
+      message: makeAdmin ? t('member.admin.grant.confirm', { userId: name }) : t('member.admin.revoke.confirm', { userId: name }),
+      description: makeAdmin ? t('member.admin.grant.desc') : t('member.admin.revoke.desc'),
+      okText: makeAdmin ? t('member.admin.grant') : t('member.admin.revoke'),
+    });
+    if (!ok) return;
+    setBusy(userId);
+    try {
+      const updated = await usersApi.setAdmin(userId, makeAdmin);
+      setUserTypes((prev) => ({ ...prev, [userId]: String(updated?.user_type ?? (makeAdmin ? 'admin' : 'normal')) }));
+    } catch (err) {
+      feedback.notify.error(err);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleRemove(userId: string, name: string) {
+    const ok = await feedback.confirm({
+      message: t('member.remove.confirm', { userId: name }),
       description: t('member.remove.desc'),
       okText: t('member.remove.ok'),
     });
@@ -48,39 +102,57 @@ export function MemberSection({
     }
   }
 
+  const nameOf = (userId: string) =>
+    team.members.find((m) => m.user_id === userId)?.username?.trim() || userId;
+
   return (
     <div className="_memory-panel-card">
       <div className="_memory-section-header">
         <div className="_memory-section-header-info">
           <div className="_memory-section-header-title-row">
             <div className="_memory-section-title">{t('member.title', { count: team.members.length })}</div>
-            <Tag size="sm">{team.team_id}</Tag>
           </div>
-          <div className="_memory-section-subtitle">
-            {t('member.subtitle', { name: team.name })}
-          </div>
+          <div className="_memory-section-subtitle">{t('member.subtitle.simple', { name: team.name })}</div>
         </div>
         {canAddMember && (
-          <Button onClick={onAdd} title={t('member.add.tooltip')} data-guide="add-member">
+          <Button type="primary" onClick={onAdd} title={t('member.add.tooltip')} data-guide="add-member">
             <AddIcon size={14} /> {t('member.add')}
           </Button>
         )}
       </div>
-      <div className="_memory-member-grid" data-guide="members-list">
+
+      {/* One-line role legend: what each team role can do */}
+      <div className="_memory-member-legend">
+        {(['member', 'admin', 'reviewer'] as const).map((r) => (
+          <span key={r} className="_memory-member-legend-item">
+            <strong>{t(`member.role.${r}`)}</strong> {t(`member.role.${r}.short`)}
+          </span>
+        ))}
+      </div>
+
+      <div className="_memory-member-list" data-guide="members-list">
         {team.members.map((m) => {
           const isOwner = team.owner_user_id === m.user_id;
-          const canRemove = canRemoveMember(team, m.user_id, currentUser, _globalAdmin);
+          const isMe = m.user_id === currentUser;
+          const userType = userTypes[m.user_id];
           return (
-            <MemberCard
+            <MemberRow
               key={m.user_id}
               user_id={m.user_id}
               username={m.username}
               role={m.role}
               isOwner={isOwner}
-              isMe={m.user_id === currentUser}
-              canRemove={canRemove}
-              removing={removing === m.user_id}
-              onRemove={() => void handleRemove(m.user_id)}
+              isMe={isMe}
+              canRemove={canRemoveMember(team, m.user_id, currentUser, _globalAdmin)}
+              busy={busy === m.user_id || removing === m.user_id}
+              onRemove={() => void handleRemove(m.user_id, nameOf(m.user_id))}
+              canChangeRole={canAddMember && !isOwner && !isMe}
+              onRoleChange={(role) => void handleRoleChange(m.user_id, role)}
+              isPlatformAdmin={isInstanceAdminType(userType)}
+              canTogglePlatformAdmin={_globalAdmin && !isMe && !!userType && userType !== 'system_admin'}
+              onTogglePlatformAdmin={() =>
+                void handleToggleAdmin(m.user_id, nameOf(m.user_id), !isInstanceAdminType(userType))
+              }
             />
           );
         })}
@@ -89,15 +161,20 @@ export function MemberSection({
   );
 }
 
-function MemberCard({
+function MemberRow({
   user_id,
   username,
   role,
   isOwner,
   isMe,
   canRemove,
-  removing,
+  busy,
   onRemove,
+  canChangeRole,
+  onRoleChange,
+  isPlatformAdmin,
+  canTogglePlatformAdmin,
+  onTogglePlatformAdmin,
 }: {
   user_id: string;
   username?: string;
@@ -105,45 +182,101 @@ function MemberCard({
   isOwner: boolean;
   isMe: boolean;
   canRemove: boolean;
-  removing: boolean;
+  busy: boolean;
   onRemove: () => void;
+  canChangeRole: boolean;
+  onRoleChange: (role: 'admin' | 'member' | 'reviewer') => void;
+  isPlatformAdmin: boolean;
+  canTogglePlatformAdmin: boolean;
+  onTogglePlatformAdmin: () => void;
 }) {
-  const displayName = username?.trim() || user_id;
-  const hasUsername = !!username?.trim();
   const { t } = useTranslation();
+  const displayName = username?.trim() || user_id;
+  const hasMenu = canTogglePlatformAdmin || canRemove;
 
   return (
-    <div className="_memory-member-card">
+    <div className="_memory-member-row">
       <div className={`_memory-member-avatar${isOwner ? ' _memory-member-avatar--owner' : ''}`}>
         {displayName.slice(0, 2).toUpperCase()}
       </div>
+
       <div className="_memory-member-info">
-        <div className="_memory-member-id">
-          {displayName}
+        <div className="_memory-member-name-row">
+          <span className="_memory-member-id">{displayName}</span>
           {isMe && <span className="_memory-member-me-tag">{t('member.me')}</span>}
+          {isOwner && (
+            <Tag size="sm" title={t('member.owner.desc')}>
+              {t('member.owner')}
+            </Tag>
+          )}
+          {isPlatformAdmin && (
+            <Tag size="sm" theme="primary" title={t('member.admin.badge.desc')}>
+              {t('member.admin.badge')}
+            </Tag>
+          )}
         </div>
-        {hasUsername && (
-          <div className="_memory-member-role" style={{ fontSize: '10px', color: 'var(--wf-color-text-tertiary)' }}>
-            {user_id}
-          </div>
-        )}
-        <div className="_memory-member-role">
-          {role}
-          {isOwner ? t('member.role.creator') : ''}
-        </div>
+        {username?.trim() && <div className="_memory-member-subid">{user_id}</div>}
       </div>
+
+      <div className="_memory-member-role-cell" title={t(`member.role.${role}.desc`)}>
+        {canChangeRole ? (
+          <Select
+            size="m"
+            value={role}
+            disabled={busy}
+            onChange={(v) => {
+              if (v !== role) onRoleChange(v as 'admin' | 'member' | 'reviewer');
+            }}
+            options={(['member', 'admin', 'reviewer'] as const).map((r) => ({
+              value: r,
+              text: t(`member.role.${r}`),
+              tooltip: t(`member.role.${r}.desc`),
+            }))}
+          />
+        ) : (
+          <span className="_memory-member-role-text">{t(`member.role.${role}`)}</span>
+        )}
+      </div>
+
       <div className="_memory-member-actions">
-        {canRemove && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onRemove(); }}
-            disabled={removing}
-            className="_memory-member-remove-btn"
-            title={t('member.remove.tooltip')}
-            aria-label={t('member.remove.tooltip')}
+        {hasMenu ? (
+          <Dropdown
+            appearance="pure"
+            placement="bottom-end"
+            disabled={busy}
+            button={
+              <button type="button" className="_memory-member-more-btn" aria-label={t('member.actions')} title={t('member.actions')}>
+                <MoreIcon size={16} />
+              </button>
+            }
           >
-            {removing ? '…' : <CloseIcon size={12} />}
-          </button>
+            {(close) => (
+              <List type="option">
+                {canTogglePlatformAdmin && (
+                  <List.Item
+                    onClick={() => {
+                      close();
+                      onTogglePlatformAdmin();
+                    }}
+                  >
+                    {isPlatformAdmin ? t('member.admin.revoke') : t('member.admin.grant')}
+                  </List.Item>
+                )}
+                {canRemove && (
+                  <List.Item
+                    onClick={() => {
+                      close();
+                      onRemove();
+                    }}
+                  >
+                    <span style={{ color: 'var(--wf-color-text-error-default)' }}>{t('member.remove.menu')}</span>
+                  </List.Item>
+                )}
+              </List>
+            )}
+          </Dropdown>
+        ) : (
+          <span className="_memory-member-more-placeholder" />
         )}
       </div>
     </div>
@@ -173,7 +306,7 @@ export function AddMemberDialog({
 }) {
   const [mode, setMode] = useState<'existing' | 'new'>('existing');
   const [userId, setUserId] = useState('');
-  const [role, setRole] = useState<'admin' | 'member'>('member');
+  const [role, setRole] = useState<'admin' | 'member' | 'reviewer'>('member');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const { t } = useTranslation();
@@ -392,14 +525,15 @@ export function AddMemberDialog({
           size="full"
           value={role}
           disabled={!canGrantAdmin}
-          onChange={(v) => setRole((v as 'admin' | 'member') || 'member')}
+          onChange={(v) => setRole((v as 'admin' | 'member' | 'reviewer') || 'member')}
           options={
             canGrantAdmin
               ? [
-                  { value: 'member', text: t('addMember.role.member') },
-                  { value: 'admin', text: t('addMember.role.admin') },
+                  { value: 'member', text: t('member.role.member'), tooltip: t('member.role.member.desc') },
+                  { value: 'admin', text: t('member.role.admin'), tooltip: t('member.role.admin.desc') },
+                  { value: 'reviewer', text: t('member.role.reviewer'), tooltip: t('member.role.reviewer.desc') },
                 ]
-              : [{ value: 'member', text: t('addMember.role.member') }]
+              : [{ value: 'member', text: t('member.role.member') }]
           }
         />
         <div className="_memory-field-hint">

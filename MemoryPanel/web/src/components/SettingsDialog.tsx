@@ -1,12 +1,9 @@
 /**
- * SettingsDialog — global settings dialog (triggered from the gear icon in the top bar).
+ * SettingsDialog -- "My AI connection" (opened from the avatar menu in the top bar).
  *
- * Currently only one Tab: "Permission management" -- controls the on/off switches of the resource management modules
- * (Wiki / Code / Skill / Chat_Memory), preventing modules that are not yet stably used
- * from being injected into the kernel runtime.
- *
- * More Tabs can be appended later in the TABS array (e.g. notifications, preferences).
- *
+ * Personal switches for what the memory proxy gives the user's own coding agent (Wiki / Code / Skill /
+ * Chat_Memory). Saved per user via config/user/set and read by the proxy; they don't affect teammates or
+ * who can see team assets.
  */
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -125,9 +122,6 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
       {activeTab === 'permissions' && (
         <div>
           <div style={{ paddingTop: 4 }}>
-            <Text theme="label" style={{ display: 'block', marginBottom: 8 }}>
-              {t('settings.title')}
-            </Text>
             <Text theme="weak" style={{ display: 'block', marginBottom: 16, fontSize: 12 }}>
               {t('settings.desc')}
             </Text>

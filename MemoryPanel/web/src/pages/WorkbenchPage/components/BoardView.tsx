@@ -65,7 +65,7 @@ export default function BoardView({
           </div>
           <div className="_memory-section-subtitle">{t('task.list.subtitle')}</div>
         </div>
-        <Button type="primary" onClick={onCreate}>
+        <Button type="primary" onClick={onCreate} data-guide="create-task">
           <AddIcon size={14} />
           {t('task.create')}
         </Button>

@@ -85,6 +85,8 @@ export interface IMetadataStore {
   getUserByExternalId(authProvider: string, externalId: string): MaybePromise<UserEntity | null>;
   getUserByUsername(authProvider: string, username: string): MaybePromise<UserEntity | null>;
   updateUser(userId: string, patch: Partial<UserEntity>): MaybePromise<UserEntity | null>;
+  /** Kept out of updateUser's allowlist so a generic patch can never escalate privileges. */
+  setUserType(userId: string, userType: UserEntity["user_type"]): MaybePromise<UserEntity | null>;
   deleteUsers(userIds: string[]): MaybePromise<BatchDeleteResult>;
   listUsersByTeam(
     teamId: string,
@@ -116,6 +118,8 @@ export interface IMetadataStore {
   updateTeam(teamId: string, patch: Partial<TeamEntity>): MaybePromise<TeamEntity | null>;
   deleteTeams(teamIds: string[]): MaybePromise<BatchDeleteResult>;
   listTeamsByUser(userId: string, pagination?: PaginationParams | null, filter?: TeamFilter): MaybePromise<ListPage<TeamEntity>>;
+  /** Every team on the instance (instance-admin view). */
+  listTeams(pagination?: PaginationParams | null, filter?: TeamFilter): MaybePromise<ListPage<TeamEntity>>;
 
   // ── TeamMember ──
   addTeamMember(input: AddTeamMemberInput): MaybePromise<TeamMemberEntity>;

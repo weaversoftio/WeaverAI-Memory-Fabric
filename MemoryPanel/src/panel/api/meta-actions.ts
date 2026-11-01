@@ -28,6 +28,8 @@ export const META_ACTIONS = [
   'user/create-with-key',
   'user/get',
   'user/delete',
+  // Promote a user to instance admin / demote to normal (instance admins only).
+  'user/set-type',
   'user/list',
   'user-key/create',
   'user-key/list',

@@ -31,6 +31,7 @@ export const enUS = {
   'header.sync.title': 'Real-time sync is connected',
   'header.settings': 'Settings',
   'header.profile': 'My Profile',
+  'header.aiConnection': 'My AI connection',
   'header.logout': 'Log Out',
   'header.profile.caption': 'My Profile',
   'header.profile.username': 'Username',
@@ -139,22 +140,22 @@ export const enUS = {
     'Login response is missing user info (data.user is null). Please contact backend to verify the auth/verify contract.',
 
   // ===== SettingsDialog =====
-  'settings.caption': 'Settings · Permissions',
+  'settings.caption': 'My AI connection',
   'settings.title': 'Resource Module Toggles',
   'settings.desc':
-    'Toggles are saved for the current user. When disabled, the proxy will not inject the corresponding capability for that user. Changes take effect immediately for new sessions.',
+    'Choose what your coding agent (Claude Code, Codex…) gets from Memory Fabric. Only affects you, not your teammates or who can see team assets. Changes apply to new sessions.',
   'settings.loadingConfig': 'Loading current user resource configuration…',
   'settings.tag.saving': 'Saving',
-  'settings.tag.enabled': 'Enabled',
-  'settings.tag.disabled': 'Disabled',
-  'settings.module.wiki': 'Wiki Knowledge Base',
-  'settings.module.code': 'Code_Graph',
+  'settings.tag.enabled': 'On',
+  'settings.tag.disabled': 'Off',
+  'settings.module.wiki': 'Wiki search',
+  'settings.module.code': 'Code search',
   'settings.module.skill': 'Skills',
-  'settings.module.chatMemory': 'Chat_Memory',
-  'settings.module.wiki.desc': 'Only tool injection stops when disabled',
-  'settings.module.code.desc': 'Only tool injection stops when disabled',
-  'settings.module.skill.desc': 'Tool injection and new skill extraction stop',
-  'settings.module.chatMemory.desc': 'Tool injection and new conversation ingestion stop',
+  'settings.module.chatMemory': 'Chat memory',
+  'settings.module.wiki.desc': 'Your agent can search the team\'s wiki pages.',
+  'settings.module.code.desc': 'Your agent can search the team\'s indexed code repositories.',
+  'settings.module.skill.desc': 'Your agent uses team skills and learns new ones from your sessions.',
+  'settings.module.chatMemory.desc': 'Your agent recalls past context, and your conversations are saved to memory.',
   'settings.notify.enabled': '{{label}} enabled',
   'settings.notify.disabled': '{{label}} disabled',
   'settings.notify.saveFailed': 'Save failed: {{msg}}',
@@ -248,6 +249,18 @@ export const enUS = {
     'Include background, goals, acceptance criteria. The more specific, the better for agent context.',
   'taskCreate.submit': 'Create Task',
   'taskCreate.cancel': 'Cancel',
+  'taskCreate.agents': 'Agents (optional)',
+  'taskCreate.agentsExtra': 'Agents assigned to the task work on it; what they learn while on the task shows up in the task\'s Outputs for the whole team.',
+  'taskCreate.agentsPlaceholder': 'Assign an agent…',
+  'taskCreate.agentsEmpty': 'No agents in this team yet',
+  'task.assignedAgents': 'Assigned agents',
+  'task.assignedAgents.hint': 'Who should work on this task. Team agents share their task output with the whole team.',
+  'task.assignedAgents.add': 'Assign agent…',
+  'task.outputs': 'Outputs',
+  'task.outputs.hint': 'Memories the agents created while working on this task.',
+  'task.outputs.loading': 'Loading outputs…',
+  'task.outputs.empty': 'Nothing yet. Outputs appear once an agent starts a session on this task.',
+  'task.outputs.hiddenPrivate': '{{count}} private agent(s) also worked on this task; their output is visible only to their owner and admins.',
 
   // ===== AdminResourceLock =====
   'adminLock.title': 'Resource Management is Not Available for Admins',
@@ -541,7 +554,7 @@ export const enUS = {
   'skills.personal.scope.shared': 'Shared',
   'skills.personal.scope.private': 'Private',
   'skills.personal.scope.shared.tooltip': 'Team members can read; owner and admin can write',
-  'skills.personal.scope.private.tooltip': 'Only owner and team admin can see',
+  'skills.personal.scope.private.tooltip': 'Only the owner (and platform admins) can see',
   'skills.personal.delete.tooltip': 'Permanently delete this Skill (irreversible)',
   'skills.personal.delete.confirm': 'Permanently delete Skill "{{name}}"?',
   'skills.personal.delete.confirm.desc':
@@ -794,7 +807,7 @@ export const enUS = {
   'memoryPersonal.shared': 'Shared',
   'memoryPersonal.private': 'Private',
   'memoryPersonal.shared.tooltip': 'Team members can read; owner and admin can write',
-  'memoryPersonal.private.tooltip': 'Only owner and team admin can see',
+  'memoryPersonal.private.tooltip': 'Only the owner (and platform admins) can see',
   'memoryPersonal.ownerTag.title': 'owner user: {{name}} ({{id}})',
   'memoryPersonal.ownerTag.you': ' (you)',
 
@@ -969,6 +982,11 @@ export const enUS = {
   'createAgent.assets.toolbarLabel': 'Capabilities',
   'createAgent.submit': 'Create',
   'createAgent.cancel': 'Cancel',
+  'createAgent.visibility': 'Who can see this agent',
+  'createAgent.visibility.team': 'Team',
+  'createAgent.visibility.private': 'Only me',
+  'createAgent.visibility.team.hint': 'Everyone in the team sees the agent and what it learns (its memory and task outputs).',
+  'createAgent.visibility.private.hint': 'Only you (and platform admins) see the agent and its memory.',
 
   // ===== AgentEditDialog =====
   'agentEdit.caption': 'Agent Details',
@@ -1070,6 +1088,29 @@ export const enUS = {
   'member.remove.tooltip': 'Remove this member',
   'member.role.creator': ' · Creator',
   'member.me': ' (you)',
+  'member.role.member': 'Member',
+  'member.role.admin': 'Team admin',
+  'member.role.reviewer': 'Viewer',
+  'member.role.member.desc': 'Can create their own agents and tasks and sees everything shared with the team.',
+  'member.role.admin.desc': 'Manages members and roles, and can edit or delete any agent or task in this team. Sees all team assets.',
+  'member.role.reviewer.desc': 'Read-only: sees what is shared with the team but cannot create or change anything.',
+  'member.role.changed': 'Role updated',
+  'member.role.member.short': 'creates own agents & tasks',
+  'member.role.admin.short': 'manages people, agents & tasks',
+  'member.role.reviewer.short': 'read-only',
+  'member.subtitle.simple': 'People in {{name}} and what they can do.',
+  'member.owner': 'Owner',
+  'member.owner.desc': 'Created this team. The owner is always a team admin and cannot be removed.',
+  'member.actions': 'More actions',
+  'member.remove.menu': 'Remove from team',
+  'member.admin.badge': 'Platform admin',
+  'member.admin.badge.desc': 'Platform admin: sees every team and every asset (including private ones) and can manage any team.',
+  'member.admin.grant': 'Give platform admin access',
+  'member.admin.revoke': 'Remove platform admin access',
+  'member.admin.grant.confirm': 'Make {{userId}} a platform admin?',
+  'member.admin.grant.desc': 'They will see every team, agent, task and asset on this instance (private ones included) and can manage any team.',
+  'member.admin.revoke.confirm': 'Remove admin rights from {{userId}}?',
+  'member.admin.revoke.desc': 'They go back to a normal user and only see the teams they are a member of.',
 
   // ===== AddMemberDialog =====
   'addMember.caption': 'Add Member to "{{name}}"',
@@ -1092,7 +1133,7 @@ export const enUS = {
   'addMember.role.member': 'member',
   'addMember.role.admin': 'admin',
   'addMember.role.hint': 'New members default to the member role.',
-  'addMember.role.hintAdmin': 'Choose member or admin for this team. Existing members can be re-added to change role.',
+  'addMember.role.hintAdmin': 'Member: own agents and tasks. Team admin: manages members and every agent/task in the team. Viewer: read-only. You can change a role later from the member list.',
   'addMember.existing.submit': 'Add',
   'addMember.new.submit': 'Create & Add',
   'addMember.cancel': 'Cancel',
@@ -1411,52 +1452,64 @@ export const enUS = {
   'onboarding.guide.start.admin.title': 'Welcome to WeaverAI Memory Fabric',
   'onboarding.guide.start.admin.desc':
     'You are an administrator: you manage teams and members. Let\'s walk through the core features — click "Next" to begin.',
-  'onboarding.guide.start.member.title': 'Welcome to WeaverAI Memory Fabric',
+  'onboarding.guide.start.member.title':
+    'Welcome to WeaverAI Memory Fabric',
   'onboarding.guide.start.member.desc':
-    'You are a team member: you can manage Agents and assets within the team. Let\'s walk through the core features — click "Next" to begin.',
+    'You can create your own agents and tasks and use everything your team shares. This short tour shows where things are.',
   // Login identity (shared by Admin / Member)
-  'onboarding.guide.login.title': 'Your login identity',
+  'onboarding.guide.login.title':
+    'Your account',
   'onboarding.guide.login.desc':
-    'You are signed in with a user_key. Use the top-right menu to view your profile, switch language, or log out; ownership and permissions are based on your current identity.',
+    'Open this menu for your profile, "My AI connection" (what your coding agent gets from Memory Fabric) and log out.',
   // Admin: create / switch team
-  'onboarding.guide.team.title': 'Create / switch team',
+  'onboarding.guide.team.title':
+    'Switch or create a team',
   'onboarding.guide.team.desc':
-    'Click the top-left corner to switch the active team. A team is the primary boundary of assets, Agents and Tasks; as an administrator you can create new teams here.',
+    'Everything lives in a team: people, agents, tasks and assets. As a platform admin you see every team here and can create new ones.',
   // Admin: create members and issue user_key (not available to member)
-  'onboarding.guide.memberAdmin.title': 'Create members and issue user_key',
+  'onboarding.guide.memberAdmin.title':
+    'People, roles and platform admins',
   'onboarding.guide.memberAdmin.desc':
-    'As an administrator you can create new user accounts in "Members" and issue a one-time user_key (shown only once), or invite existing users into the team. Regular members cannot create users — they can only invite existing ones.',
+    'Add people to the team and pick their role (Member, Team admin or Viewer) from the list. Use the ⋯ menu on a person to give or remove platform admin access.',
   // Member: invite teammates (cannot create users)
-  'onboarding.guide.member.title': 'Invite team members',
+  'onboarding.guide.member.title':
+    'Your team',
   'onboarding.guide.member.desc':
-    'In "Members" you can invite existing users into the current team by user_id (you cannot create new user accounts — that requires an administrator). Ask them to copy their user_id from "My Profile".',
+    'See who is in the team and what each role can do. Team admins add people and change roles.',
   // Agent management (same for Admin and Member, both can edit)
-  'onboarding.guide.agent.title': 'Create and edit Agents',
+  'onboarding.guide.agent.title':
+    'Create an agent',
   'onboarding.guide.agent.desc':
-    'Click "Create Agent" to create an Agent. You can edit your own Agents and bind Wiki / Code / Skill / Chat Memory assets; Agents created by others are read-only. Admin and Member have the same capabilities.',
+    'Pick who sees it: "Team" shares what the agent learns with everyone, "Only me" keeps it private.',
   // Click an Agent card to open the edit dialog and bind assets
   // (falls back to the "Create Agent" button when the user has none — copy covers both cases)
-  'onboarding.guide.agentBind.title': 'Click an Agent card to bind team assets',
+  'onboarding.guide.agentBind.title':
+    'Give your agent team knowledge',
   'onboarding.guide.agentBind.desc':
-    'Click an Agent card you own (or its name) to open the edit dialog: tick Wiki / CodeGraph / Chat Memory team assets in the "Capabilities" section and save — bindings take effect immediately. No Agent yet? Click "Create Agent" first, then come back and click it. Skills are bound by choosing the owning Agent when importing on the Skill page.',
+    'Click one of your agents and tick the Wiki, Code Graph and memory it should use, then save. No agent yet? Create one first.',
   // Member: key management
-  'onboarding.guide.apikey.title': 'Manage your User_Keys',
+  'onboarding.guide.apikey.title':
+    'Your API keys',
   'onboarding.guide.apikey.desc':
-    'Create keys in "User_Key management" for external clients (e.g. CodeBuddy / ClaudeCode CLI). The plaintext key is shown only once — copy and store it safely.',
+    'Create a key to connect your coding agent (Claude Code, Codex…). The key is shown once, so copy it somewhere safe.',
   // Create and allocate assets (same for Admin and Member; each asset page is visited.
   // Each description follows "what it is → how to import → how to use" for first-time users)
-  'onboarding.guide.asset.wiki.title': 'Wiki: team document assets',
+  'onboarding.guide.asset.wiki.title':
+    'Wiki: team documents',
   'onboarding.guide.asset.wiki.desc':
-    'What: a knowledge base for shared team documents. Import: click "Create Wiki" → open it and upload Markdown files (.md/.txt, multi-select & drag-drop supported) → trigger "Extract" to build searchable knowledge pages. Use: click "Allocate to Agent" on a Wiki card, or tick it in the Agent edit dialog — bound Agents can then retrieve and cite these documents in chat.',
-  'onboarding.guide.asset.code.title': 'CodeGraph: team code assets',
+    'Upload documents into a Wiki so agents can search and cite them. Opens on Team Assets: what everyone shares.',
+  'onboarding.guide.asset.code.title':
+    'Code Graph: team code',
   'onboarding.guide.asset.code.desc':
-    'What: an index and call graph built over team code repositories. Import: click "Register repo" and paste a Git HTTPS URL — indexing runs automatically. Use: once allocated to an Agent, the Agent can search code and explore call chains in chat to answer repo-related questions.',
-  'onboarding.guide.asset.skill.title': 'Skill: tell apart "Team assets" vs "Agent assets"',
+    'Register a Git repository so agents can search the code and follow call chains. Opens on Team Assets.',
+  'onboarding.guide.asset.skill.title':
+    'Skills: reusable playbooks',
   'onboarding.guide.asset.skill.desc':
-    'Ownership: this page has two tabs — "Team assets" (a shared pool every member can use and configure) and "Agent assets" (skills bound to a specific Agent, usable by that Agent). Import: click "Import Skill" (create an Agent first) — the skill is bound to the chosen Agent. Use: once bound, the Agent follows the SKILL.md playbook when a matching scenario arises; in "Agent assets" you can toggle "Shared / Private" for skills you own.',
-  'onboarding.guide.asset.memory.title': 'Chat Memory: tell apart "Team assets" vs "Agent assets"',
+    'Team Assets shows skills shared with everyone; Agent Assets shows what a specific agent uses. Your own skills can be Shared or Private.',
+  'onboarding.guide.asset.memory.title':
+    'Chat Memory: what agents remember',
   'onboarding.guide.asset.memory.desc':
-    'Ownership: this page has two tabs — "Team assets" (a shared memory pool) and "Agent assets" (memory bound to a specific Agent, including each Agent\'s built-in private memory). Import: click "Import memory" to bring history in as L0; the system distills L1~L3 layers and attaches them to the chosen Agent. Use: bound Agents remember your preferences and conclusions across sessions; in "Agent assets" you can toggle "Shared / Private" for memory you imported.',
+    'Team Assets shows memory shared with the team, including team agents\' memory. Agent Assets shows one agent\'s memory.',
 
   // ===== GuidePage =====
   'guide.back': 'Back',
@@ -1471,6 +1524,124 @@ export const enUS = {
   'guide.copyPrompt': 'Copy prompt',
   'guide.copyScript': 'Copy script',
   'guide.copyConfig': 'Copy config',
+  'onboarding.guide.start.platformAdmin.title':
+    'Welcome, platform admin',
+  'onboarding.guide.start.platformAdmin.desc':
+    'You can see every team, agent, task and asset, and manage any team. This short tour shows where things are.',
+  'onboarding.guide.start.teamAdmin.title':
+    'Welcome, team admin',
+  'onboarding.guide.start.teamAdmin.desc':
+    'You manage the people, agents and tasks of your team. This short tour shows where things are.',
+  'onboarding.guide.start.viewer.title':
+    'Welcome to WeaverAI Memory Fabric',
+  'onboarding.guide.start.viewer.desc':
+    'You have read-only access: you can browse what your team shares and follow its tasks. This short tour shows where to look.',
+  'onboarding.guide.memberTeamAdmin.title':
+    'People and roles',
+  'onboarding.guide.memberTeamAdmin.desc':
+    'Add people by their user_id (they copy it from "My Profile") and change anyone\'s role from the list: Member, Team admin or Viewer.',
+  'onboarding.guide.task.title':
+    'Work in tasks',
+  'onboarding.guide.task.desc':
+    'Create a task and assign agents to it. Open the task to see its Outputs: what the agents learned while working on it, visible to the whole team.',
+  'onboarding.guide.task.viewer.title':
+    'Follow your team\'s tasks',
+  'onboarding.guide.task.viewer.desc':
+    'Open any task to see who works on it and its Outputs: what the agents learned while working on it.',
+  'guide.perm.tab.title':
+    'Teams & access',
+  'guide.perm.tab.sub':
+    'Roles, sharing and who sees what',
+  'guide.perm.heading':
+    'How teams and access work',
+  'guide.perm.intro':
+    'Everything lives in a team: people, agents, tasks and assets. What you can see and change depends on your role.',
+  'guide.perm.roles.title':
+    'Roles',
+  'guide.perm.col.role':
+    'Role',
+  'guide.perm.col.sees':
+    'Sees',
+  'guide.perm.col.does':
+    'Can do',
+  'guide.perm.role.platformAdmin':
+    'Platform admin',
+  'guide.perm.role.platformAdmin.who':
+    'Set by another platform admin',
+  'guide.perm.role.platformAdmin.sees':
+    'Every team, agent, task and asset, including private ones.',
+  'guide.perm.role.platformAdmin.does':
+    'Create teams, create user accounts, act as team admin in any team, give or remove platform admin access.',
+  'guide.perm.role.teamAdmin':
+    'Team admin',
+  'guide.perm.role.teamAdmin.who':
+    'Per team',
+  'guide.perm.role.teamAdmin.sees':
+    'Everything shared in their team.',
+  'guide.perm.role.teamAdmin.does':
+    'Add people and change roles, edit or delete any agent and task in the team, manage sharing of team assets.',
+  'guide.perm.role.member':
+    'Member',
+  'guide.perm.role.member.who':
+    'Per team',
+  'guide.perm.role.member.sees':
+    'Everything shared in their team, plus their own private items.',
+  'guide.perm.role.member.does':
+    'Create their own agents and tasks, import assets, assign agents to tasks.',
+  'guide.perm.role.viewer':
+    'Viewer',
+  'guide.perm.role.viewer.who':
+    'Per team',
+  'guide.perm.role.viewer.sees':
+    'Everything shared in their team.',
+  'guide.perm.role.viewer.does':
+    'Read only: browse assets and follow tasks.',
+  'guide.perm.rules.title':
+    'Sharing rules',
+  'guide.perm.rule.teamAgent.title':
+    'Team agent',
+  'guide.perm.rule.teamAgent.desc':
+    'Everyone in the team sees the agent, its memory and its task outputs.',
+  'guide.perm.rule.privateAgent.title':
+    '"Only me" agent',
+  'guide.perm.rule.privateAgent.desc':
+    'Only the owner and platform admins see it. Its task outputs are hidden from the rest of the team.',
+  'guide.perm.rule.teamAssets.title':
+    'Team assets',
+  'guide.perm.rule.teamAssets.desc':
+    'Wikis, code graphs, shared skills and shared memory are readable by the whole team. You can switch your own skills and memory to Private.',
+  'guide.perm.rule.taskOutputs.title':
+    'Task outputs',
+  'guide.perm.rule.taskOutputs.desc':
+    'What agents learn while working on a task appears in the task\'s Outputs for the whole team.',
+  'guide.perm.howto.title':
+    'How do I…',
+  'guide.perm.howto.open':
+    'Open',
+  'guide.perm.howto.createTeam.title':
+    'Create a team',
+  'guide.perm.howto.createTeam.steps':
+    'Platform admin: team switcher (top left) → Create team.',
+  'guide.perm.howto.addMember.title':
+    'Add someone to a team',
+  'guide.perm.howto.addMember.steps':
+    'Team admin: Members → Add Member → paste their user_id and pick a role.',
+  'guide.perm.howto.changeRole.title':
+    'Change someone\'s role',
+  'guide.perm.howto.changeRole.steps':
+    'Team admin: Members → pick Member, Team admin or Viewer next to the person.',
+  'guide.perm.howto.platformAdmin.title':
+    'Make someone a platform admin',
+  'guide.perm.howto.platformAdmin.steps':
+    'Platform admin: Members → ⋯ next to the person → Give platform admin access.',
+  'guide.perm.howto.followAgent.title':
+    'Let the team follow an agent\'s work',
+  'guide.perm.howto.followAgent.steps':
+    'Create the agent as "Team", assign it to a task, then open the task → Outputs.',
+  'guide.perm.howto.myConnection.title':
+    'Turn a tool off for my own agent',
+  'guide.perm.howto.myConnection.steps':
+    'Your avatar (top right) → My AI connection.',
 
   // Main tabs
   'guide.quick.title': 'Quick Setup',

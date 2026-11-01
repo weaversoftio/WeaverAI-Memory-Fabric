@@ -1,9 +1,11 @@
 /**
- * TaskDetail - workbench task detail (edit title/description, switch status, view participants, delete).
+ * TaskDetail - workbench task detail (edit title/description, switch status, assign agents, view participants
+ * and what the agents produced for the task, delete).
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Input, Segment, Text } from '@/components/ui';
+import { Button, Input, Segment, Select, Tag, Text } from '@/components/ui';
+import { tasksApi, type TaskOutputs } from '@/lib/api/tasks';
 import { DeleteIcon, EditIcon, UserIcon, TeamIcon } from '@/components/ui/icons';
 import { canEditTask, type Task, type Team } from '@/services';
 import { useUserDisplayName } from '@/services/user-profile-store';
@@ -114,6 +116,40 @@ export default function TaskDetail({
     const nameById = new Map(agents.map((a) => [a.id, a.name]));
     return participation.agentIds.map((id) => ({ id, name: nameById.get(id) ?? id }));
   }, [participation.agentIds, agents]);
+  const agentNameById = useMemo(() => new Map(agents.map((a) => [a.id, a.name])), [agents]);
+
+  // -- Outputs: memories the task's agents produced while working on this task -- //
+  const [outputs, setOutputs] = useState<TaskOutputs | null>(null);
+  const [outputsLoading, setOutputsLoading] = useState(false);
+  const [outputsError, setOutputsError] = useState<string | null>(null);
+  const linkedKey = task.linked_agents.join(',');
+  useEffect(() => {
+    let cancelled = false;
+    setOutputsLoading(true);
+    setOutputsError(null);
+    tasksApi
+      .outputs(task.task_id)
+      .then((data) => {
+        if (!cancelled) setOutputs(data);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setOutputsError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => {
+        if (!cancelled) setOutputsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [task.task_id, linkedKey]);
+
+  function assignAgent(agentId: string) {
+    if (!agentId || task.linked_agents.includes(agentId)) return;
+    onUpdateTask({ linked_agents: [...task.linked_agents, agentId] });
+  }
+  function unassignAgent(agentId: string) {
+    onUpdateTask({ linked_agents: task.linked_agents.filter((id) => id !== agentId) });
+  }
 
   return (
     <div className="_memory-workbench-detail-content">
@@ -194,6 +230,64 @@ export default function TaskDetail({
             ))
           )}
         </div>
+      </div>
+
+      {/* === Assigned agents (intent: who should work on this task) === */}
+      <div className="_memory-workbench-block">
+        <Text theme="label" className="_memory-workbench-block-label">{t('task.assignedAgents')}</Text>
+        <Text theme="weak" parent="div" style={{ marginBottom: 6 }}>{t('task.assignedAgents.hint')}</Text>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+          {task.linked_agents.length === 0 && <Text theme="weak">—</Text>}
+          {task.linked_agents.map((id) => (
+            <Tag key={id} size="sm" onClose={canEdit ? () => unassignAgent(id) : undefined}>
+              {agentNameById.get(id) ?? id}
+            </Tag>
+          ))}
+          {canEdit && (
+            <Select
+              value=""
+              size="m"
+              searchable
+              placeholder={t('task.assignedAgents.add')}
+              disabled={agents.every((a) => task.linked_agents.includes(a.id))}
+              onChange={(v) => assignAgent(v)}
+              options={agents
+                .filter((a) => !task.linked_agents.includes(a.id))
+                .map((a) => ({ value: a.id, text: a.name }))}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* === Outputs (what the agents produced for this task, visible to the team) === */}
+      <div className="_memory-workbench-block">
+        <Text theme="label" className="_memory-workbench-block-label">{t('task.outputs')}</Text>
+        <Text theme="weak" parent="div" style={{ marginBottom: 6 }}>{t('task.outputs.hint')}</Text>
+        {outputsLoading ? (
+          <Text theme="weak">{t('task.outputs.loading')}</Text>
+        ) : outputsError ? (
+          <Text theme="danger">{outputsError}</Text>
+        ) : !outputs || outputs.memories.length === 0 ? (
+          <Text theme="weak" parent="div">{t('task.outputs.empty')}</Text>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {outputs.memories.map((m) => (
+              <div key={`${m.agent_id}-${m.id}`} className="_memory-workbench-desc-view">
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
+                  <Tag size="sm">{m.agent_name}</Tag>
+                  {m.type && <Tag size="sm" variant="outlined">{m.type}</Tag>}
+                  {m.created_at && <Text theme="weak">{new Date(m.created_at).toLocaleString()}</Text>}
+                </div>
+                <div>{m.content}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        {outputs && outputs.hidden_private_agents > 0 && (
+          <Text theme="weak" parent="div" style={{ marginTop: 6 }}>
+            {t('task.outputs.hiddenPrivate', { count: outputs.hidden_private_agents })}
+          </Text>
+        )}
       </div>
 
       {/* === Description === */}

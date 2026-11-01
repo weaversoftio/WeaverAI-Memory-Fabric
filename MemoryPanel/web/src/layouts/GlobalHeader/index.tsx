@@ -2,7 +2,7 @@
  * GlobalHeader - top bar of the content column (the brand sits at the top of the sidebar)
  *
  *   Left: team switcher (TeamSwitcher)
- *   Right: usage guide + language switcher + settings + user avatar menu
+ *   Right: usage guide + language switcher + user avatar menu (profile / my AI connection / logout)
  */
 import { useState } from 'react';
 import {
@@ -18,7 +18,6 @@ import {
   Tag,
   Text,
 } from '@/components/ui';
-import { SettingsIcon } from '@/components/ui/icons';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { SettingsDialog } from '@/components/SettingsDialog';
@@ -72,15 +71,6 @@ export function GlobalHeader({
 
         <LanguageSwitcher />
 
-        <button
-          type="button"
-          className="_memory-global-header-icon-btn"
-          title={t('header.settings')}
-          onClick={() => setSettingsOpen(true)}
-        >
-          <SettingsIcon size={16} />
-        </button>
-
         <Dropdown
           appearance="pure"
           button={
@@ -101,6 +91,14 @@ export function GlobalHeader({
                 }}
               >
                 {t('header.profile')}
+              </List.Item>
+              <List.Item
+                onClick={() => {
+                  close();
+                  setSettingsOpen(true);
+                }}
+              >
+                {t('header.aiConnection')}
               </List.Item>
               <List.Item
                 onClick={() => {

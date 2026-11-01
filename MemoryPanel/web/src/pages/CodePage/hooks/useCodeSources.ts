@@ -14,8 +14,8 @@ export function useCodeSources() {
   const { t } = useTranslation();
   const [sources, setSources] = useState<CodeGraphDetail[]>([]);
   const [loading, setLoading] = useState(false);
-  // Show Agent assets (fixed) by default, so users don't mistake their own assets as being under "Team assets"
-  const [scopeTab, setScopeTab] = useState<ScopeTab>('fixed');
+  // Open on Team assets: what the whole team shares is the most useful starting point.
+  const [scopeTab, setScopeTab] = useState<ScopeTab>('team');
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('card');

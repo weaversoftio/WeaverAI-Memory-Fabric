@@ -26,9 +26,10 @@ import {
 } from '@/lib/weaverai-one-connection';
 import { CopyButton } from './CopyButton';
 import { MemCommands } from './MemCommands';
+import { TeamsPermissions } from './TeamsPermissions';
 import './style.css';
 
-type MainTab = 'quick' | 'practice' | 'commands';
+type MainTab = 'quick' | 'access' | 'practice' | 'commands';
 type QuickTab = 'download' | 'ide' | 'history';
 type PracticeId = 'team' | 'personal';
 type ManualIdeId =
@@ -408,6 +409,14 @@ export function GuidePage() {
         </button>
         <button
           type="button"
+          className={mainTab === 'access' ? 'active' : ''}
+          onClick={() => setMainTab('access')}
+        >
+          <b>{t('guide.perm.tab.title')}</b>
+          <small>{t('guide.perm.tab.sub')}</small>
+        </button>
+        <button
+          type="button"
           className={mainTab === 'practice' ? 'active' : ''}
           onClick={() => setMainTab('practice')}
         >
@@ -710,6 +719,8 @@ export function GuidePage() {
             )}
           </nav>
         </section>
+      ) : mainTab === 'access' ? (
+        <TeamsPermissions />
       ) : mainTab === 'practice' ? (
         <section className="guide-surface guide-practice">
           <div className="guide-practice-tabs">
