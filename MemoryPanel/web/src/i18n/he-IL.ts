@@ -592,6 +592,8 @@ export const heIL = {
   'skills.detail.versionColActions': 'פעולות',
   'skills.detail.versionCaption': 'v{{version}} · SKILL.md',
   'skills.versionTag.title': 'גרסה נוכחית: v{{version}}',
+  'skills.versionTag.titleWithTime': 'גרסה נוכחית: v{{version}} · עודכנה {{time}}',
+  'skills.detail.updatedAt': 'עודכנה {{time}}',
   'skills.ownerTag.title': 'משתמש בעלים: {{name}} ({{id}})',
   'skills.ownerTag.you': ' (את/ה)',
   'skills.agentTag.title': 'Agent בעלים: {{name}} ({{id}})',

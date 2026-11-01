@@ -21,6 +21,7 @@ import { getSkill } from '@/lib/api/skill-api';
 export interface CachedSkillDetail {
   version: number;
   owner_agent_id: string;
+  updated_at_ms: number;
 }
 
 export function useSkillDetailCache(teamId: string | null | undefined) {
@@ -53,6 +54,7 @@ export function useSkillDetailCache(teamId: string | null | undefined) {
       cacheRef.current.set(skillId, {
         version: full.version,
         owner_agent_id: full.owner_agent_id,
+        updated_at_ms: full.updated_at_ms,
       });
       setCacheVersion((n) => n + 1);
     } catch {
@@ -62,17 +64,44 @@ export function useSkillDetailCache(teamId: string | null | undefined) {
     }
   }, [teamId]);
 
+  /** Prefetch data-plane details for many skills (team list). Bounded concurrency; skips cached / in-flight ids. */
+  const preloadMany = useCallback(
+    async (skillIds: string[]) => {
+      const pending = [...new Set(skillIds.filter(Boolean))].filter(
+        (id) => !cacheRef.current.has(id) && !inFlightRef.current.has(id),
+      );
+      if (pending.length === 0) return;
+      const concurrency = Math.min(6, pending.length);
+      let next = 0;
+      await Promise.all(
+        Array.from({ length: concurrency }, async () => {
+          while (next < pending.length) {
+            const id = pending[next];
+            next += 1;
+            await preload(id);
+          }
+        }),
+      );
+    },
+    [preload],
+  );
+
   /**
-   * Overwrite the version / owner_agent_id fields of the skill object with the latest values in the cache.
+   * Overwrite the version / owner_agent_id / updated_at_ms fields of the skill object with the cache.
    * On a cache miss it is returned as is, without affecting rendering.
    */
-  const applyCachedDetail = useCallback(<T extends { skill_id: string; version: number; owner_agent_id: string }>(
+  const applyCachedDetail = useCallback(<T extends { skill_id: string; version: number; owner_agent_id: string; updated_at_ms: number }>(
     skill: T,
   ): T => {
     const cached = cacheRef.current.get(skill.skill_id);
     if (!cached) return skill;
-    return { ...skill, version: cached.version, owner_agent_id: cached.owner_agent_id };
+    return {
+      ...skill,
+      version: cached.version,
+      owner_agent_id: cached.owner_agent_id,
+      updated_at_ms: cached.updated_at_ms || skill.updated_at_ms,
+    };
   }, []);
 
-  return { getFromCache, preload, applyCachedDetail, cacheRef, cacheVersion };
+  return { getFromCache, preload, preloadMany, applyCachedDetail, cacheRef, cacheVersion };
 }

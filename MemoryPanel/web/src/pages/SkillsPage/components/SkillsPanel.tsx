@@ -81,6 +81,7 @@ export default function SkillsPanel({
     skills,
     // cache
     skillsWithCache,
+    getFromCache,
     // handlers
     refresh,
     handleDelete,
@@ -207,13 +208,16 @@ export default function SkillsPanel({
               return (
                 <>
                   <AssetItemHeader>
-                    {/* The version Tag goes before the name and is shown only in the fixed (Agent assets) tab:
-                        that tab's data source is listSkills (the skill data plane), so version is real and trustworthy;
-                        the team tab goes through assetsApi.listAccessible, the asset table has no version field
-                        (always the fallback value 1, backfilled by useSkillDetailCache only after opening),
-                        showing it would mislead and jump, so it is not shown. */}
-                    {tab === 'fixed' && (
-                      <Tooltip title={t('skills.versionTag.title', { version: s.version })}>
+                    {/* Agent assets already have a real version from listSkills. Team assets
+                        start without one (asset table has no skill-plane version); show the tag
+                        once useSkillDetailCache has the real head version, so we never flash v1. */}
+                    {(tab === 'fixed' || getFromCache(s.skill_id)) && (
+                      <Tooltip
+                        title={t('skills.versionTag.titleWithTime', {
+                          version: s.version,
+                          time: new Date(s.updated_at_ms).toLocaleString(),
+                        })}
+                      >
                         <Tag theme="primary" className="_memory-skill-item-version">
                           v{s.version}
                         </Tag>

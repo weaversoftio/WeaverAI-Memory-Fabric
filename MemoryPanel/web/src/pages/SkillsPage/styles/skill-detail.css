@@ -140,12 +140,23 @@
   justify-content: flex-end;
 }
 
+._memory-skill-detail-name-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 ._memory-skill-detail-name {
   font-family: var(--font-mono);
   font-size: 14px;
   font-weight: 600;
   color: var(--wf-color-text-primary);
   word-break: break-all;
+}
+
+._memory-skill-detail-updated {
+  font-size: 12px;
 }
 
 ._memory-skill-detail-desc {

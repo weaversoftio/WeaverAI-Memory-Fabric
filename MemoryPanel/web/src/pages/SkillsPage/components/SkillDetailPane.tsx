@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Button, Card, Copy, Input, Modal, Table, Text } from '@/components/ui';
+import { Button, Card, Copy, Input, Modal, Table, Tag, Text } from '@/components/ui';
 import { MarkdownView } from '@/components/MarkdownView';
 import { feedback } from '@/lib/feedback';
 import {
@@ -435,7 +435,21 @@ export default function SkillDetailPane(props: {
         <div className="_memory-skill-detail-head">
           <div className="_memory-skill-detail-head-main">
             <div className="_memory-skill-detail-head-info">
-              <div className="_memory-skill-detail-name">{skillName ?? currentView?.name ?? ''}</div>
+              <div className="_memory-skill-detail-name-row">
+                <div className="_memory-skill-detail-name">{skillName ?? currentView?.name ?? ''}</div>
+                {currentView && (
+                  <Tag theme="primary" className="_memory-skill-item-version">
+                    v{currentView.version}
+                  </Tag>
+                )}
+                {currentView?.updated_at_ms ? (
+                  <Text theme="weak" className="_memory-skill-detail-updated">
+                    {t('skills.detail.updatedAt', {
+                      time: new Date(currentView.updated_at_ms).toLocaleString(),
+                    })}
+                  </Text>
+                ) : null}
+              </div>
               {/* skill_id (= asset_id): gives a copyable asset identifier, handy to reference when integrating with the API /
                   troubleshooting. Uses skillId (the authoritative selected value) rather than currentView,
                   so it shows immediately even while details are still loading. */}

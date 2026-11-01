@@ -592,6 +592,8 @@ export const enUS = {
   'skills.detail.versionColActions': 'Actions',
   'skills.detail.versionCaption': 'v{{version}} · SKILL.md',
   'skills.versionTag.title': 'Current version: v{{version}}',
+  'skills.versionTag.titleWithTime': 'Current version: v{{version}} · updated {{time}}',
+  'skills.detail.updatedAt': 'Updated {{time}}',
   'skills.ownerTag.title': 'owner user: {{name}} ({{id}})',
   'skills.ownerTag.you': ' (you)',
   'skills.agentTag.title': 'owner agent: {{name}} ({{id}})',

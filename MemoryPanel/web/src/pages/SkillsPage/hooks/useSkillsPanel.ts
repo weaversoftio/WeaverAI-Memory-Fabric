@@ -99,6 +99,8 @@ export function useSkillsPanel() {
   const {
     applyCachedDetail,
     preload: preloadSkillDetail,
+    preloadMany: preloadSkillDetails,
+    getFromCache,
     cacheVersion,
   } = useSkillDetailCache(activeTeamId);
 
@@ -160,11 +162,9 @@ export function useSkillsPanel() {
         //   (the kernel permission-checker blocks later reads, but the list response
         //   still carries name/owner metadata; frontend filtering = data already leaked).
         //
-        // Load version / owner_agent_id on demand:
-        //   The asset table has neither field; the old implementation fired N concurrent
-        //   getSkill() calls (N+1) per skill here, pulling all details before the user opened any.
-        //   Now render with asset defaults first; version/owner_agent_id etc. are fetched on demand
-        //   by useSkillDetailCache after selection and written to the cache.
+        // Version / owner_agent_id / updated_at live on the skill data plane, not the asset table.
+        // After the ACL-safe list renders, prefetch getSkill (no content) for these visible ids only
+        // so Team assets can show the real vN + last-updated without leaking private skills.
         const accessible = await assetsApi.listAccessible(activeTeamId, {
           asset_type: 'skill',
           action: 'read',
@@ -188,9 +188,11 @@ export function useSkillsPanel() {
           created_at_ms: toMs(a.created_at),
           updated_at_ms: toMs(a.updated_at),
         })) as SkillSummary[];
-        // No extra waiting; render directly with asset defaults, auto-updated on cache hit.
+        // Render the ACL-safe asset list immediately, then backfill real version / updated_at
+        // from the skill data plane for every team-visible id (no private-skill leak).
         setSkills(items);
         setVisibilityMap(visMap);
+        void preloadSkillDetails(items.map((s) => s.skill_id));
       } else {
         // Fixed assets = skills owned by the given agent; this tab focuses on "what an agent is equipped with",
         // owner permission suffices, no extra visibility filtering (an agent owner can always see their own skills).
@@ -244,7 +246,7 @@ export function useSkillsPanel() {
     } finally {
       if (seq === refreshSeqRef.current) setLoading(false);
     }
-  }, [tab, selectedAgent, activeTeamId, myUserId]);
+  }, [tab, selectedAgent, activeTeamId, myUserId, preloadSkillDetails]);
 
   // Sync selectedAgent to teamAgents:
   //   - After switching team, the old selectedAgent may no longer be in the new team and must be reset;
@@ -441,6 +443,7 @@ export function useSkillsPanel() {
     skillsWithCache,
     preloadSkillDetail,
     applyCachedDetail,
+    getFromCache,
     cacheVersion,
     // handlers
     refresh,
