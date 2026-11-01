@@ -289,6 +289,7 @@ export class SkillVersioning {
         storage_dir: newStorageDir,
         owner_agent_id: head.owner_agent_id,
         metadata_json: mut.metadata_json ?? head.metadata_json,
+        expected_version: head.version,
       });
       this.onSkillRowsChanged?.(1);
       return row;

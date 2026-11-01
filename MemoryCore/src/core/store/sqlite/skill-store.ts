@@ -5,7 +5,7 @@
  *   - single table, multiple rows and versions: one row per (skill_id, version), is_head=1 marks the current version
  *   - 5-tuple identity hard fields: user_id / owner_agent_id / team_id / task_id / skill_id
  *   - unaware of binding / floating / draft / conflict
- *   - write path: old head set to 0 → INSERT new row → fts5 sync (transactionally atomic)
+ *   - write path: under BEGIN IMMEDIATE, MAX(version)+1 → demote all heads → INSERT → fts5 sync
  *   - read path: all queries force a team_id filter
  *
  * See docs/design/2026-06-17-skill-redesign-v2.md §2 / §5.
@@ -93,6 +93,12 @@ interface SkillRowRaw {
   updated_at_ms: number;
 }
 
+/** True when SQLite rejected an INSERT on UNIQUE(skill_id, version). */
+export function isSkillsVersionUniqueConstraint(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /UNIQUE constraint failed: skills\.skill_id, skills\.version/i.test(msg);
+}
+
 function toSkill(raw: SkillRowRaw): Skill {
   let manifest: SkillManifestEntry[];
   try {
@@ -152,6 +158,7 @@ export class SqliteSkillStore implements ISkillStore {
     this.db.exec(SKILL_FTS_DDL);
     // Migration: detect whether skill_fts lacks the owner_agent_id column (the old schema has only 5 columns)
     this.migrateFtsSchema();
+    this.reconcileHeads();
     if (this.dimensions > 0) {
       try {
         const ddl = SKILL_VEC_DDL_TEMPLATE.replace(/__DIM__/g, String(this.dimensions));
@@ -243,6 +250,90 @@ export class SqliteSkillStore implements ISkillStore {
     }
   }
 
+  /**
+   * Point is_head at MAX(version) for every skill whose pointer is missing, duplicated,
+   * or behind the highest saved row. Rebuilds FTS from the new head. Idempotent.
+   */
+  private reconcileHeads(): void {
+    const tableCheck = this.db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='skills'")
+      .get() as { name: string } | undefined;
+    if (!tableCheck) return;
+
+    const mismatches = this.db
+      .prepare(
+        `SELECT skill_id,
+                MAX(version) AS max_version,
+                MAX(CASE WHEN is_head=1 THEN version ELSE NULL END) AS head_version,
+                SUM(CASE WHEN is_head=1 THEN 1 ELSE 0 END) AS head_count
+         FROM skills
+         GROUP BY skill_id
+         HAVING MAX(CASE WHEN is_head=1 THEN version ELSE NULL END) IS NULL
+             OR MAX(CASE WHEN is_head=1 THEN version ELSE NULL END) != MAX(version)
+             OR SUM(CASE WHEN is_head=1 THEN 1 ELSE 0 END) != 1`,
+      )
+      .all() as Array<{
+        skill_id: string;
+        max_version: number;
+        head_version: number | null;
+        head_count: number;
+      }>;
+    if (mismatches.length === 0) return;
+
+    this.db.exec("BEGIN IMMEDIATE");
+    try {
+      const demote = this.db.prepare("UPDATE skills SET is_head=0 WHERE skill_id=?");
+      const promote = this.db.prepare("UPDATE skills SET is_head=1 WHERE skill_id=? AND version=?");
+      for (const row of mismatches) {
+        demote.run(row.skill_id);
+        promote.run(row.skill_id, row.max_version);
+        this.logger?.warn(
+          `[skill-store] reconciled head skill_id=${row.skill_id} ` +
+            `old_head=${row.head_version ?? "none"} → max_version=${row.max_version}`,
+        );
+      }
+      this.db.exec("COMMIT");
+    } catch (e) {
+      try { this.db.exec("ROLLBACK"); } catch { /* ignore */ }
+      this.logger?.error(`[skill-store] head reconciliation failed: ${(e as Error).message}`);
+      return;
+    }
+
+    for (const row of mismatches) {
+      this.resyncFtsForSkill(row.skill_id);
+    }
+  }
+
+  /** Replace FTS rows for one skill with its current active head (or delete if archived/missing). */
+  private resyncFtsForSkill(skillId: string): void {
+    this.db.prepare("DELETE FROM skill_fts WHERE skill_id=?").run(skillId);
+    const head = this.db
+      .prepare("SELECT * FROM skills WHERE skill_id=? AND is_head=1 ORDER BY version DESC LIMIT 1")
+      .get(skillId) as SkillRowRaw | undefined;
+    if (!head || head.status !== "active") return;
+    this.insertFtsRow(head);
+  }
+
+  private insertFtsRow(row: SkillRowRaw | { skill_id: string; team_id: string; owner_agent_id: string; task_id: string; user_id: string; name: string; description: string; content: string }): void {
+    const ftsContent = row.content.length > FTS_CONTENT_MAX
+      ? row.content.slice(0, FTS_CONTENT_MAX)
+      : row.content;
+    this.db
+      .prepare(
+        "INSERT INTO skill_fts (name, description, content, skill_id, team_id, owner_agent_id, task_id, user_id) VALUES (?,?,?,?,?,?,?,?)",
+      )
+      .run(
+        tokenizeForFts(row.name),
+        tokenizeForFts(row.description),
+        tokenizeForFts(ftsContent),
+        row.skill_id,
+        row.team_id,
+        row.owner_agent_id,
+        row.task_id,
+        row.user_id,
+      );
+  }
+
   /** Whether in degraded mode (SQLite connection error, etc.) */
   isDegraded(): boolean {
     return this.degraded;
@@ -292,23 +383,35 @@ export class SqliteSkillStore implements ISkillStore {
       }
     }
 
-    const newVersion = head ? head.version + 1 : 1;
-    const ownerForRow = head ? head.owner_agent_id : (input.owner_agent_id ?? "default");
+    const ownerHint = head ? head.owner_agent_id : (input.owner_agent_id ?? "default");
     // user_id records the operator of this operation, not the original creator. Later versions take input.user_id.
     const userIdForRow = input.user_id ?? "default";
     const ts = this.now();
     const newRowId = this.ulid();
+    let newVersion = 1;
+    let ownerForRow = ownerHint;
+    let lockedMaxVersion = 0;
 
-    // Transaction: flip the old head to 0 → INSERT the new row → sync fts5
+    // Transaction owns both the next version number and the head pointer.
     // node:sqlite has no db.transaction() helper yet, so BEGIN/COMMIT is hand-written.
     // It must stay synchronous (no await in between), same idea as sqlite-transaction-guard.
     this.db.exec("BEGIN IMMEDIATE");
     try {
-      if (head) {
-        this.db
-          .prepare("UPDATE skills SET is_head=0 WHERE skill_id=? AND version=?")
-          .run(head.skill_id, head.version);
+      const maxRaw = this.db
+        .prepare("SELECT * FROM skills WHERE skill_id=? ORDER BY version DESC LIMIT 1")
+        .get(input.skill_id) as SkillRowRaw | undefined;
+      lockedMaxVersion = maxRaw?.version ?? 0;
+      newVersion = lockedMaxVersion + 1;
+      if (maxRaw) ownerForRow = maxRaw.owner_agent_id;
+
+      if (input.expected_version != null && input.expected_version !== lockedMaxVersion) {
+        throw new SkillStoreError(
+          "SKILL_VERSION_STALE",
+          `expected version ${input.expected_version}, head is ${lockedMaxVersion}`,
+        );
       }
+
+      this.db.prepare("UPDATE skills SET is_head=0 WHERE skill_id=? AND is_head=1").run(input.skill_id);
 
       this.db
         .prepare(
@@ -340,24 +443,28 @@ export class SqliteSkillStore implements ISkillStore {
           ts,
         );
 
-      // FTS sync: delete all old index rows of this skill_id → insert only the new head
       this.db.prepare("DELETE FROM skill_fts WHERE skill_id=?").run(input.skill_id);
-      const ftsContent = input.content.length > FTS_CONTENT_MAX
-        ? input.content.slice(0, FTS_CONTENT_MAX)
-        : input.content;
-      // Pre-tokenize for FTS (same scheme as L0/L1). Falls back to raw text when tokenization yields nothing.
-      const ftsName = tokenizeForFts(input.name);
-      const ftsDescription = tokenizeForFts(input.description);
-      const ftsContentTokenized = tokenizeForFts(ftsContent);
-      this.db
-        .prepare(
-          "INSERT INTO skill_fts (name, description, content, skill_id, team_id, owner_agent_id, task_id, user_id) VALUES (?,?,?,?,?,?,?,?)",
-        )
-        .run(ftsName, ftsDescription, ftsContentTokenized, input.skill_id, tid, ownerForRow, input.task_id ?? "default", userIdForRow);
+      this.insertFtsRow({
+        skill_id: input.skill_id,
+        team_id: tid,
+        owner_agent_id: ownerForRow,
+        task_id: input.task_id ?? "default",
+        user_id: userIdForRow,
+        name: input.name,
+        description: input.description,
+        content: input.content,
+      });
 
       this.db.exec("COMMIT");
     } catch (e) {
       try { this.db.exec("ROLLBACK"); } catch { /* ignore */ }
+      if (e instanceof SkillStoreError) throw e;
+      if (isSkillsVersionUniqueConstraint(e)) {
+        throw new SkillStoreError(
+          "SKILL_VERSION_STALE",
+          `expected version ${input.expected_version ?? newVersion}, head is ${lockedMaxVersion}`,
+        );
+      }
       throw e;
     }
 
@@ -405,12 +512,12 @@ export class SqliteSkillStore implements ISkillStore {
   async getHead(skillId: string, teamId?: string): Promise<Skill | null> {
     if (teamId) {
       const raw = this.db
-        .prepare("SELECT * FROM skills WHERE skill_id=? AND team_id=? AND is_head=1 AND status='active' LIMIT 1")
+        .prepare("SELECT * FROM skills WHERE skill_id=? AND team_id=? AND is_head=1 AND status='active' ORDER BY version DESC LIMIT 1")
         .get(skillId, teamId) as SkillRowRaw | undefined;
       return raw ? toSkill(raw) : null;
     }
     const raw = this.db
-      .prepare("SELECT * FROM skills WHERE skill_id=? AND is_head=1 AND status='active' LIMIT 1")
+      .prepare("SELECT * FROM skills WHERE skill_id=? AND is_head=1 AND status='active' ORDER BY version DESC LIMIT 1")
       .get(skillId) as SkillRowRaw | undefined;
     return raw ? toSkill(raw) : null;
   }
@@ -422,12 +529,12 @@ export class SqliteSkillStore implements ISkillStore {
   async getHeadIncludingArchived(skillId: string, teamId?: string): Promise<Skill | null> {
     if (teamId) {
       const raw = this.db
-        .prepare("SELECT * FROM skills WHERE skill_id=? AND team_id=? AND is_head=1 LIMIT 1")
+        .prepare("SELECT * FROM skills WHERE skill_id=? AND team_id=? AND is_head=1 ORDER BY version DESC LIMIT 1")
         .get(skillId, teamId) as SkillRowRaw | undefined;
       return raw ? toSkill(raw) : null;
     }
     const raw = this.db
-      .prepare("SELECT * FROM skills WHERE skill_id=? AND is_head=1 LIMIT 1")
+      .prepare("SELECT * FROM skills WHERE skill_id=? AND is_head=1 ORDER BY version DESC LIMIT 1")
       .get(skillId) as SkillRowRaw | undefined;
     return raw ? toSkill(raw) : null;
   }

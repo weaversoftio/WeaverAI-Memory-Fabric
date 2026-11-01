@@ -57,6 +57,7 @@ Every business endpoint returns:
 |---|---|
 | `0` | `200` |
 | `400 ~ 599` | same as `code` |
+| `10000 ~ 59999` | `floor(code / 100)` when that is `400 ~ 599` (`40901` → `409`, `50001` → `500`) |
 | anything else | `502` |
 
 ### 1.5 Pagination

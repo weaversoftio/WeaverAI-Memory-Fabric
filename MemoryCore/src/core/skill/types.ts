@@ -301,6 +301,13 @@ export interface AppendVersionInput {
   owner_agent_id?: string;
 
   metadata_json?: string;
+
+  /**
+   * Optimistic lock for updates. When set, the store refuses the write unless
+   * MAX(version) for this skill_id equals this value (checked inside the write
+   * transaction). Create paths omit it.
+   */
+  expected_version?: number;
 }
 
 /** Query parameters of `listSkills`. Returns only head + (status satisfied) rows. All four IDs are optional; if passed, they filter. */
